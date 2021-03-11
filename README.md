@@ -1,2 +1,2 @@
 # atlas
-The pipeline suporting  all proteomics workflows
+The pipeline supporting all proteomics workflows
