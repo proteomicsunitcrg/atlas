@@ -15,16 +15,10 @@ include { insertFileToQSample as insertFileToQSample_pr } from '/users/pr/qsampl
 include { insertQuantToQSample as insertQuantToQSample_pr } from '/users/pr/qsample/atlas/modules/report/report_qsample'
 include { insertDataToQSample as insertDataToQSample_pr } from '/users/pr/qsample/atlas/modules/report/report_qsample'
 
-
-
-
 workflow {
 
-   file = ""
-   base = ""
-   path = ""
-
-   file_ch = Channel.watchPath(params.watch_folder).
+   //Input raw file channel:
+   rawfile_ch = Channel.watchPath(params.watch_folder).
        map {
           file = it.getName()
           base = it.getBaseName()
@@ -33,10 +27,10 @@ workflow {
        }
 
    //Conversion: 
-   trfp_pr(file_ch)
+   trfp_pr(rawfile_ch)
 
    //Search engine: 
-   cdecoy_pr(file_ch)
+   cdecoy_pr(rawfile_ch)
    mao_pr(trfp_pr.out,cdecoy_pr.out)
 
    //Identification: 
@@ -50,7 +44,7 @@ workflow {
    protquant_pr(idmapper_pr.out)
 
    //Report to QSample database:
-   insertFileToQSample_pr(file_ch,trfp_pr.out) 
+   insertFileToQSample_pr(rawfile_ch,trfp_pr.out) 
    insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
    insertDataToQSample_pr(insertFileToQSample_pr.out,idfilter_pr.out) 
 }
