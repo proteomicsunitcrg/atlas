@@ -48,17 +48,19 @@ process insertQuantToQSample {
 }
 
 process insertDataToQSample {
-        tag { "${idfilter_file}" }
+        tag { "${fileinfo_file}" }
 
         input:
         file(checksum)
-        file(idfilter_file)
+        file(fileinfo_file)
+        file(protinf_file)
 
         shell:
         '''
         checksum=$(cat checksum.txt)
-        num_prots=$(cat !{idfilter_file} | grep "<ProteinHit" | wc -l)
-        num_peptd=$(cat !{idfilter_file} | grep "<PeptideHit" | wc -l)
+        #num_prots=$(grep 'non-redundant protein hits:' !{fileinfo_file} | sed 's/^.*: //')
+        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
+        num_peptd=$(grep 'non-redundant peptide hits:' file.info | sed 's/^.*: //')
         echo $num_prots > num_prots
         echo $num_peptd > num_peptd
         access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')

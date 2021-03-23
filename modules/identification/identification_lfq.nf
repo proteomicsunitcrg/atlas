@@ -65,3 +65,33 @@ process IDFilter {
     """
 
 }
+
+process ProteinInference {
+    label 'openms'
+    tag { "${idfilter_idxml_file}" }
+
+    input:
+    file(idfilter_idxml_file)
+ 
+    output:
+    file("${idfilter_idxml_file.baseName}_proteininference.idXML")
+ 
+    """
+    ProteinInference -in $idfilter_idxml_file -out ${idfilter_idxml_file.baseName}_proteininference.idXML
+    """
+}
+
+process FileInfo {
+    label 'openms'
+    tag  { "${idxml_file}" }
+
+    input:
+    file(idxml_file)
+
+    output:
+    file("file.info")
+
+    """
+    FileInfo -in $idxml_file > file.info
+    """
+}
