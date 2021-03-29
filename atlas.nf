@@ -40,6 +40,6 @@ workflow {
 
    //Report to QSample database:
    insertFileToQSample_pr(rawfile_ch,trfp_pr.out) 
+   insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
    insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
-   insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out) 
 }

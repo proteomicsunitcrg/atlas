@@ -89,9 +89,10 @@ process FileInfo {
     file(idxml_file)
 
     output:
-    file("file.info")
+    file("${idxml_file.baseName}.info")
+
 
     """
-    FileInfo -in $idxml_file > file.info
+    FileInfo -in $idxml_file > ${idxml_file.baseName}.info
     """
 }

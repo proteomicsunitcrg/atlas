@@ -17,18 +17,41 @@ process insertFileToQSample {
         tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
 
         output:
-        file("checksum.txt")
+        file("${filename}.checksum")
 
         shell:
         '''
         request_code=$(echo !{filename} | awk -F'[_.]' '{print $1}')
         checksum=$(md5sum !{path}/!{filename} | awk '{print $1}')
-        echo $checksum > checksum.txt
+        echo $checksum > !{filename}.checksum
         creation_date=$(grep -Pio '.*startTimeStamp="\\K[^"]*' !{mzml_file} | sed 's/Z//g' | xargs -I{} date -d {} +"%Y-%m-%dT%T")
         access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_file}/$request_code -H "Content-Type: application/json" --data '{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
         '''
+}
+
+process insertDataToQSample {
+        tag { "${protinf_file}" }
+
+        input:
+        file(checksum)
+        file(fileinfo_file)
+        file(protinf_file)
+
+        shell:
+        '''
+        checksum=$(cat !{checksum})
+        #num_prots=$(grep 'non-redundant protein hits:' !{fileinfo_file} | sed 's/^.*: //')
+        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
+        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        echo $num_prots > num_prots
+        echo $num_peptd > num_peptd
+        access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        echo $access_token > acces_token
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        '''
+
 }
 
 process insertQuantToQSample {
@@ -40,32 +63,9 @@ process insertQuantToQSample {
 
     shell:
     '''
-    checksum=$(cat checksum.txt)
+    checksum=$(cat !{checksum})
     !{binfolder}/quant2json.sh !{csvfile} $checksum output.json
     access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
     curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_quant} -H "Content-Type: application/json" --data '@output.json'
     '''
-}
-
-process insertDataToQSample {
-        tag { "${fileinfo_file}" }
-
-        input:
-        file(checksum)
-        file(fileinfo_file)
-        file(protinf_file)
-
-        shell:
-        '''
-        checksum=$(cat checksum.txt)
-        #num_prots=$(grep 'non-redundant protein hits:' !{fileinfo_file} | sed 's/^.*: //')
-        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
-        num_peptd=$(grep 'non-redundant peptide hits:' file.info | sed 's/^.*: //')
-        echo $num_prots > num_prots
-        echo $num_peptd > num_peptd
-        access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-        echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
-        '''
-
 }
