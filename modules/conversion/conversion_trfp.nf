@@ -1,6 +1,6 @@
 process ThermoRawFileParser {
     label 'thermoconvert'
-    tag  { "input 1:" ${filename} ", input2:" ${basename} ", input3: " ${path} }
+    tag  { "${filename}" }
 
     input:
     tuple val(filename), val(basename), val(path)

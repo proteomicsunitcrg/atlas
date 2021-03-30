@@ -10,7 +10,7 @@ qcloud2_api_insert_quant = params.qcloud2_api_insert_quant
 binfolder                = "$baseDir/bin"
 
 process insertFileToQSample {
-        tag { "${filename}" }
+        tag { "${mzml_file}" }
 
         input:
         tuple val(filename), val(basename), val(path)
