@@ -8,17 +8,18 @@ include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter as
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from '/users/pr/qsample/atlas/modules/quantification/quantification_lfq'
 include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr } from '/users/pr/qsample/atlas/modules/report/report_qsample'
 
+Channel
+  .fromPath(params.rawfile)
+  .map {
+      file = it.getName()
+      base = it.getBaseName()
+      path = it.getParent()
+      [file, base, path]
+  }
+  .set { rawfile_ch }
+
 workflow {
-
-   //Input raw file channel:
-   rawfile_ch = Channel.watchPath(params.watch_folder).
-       map {
-          file = it.getName()
-          base = it.getBaseName()
-          path = it.getParent()
-          [file, base, path]
-       }
-
+  
    //Conversion: 
    trfp_pr(rawfile_ch)
 
@@ -42,4 +43,5 @@ workflow {
    insertFileToQSample_pr(rawfile_ch,trfp_pr.out) 
    insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
    insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
+
 }

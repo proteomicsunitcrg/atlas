@@ -31,7 +31,7 @@ process PeptideIndexer {
     file("${search_engine_idxml_file.baseName}_peptideindexer.idXML")
 
     """
-    PeptideIndexer -debug 1 -threads 4 -enzyme:specificity full -IL_equivalent -in ${search_engine_idxml_file} -out ${search_engine_idxml_file.baseName}_peptideindexer.idXML -write_protein_sequence -fasta ${fastafile_decoy} -decoy_string ${decoy_string} -decoy_string_position ${decoy_string_position} -unmatched_action ${unmatched_action} -missing_decoy_action ${missing_decoy_action} -write_protein_sequence
+    PeptideIndexer -aaa_max 10 -debug 1 -threads 4 -enzyme:specificity full -IL_equivalent -in ${search_engine_idxml_file} -out ${search_engine_idxml_file.baseName}_peptideindexer.idXML -write_protein_sequence -fasta ${fastafile_decoy} -decoy_string ${decoy_string} -decoy_string_position ${decoy_string_position} -unmatched_action ${unmatched_action} -missing_decoy_action ${missing_decoy_action} -write_protein_sequence
     """
 }
 
