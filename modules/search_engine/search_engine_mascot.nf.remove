@@ -44,9 +44,20 @@ process create_decoy {
     echo $fastafilename > fastafilename
     fasta_orig_path=!{databases_folder}/${organism}/current/${fastafile}
     cp $fasta_orig_path .
-    perl !{scripts_folder}/decoy.pl --append ${fastafile}
-    mv ${fastafile} ${fastafile}_decoy.fasta
+    # Multiline to singleline fasta: 
+    awk '{if(NR==1) {print $0} else {if($0 ~ /^>/) {print "\\n"$0} else {printf $0}}}' ${fastafile} > ${fastafilename}_singleline.fasta
+    # Remove all "X" AAA only in the sequence (not in the protein accession/description):
+    awk 'BEGIN {RS = ">" ; FS = "\\n" ; ORS = ""} {if ($2 !~ /X/) print $0RT}' ${fastafilename}_singleline.fasta >  ${fastafilename}_singleline_removed_aaa.fasta
+    # Single line to multiline fasta (for PeptideIndexer):
+    fold -b -w 200 ${fastafilename}_singleline_removed_aaa.fasta > ${fastafilename}_singleline_removed_aaa_multiline.fasta
+    # Replace "sp" to ">sp":
+    sed 's/sp/>sp/' ${fastafilename}_singleline_removed_aaa_multiline.fasta > ${fastafilename}_singleline_removed_aaa_multiline_replaced.fasta
+    cp ${fastafilename}_singleline_removed_aaa_multiline_replaced.fasta ${fastafilename}_singleline_removed_aaa_multiline_replaced_copy.fasta
+    # Add decoy sequences: 
+    perl /users/pr/qsample/atlas/bin/decoy.pl --append ${fastafilename}_singleline_removed_aaa_multiline_replaced.fasta
+    mv ${fastafilename}_singleline_removed_aaa_multiline_replaced.fasta ${fastafilename}_singleline_removed_aaa_multiline_replaced_decoy.fasta 
     '''
+
 }
 
 process MascotAdapterOnline {

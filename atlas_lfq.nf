@@ -18,6 +18,11 @@ Channel
   }
   .set { rawfile_ch }
 
+Channel
+  .from(params.var_modif)
+  .set { var_modif_ch }
+
+
 workflow {
   
    //Conversion: 
@@ -25,7 +30,7 @@ workflow {
 
    //Search engine: 
    cdecoy_pr(rawfile_ch)
-   mao_pr(trfp_pr.out,cdecoy_pr.out)
+   mao_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch)
 
    //Identification: 
    pepidx_pr(mao_pr.out,cdecoy_pr.out)
