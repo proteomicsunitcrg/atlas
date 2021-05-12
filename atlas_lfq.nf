@@ -3,10 +3,10 @@
 nextflow.enable.dsl=2
 
 include { ThermoRawFileParser as trfp_pr } from './modules/conversion/conversion_trfp'
-include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr } from '/users/pr/qsample/atlas/modules/search_engine/search_engine_mascot'
-include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter as idfilter_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr } from '/users/pr/qsample/atlas/modules/identification/identification_lfq'
-include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from '/users/pr/qsample/atlas/modules/quantification/quantification_lfq'
-include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr } from '/users/pr/qsample/atlas/modules/report/report_qsample'
+include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr } from './modules/search_engine/search_engine_mascot'
+include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr } from './modules/identification/identification_lfq'
+include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './modules/quantification/quantification_lfq'
+include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr } from './modules/report/report_qsample'
 
 Channel
   .fromPath(params.rawfile)
@@ -33,15 +33,16 @@ workflow {
    mao_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch)
 
    //Identification: 
-   pepidx_pr(mao_pr.out,cdecoy_pr.out)
+   idfilter_aaa_pr(mao_pr.out)
+   pepidx_pr(idfilter_aaa_pr.out,cdecoy_pr.out)
    fdr_pr(pepidx_pr.out)
-   idfilter_pr(fdr_pr.out)
-   fileinfo_pr(idfilter_pr.out)
-   protinf_pr(idfilter_pr.out)
+   idfilter_score_pr(fdr_pr.out)
+   fileinfo_pr(idfilter_score_pr.out)
+   protinf_pr(idfilter_score_pr.out)
 
    //Quantification: 
    ffm_pr(trfp_pr.out)
-   idmapper_pr(ffm_pr.out,idfilter_pr.out)
+   idmapper_pr(ffm_pr.out,idfilter_score_pr.out)
    protquant_pr(idmapper_pr.out)
 
    //Report to QSample database:

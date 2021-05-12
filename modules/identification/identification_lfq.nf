@@ -17,6 +17,10 @@ FDR_protein              = params.FDR_protein
 //IDFilter:
 score_pep                = params.score_pep
 score_prot               = params.score_prot
+aaa_pep                  = params.aaa_pep
+aaa_prot                 = params.aaa_prot
+black_regex              = params.black_regex
+
 
 process PeptideIndexer {
     label 'openms'
@@ -35,6 +39,23 @@ process PeptideIndexer {
     """
 }
 
+
+process IDFilter_aaa {
+    label 'openms'
+    tag { "${fdr_idxml_file}" }
+
+    input:
+    file(fdr_idxml_file)
+
+    output:
+    file("${fdr_idxml_file.baseName}_idfilter_aaa.idXML")
+
+    """
+    IDFilter -in $fdr_idxml_file -blacklist:RegEx $black_regex -out ${fdr_idxml_file.baseName}_idfilter_aaa.idXML -remove_decoys -score:pep $aaa_pep -score:prot $aaa_prot
+    """
+
+}
+
 process FalseDiscoveryRate {
     label 'openms'
     tag { "${peptideIndexer_idxml_file}" }
@@ -50,7 +71,7 @@ process FalseDiscoveryRate {
     """
 }
 
-process IDFilter {
+process IDFilter_score {
     label 'openms'
     tag { "${fdr_idxml_file}" }
 
@@ -58,10 +79,10 @@ process IDFilter {
     file(fdr_idxml_file)
 
     output:
-    file("${fdr_idxml_file.baseName}_idfilter.idXML")
+    file("${fdr_idxml_file.baseName}_idfilter_score.idXML")
 
     """
-    IDFilter -in $fdr_idxml_file -out ${fdr_idxml_file.baseName}_idfilter.idXML -remove_decoys -score:pep $score_pep -score:prot $score_prot
+    IDFilter -in $fdr_idxml_file -out ${fdr_idxml_file.baseName}_idfilter_score.idXML -remove_decoys -score:pep $score_pep -score:prot $score_prot
     """
 
 }
