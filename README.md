@@ -4,4 +4,6 @@ The pipeline supporting all proteomics workflows
 
 ![alt text](https://i.postimg.cc/YS0hMGdp/atlas.png) 
 
-![flowchart](https://user-images.githubusercontent.com/1679820/112821567-24f5b800-9087-11eb-8c68-40aefe8225ee.png)
+
+![flowchart](https://user-images.githubusercontent.com/1679820/118102633-54634880-b3d9-11eb-84cc-52e6e1490233.png)
+
