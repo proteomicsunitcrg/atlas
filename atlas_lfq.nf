@@ -6,7 +6,7 @@ include { ThermoRawFileParser as trfp_pr } from './modules/conversion/conversion
 include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr } from './modules/search_engine/search_engine_mascot'
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr } from './modules/identification/identification_lfq'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './modules/quantification/quantification_lfq'
-include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr } from './modules/report/report_qsample'
+include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr; insertPhosphoModifToQSample as insertPhosphoModifToQSample_pr } from './modules/report/report_qsample'
 
 Channel
   .fromPath(params.rawfile)
@@ -49,5 +49,6 @@ workflow {
    insertFileToQSample_pr(rawfile_ch,trfp_pr.out) 
    insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
    insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
+   insertPhosphoModifToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
 
 }
