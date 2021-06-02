@@ -22,6 +22,13 @@ Channel
   .from(params.var_modif)
   .set { var_modif_ch }
 
+Channel
+  .from(params.fragment_mass_tolerance)
+  .set { fragment_mass_tolerance_ch }
+
+Channel
+  .from(params.fragment_error_units)
+  .set { fragment_error_units_ch }
 
 workflow {
   
@@ -30,7 +37,7 @@ workflow {
 
    //Search engine: 
    cdecoy_pr(rawfile_ch)
-   mao_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch)
+   mao_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch,fragment_mass_tolerance_ch,fragment_error_units_ch)
 
    //Identification: 
    idfilter_aaa_pr(mao_pr.out)
