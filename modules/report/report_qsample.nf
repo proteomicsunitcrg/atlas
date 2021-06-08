@@ -1,12 +1,14 @@
 //QCloud2 API:
-qcloud2_api_signin       = params.qcloud2_api_signin
-qcloud2_api_user         = params.qcloud2_api_user
-qcloud2_api_pass         = params.qcloud2_api_pass
-qcloud2_api_insert_file  = params.qcloud2_api_insert_file
-qcloud2_api_insert_data  = params.qcloud2_api_insert_data
-qcloud2_api_insert_quant = params.qcloud2_api_insert_quant
-qcloud2_api_fileinfo     = params.qcloud2_api_fileinfo
-qcloud2_api_insert_modif = params.qcloud2_api_insert_modif
+qcloud2_api_signin             = params.qcloud2_api_signin
+qcloud2_api_user               = params.qcloud2_api_user
+qcloud2_api_pass               = params.qcloud2_api_pass
+qcloud2_api_insert_file        = params.qcloud2_api_insert_file
+qcloud2_api_insert_data        = params.qcloud2_api_insert_data
+qcloud2_api_insert_quant       = params.qcloud2_api_insert_quant
+qcloud2_api_fileinfo           = params.qcloud2_api_fileinfo
+qcloud2_api_insert_modif       = params.qcloud2_api_insert_modif
+qcloud2_api_insert_wetlab_file = params.qcloud2_api_insert_wetlab_file
+qcloud2_api_insert_wetlab_data = params.qcloud2_api_insert_wetlab_data
 
 //SHell scripts folder:
 binfolder                = "$baseDir/bin"
@@ -30,6 +32,38 @@ process insertFileToQSample {
         access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_file}/$request_code -H "Content-Type: application/json" --data '{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
+        '''
+}
+
+process insertWetlabFileToQSample {
+        tag { "${mzml_file}" }
+
+        input:
+        tuple val(filename), val(basename), val(path)
+        tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
+
+        output:
+        file("${filename}.checksum")
+
+        when:
+        filename =~ /QCGV|QCDV|QCFV/
+
+        shell:
+        '''
+        api_key=""
+        basename_sh=!{basename}
+        if [[ $basename_sh == *"QCGV"* ]]; then api_key="7765746c-6162-3300-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCDV"* ]]; then api_key="6170694b-6579-3100-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCFV"* ]]; then api_key="7765746c-6162-3500-0000-000000000000"; fi
+        checksum=$(md5sum !{path}/!{filename} | awk '{print $1}')
+        echo $checksum > !{filename}.checksum
+        creation_date=$(grep -Pio '.*startTimeStamp="\\K[^"]*' !{mzml_file} | sed 's/Z//g' | xargs -I{} date -d {} +"%Y-%m-%dT%T")
+        replicate=$(echo !{filename} | cut -d"_" -f4 | cut -c2-3)
+        year=$(echo !{filename} | cut -d"_" -f1 | cut -c1-4)
+        week=$(echo !{filename} | cut -d"_" -f3 | cut -c2-3)
+        access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        echo $access_token > acces_token
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_file}/$api_key -H "Content-Type: application/json" --data '{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'$basename_sh'","replicate": '$replicate',"year": '$year',"week": '$week'}'
         '''
 }
 
@@ -98,7 +132,7 @@ process insertPhosphoModifToQSample {
 }
 
 process insertPTMhistonesToQSample {
-    tag { "${fileinfo_file}" }
+     tag { "${fileinfo_file}" }
 
      input:
      file(checksum)
@@ -122,3 +156,26 @@ process insertPTMhistonesToQSample {
         '''
 }
 
+process insertWetlabDataToQSample {
+        tag { "${fileinfo_file}" }
+
+        input:
+        file(checksum)
+        file(fileinfo_file)
+        file(protinf_file)
+
+        when:
+        fileinfo_file.name =~ /QCGV|QCDV|QCFV/
+
+        shell:
+        '''
+        checksum=$(cat !{checksum})
+        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
+        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        echo $num_prots > num_prots
+        echo $num_peptd > num_peptd
+access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        echo $access_token > acces_token
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        '''
+}
