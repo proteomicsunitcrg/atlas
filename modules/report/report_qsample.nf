@@ -60,7 +60,7 @@ process insertWetlabFileToQSample {
         creation_date=$(grep -Pio '.*startTimeStamp="\\K[^"]*' !{mzml_file} | sed 's/Z//g' | xargs -I{} date -d {} +"%Y-%m-%dT%T")
         replicate=$(echo !{filename} | cut -d"_" -f4 | cut -c2-3)
         year=$(echo !{filename} | cut -d"_" -f1 | cut -c1-4)
-        week=$(echo !{filename} | cut -d"_" -f3 | cut -c2-3)
+        week=$(echo !{filename} | cut -d"_" -f3 | cut -c2-3 | bc)
         access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_file}/$api_key -H "Content-Type: application/json" --data '{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'$basename_sh'","replicate": '$replicate',"year": '$year',"week": '$week'}'
