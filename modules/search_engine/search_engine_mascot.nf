@@ -48,6 +48,7 @@ process create_decoy {
     echo $fastafilename > fastafilename
     fasta_orig_path=!{databases_folder}/${organism}/current/${fastafile}
     cp $fasta_orig_path .
+    echo >> ${fastafile}
     perl !{scripts_folder}/decoy.pl --append ${fastafile}
     mv ${fastafile} ${fastafile}_decoy.fasta
     '''
