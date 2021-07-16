@@ -48,7 +48,7 @@ process insertWetlabFileToQSample {
         file("${filename}.checksum")
 
         when:
-        filename =~ /QCGV|QCDV|QCFV/
+        filename =~ /QCGV|QCDV|QCFV|QCPV|QCRV/
 
         shell:
         '''
@@ -206,7 +206,7 @@ process insertTmtToQSample {
         '''
 }
 
-process insertWetlabDataToQSample {
+process insertWetlabInSolutionDataToQSample {
         tag { "${fileinfo_file}" }
 
         input:
@@ -215,7 +215,7 @@ process insertWetlabDataToQSample {
         file(protinf_file)
 
         when:
-        fileinfo_file.name =~ /QCGV|QCDV|QCFV/
+        fileinfo_file.name =~ /QCDV/
 
         shell:
         '''
@@ -227,5 +227,101 @@ process insertWetlabDataToQSample {
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        '''
+}
+
+process insertWetlabInGelDataToQSample {
+        tag { "${fileinfo_file}" }
+
+        input:
+        file(checksum)
+        file(fileinfo_file)
+        file(protinf_file)
+
+        when:
+        fileinfo_file.name =~ /QCGV/
+
+        shell:
+        '''
+        checksum=$(cat !{checksum})
+        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
+        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        echo $num_prots > num_prots
+        echo $num_peptd > num_peptd
+access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        echo $access_token > acces_token
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3300-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        '''
+}
+
+process insertWetlabFaspDataToQSample {
+        tag { "${fileinfo_file}" }
+
+        input:
+        file(checksum)
+        file(fileinfo_file)
+        file(protinf_file)
+
+        when:
+        fileinfo_file.name =~ /QCFV/
+
+        shell:
+        '''
+        checksum=$(cat !{checksum})
+        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
+        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        echo $num_prots > num_prots
+        echo $num_peptd > num_peptd
+access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        echo $access_token > acces_token
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3500-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        '''
+}
+
+process insertWetlabPhosphoDataToQSample {
+        tag { "${fileinfo_file}" }
+
+        input:
+        file(checksum)
+        file(fileinfo_file)
+        file(protinf_file)
+
+        when:
+        fileinfo_file.name =~ /QCPV/
+
+        shell:
+        '''
+        checksum=$(cat !{checksum})
+        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
+        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        echo $num_prots > num_prots
+        echo $num_peptd > num_peptd
+access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        echo $access_token > acces_token
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3400-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        '''
+}
+
+process insertWetlabAgilentDataToQSample {
+        tag { "${fileinfo_file}" }
+
+        input:
+        file(checksum)
+        file(fileinfo_file)
+        file(protinf_file)
+
+        when:
+        fileinfo_file.name =~ /QCRV/
+
+        shell:
+        '''
+        checksum=$(cat !{checksum})
+        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
+        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        echo $num_prots > num_prots
+        echo $num_peptd > num_peptd
+access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        echo $access_token > acces_token
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3200-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
         '''
 }
