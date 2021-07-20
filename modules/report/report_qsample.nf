@@ -23,6 +23,9 @@ process insertFileToQSample {
         output:
         file("${filename}.checksum")
 
+        when: 
+        filename =~ /^((?!QCGV|QCDV|QCFV|QCPV|QCRV).)*$/
+
         shell:
         '''
         request_code=$(echo !{filename} | awk -F'[_.]' '{print $1}')
@@ -77,6 +80,9 @@ process insertDataToQSample {
         file(fileinfo_file)
         file(protinf_file)
 
+        when:
+        fileinfo_file =~ /^((?!QCGV|QCDV|QCFV|QCPV|QCRV).)*$/
+
         shell:
         '''
         checksum=$(cat !{checksum})
@@ -98,6 +104,9 @@ process insertQuantToQSample {
     input:
     file(checksum)
     file(csvfile)
+
+    when: 
+    csvfile =~ /^((?!QCGV|QCDV|QCFV|QCPV|QCRV).)*$/
 
     shell:
     '''
