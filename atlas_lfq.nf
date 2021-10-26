@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 include { ThermoRawFileParser as trfp_pr } from './modules/conversion/conversion_trfp'
 include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr } from './modules/search_engine/search_engine_mascot'
-include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr } from './modules/identification/identification_lfq'
+include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './modules/identification/identification_lfq'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './modules/quantification/quantification_lfq'
 include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr; insertPhosphoModifToQSample as insertPhosphoModifToQSample_pr; insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr; insertWetlabFileToQSample as insertWetlabFileToQSample_pr; insertSilacToQSample as insertSilacToQSample_pr; insertTmtToQSample as insertTmtToQSample_pr; insertWetlabInGelDataToQSample as insertWetlabInGelDataToQSample_pr; insertWetlabFaspDataToQSample as insertWetlabFaspDataToQSample_pr; insertWetlabInSolutionDataToQSample as insertWetlabInSolutionDataToQSample_pr; insertWetlabPhosphoDataToQSample as insertWetlabPhosphoDataToQSample_pr; insertWetlabAgilentDataToQSample as insertWetlabAgilentDataToQSample_pr} from './modules/report/report_qsample'
 
@@ -46,6 +46,7 @@ workflow {
    idfilter_score_pr(fdr_pr.out)
    fileinfo_pr(idfilter_score_pr.out)
    protinf_pr(idfilter_score_pr.out)
+   qccalc_pr(protinf_pr.out,trfp_pr.out)
 
    //Quantification: 
    ffm_pr(trfp_pr.out)
