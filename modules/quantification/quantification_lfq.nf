@@ -10,7 +10,7 @@ rt_tolerance             = params.rt_tolerance
 mz_tolerance             = params.mz_tolerance
 
 process FeatureFinderMultiplex {
-    label 'openms'
+    label 'ffm'
     tag { "${mzML_ffm_file}" }
 
     input:
@@ -20,7 +20,7 @@ process FeatureFinderMultiplex {
     file("${basename}_ffm.featureXML")
 
     """
-    FeatureFinderMultiplex -debug 1 -in ${mzML_ffm_file} -out ${basename}_ffm.featureXML -algorithm:labels $algorithm_labels -algorithm:charge $algorithm_charge -algorithm:rt_typical $algorithm_rt_typical -algorithm:rt_min $algorithm_rt_min -algorithm:mz_tolerance $algorithm_mz_tolerance
+    FeatureFinderMultiplex -debug 1 -in ${mzML_ffm_file} -out ${basename}_ffm.featureXML -algorithm:rt_band '1' -algorithm:labels $algorithm_labels -algorithm:charge $algorithm_charge -algorithm:rt_typical $algorithm_rt_typical -algorithm:rt_min $algorithm_rt_min -algorithm:mz_tolerance $algorithm_mz_tolerance
     """
 }
 
@@ -54,6 +54,6 @@ process ProteinQuantifier {
     file("${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv")
 
     """
-    ProteinQuantifier -average 'mean' -in $idmapper_to_proteinquantifier -out ${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv
+    ProteinQuantifier -include_all -average 'mean' -in $idmapper_to_proteinquantifier -out ${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv
     """
 }
