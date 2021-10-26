@@ -9,6 +9,7 @@ qcloud2_api_fileinfo           = params.qcloud2_api_fileinfo
 qcloud2_api_insert_modif       = params.qcloud2_api_insert_modif
 qcloud2_api_insert_wetlab_file = params.qcloud2_api_insert_wetlab_file
 qcloud2_api_insert_wetlab_data = params.qcloud2_api_insert_wetlab_data
+num_max_prots                  = params.num_max_prots
 
 //SHell scripts folder:
 binfolder                = "$baseDir/bin"
@@ -60,6 +61,8 @@ process insertWetlabFileToQSample {
         if [[ $basename_sh == *"QCGV"* ]]; then api_key="7765746c-6162-3300-0000-000000000000"; fi
         if [[ $basename_sh == *"QCDV"* ]]; then api_key="6170694b-6579-3100-0000-000000000000"; fi
         if [[ $basename_sh == *"QCFV"* ]]; then api_key="7765746c-6162-3500-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCPV"* ]]; then api_key="7765746c-6162-3400-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCRV"* ]]; then api_key="7765746c-6162-3200-0000-000000000000"; fi
         checksum=$(md5sum !{path}/!{filename} | awk '{print $1}')
         echo $checksum > !{filename}.checksum
         creation_date=$(grep -Pio '.*startTimeStamp="\\K[^"]*' !{mzml_file} | sed 's/Z//g' | xargs -I{} date -d {} +"%Y-%m-%dT%T")
@@ -111,7 +114,7 @@ process insertQuantToQSample {
     shell:
     '''
     checksum=$(cat !{checksum})
-    !{binfolder}/quant2json.sh !{csvfile} $checksum output.json
+    !{binfolder}/quant2json.sh !{csvfile} $checksum output.json !{num_max_prots}
     access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
     curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_quant} -H "Content-Type: application/json" --data '@output.json'
     '''
