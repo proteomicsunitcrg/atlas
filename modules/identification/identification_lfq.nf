@@ -117,3 +117,20 @@ process FileInfo {
     FileInfo -in $idxml_file > ${idxml_file.baseName}.info
     """
 }
+
+process QCCalculator {
+    label 'openms'
+    tag { "${idxml_file}" }
+
+    input:
+    file(idxml_file)
+    tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
+
+    output:
+    file("${idxml_file.baseName}_qccalculator.qcML")
+
+    """
+    QCCalculator -in $mzml_file -id $idxml_file -out ${idxml_file.baseName}_qccalculator.qcML
+    """
+}
+
