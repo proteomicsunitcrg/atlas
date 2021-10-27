@@ -55,7 +55,7 @@ process create_decoy {
 }
 
 process MascotAdapterOnline {
-    label 'openms'
+    label 'mascot'
     tag { "${filename}" }
 
     input:
