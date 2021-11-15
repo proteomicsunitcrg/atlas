@@ -25,7 +25,7 @@ process insertFileToQSample {
         file("${filename}.checksum")
 
         when: 
-        filename =~ /^((?!QCGV|QCDV|QCFV|QCPV|QCRV).)*$/
+        filename =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL).)*$/
 
         shell:
         '''
@@ -52,17 +52,17 @@ process insertWetlabFileToQSample {
         file("${filename}.checksum")
 
         when:
-        filename =~ /QCGV|QCDV|QCFV|QCPV|QCRV/
+        filename =~ /QCGL|QCDL|QCFL|QCPL|QCRL/
 
         shell:
         '''
         api_key=""
         basename_sh=!{basename}
-        if [[ $basename_sh == *"QCGV"* ]]; then api_key="7765746c-6162-3300-0000-000000000000"; fi
-        if [[ $basename_sh == *"QCDV"* ]]; then api_key="6170694b-6579-3100-0000-000000000000"; fi
-        if [[ $basename_sh == *"QCFV"* ]]; then api_key="7765746c-6162-3500-0000-000000000000"; fi
-        if [[ $basename_sh == *"QCPV"* ]]; then api_key="7765746c-6162-3400-0000-000000000000"; fi
-        if [[ $basename_sh == *"QCRV"* ]]; then api_key="7765746c-6162-3200-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCGL"* ]]; then api_key="7765746c-6162-3300-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCDL"* ]]; then api_key="6170694b-6579-3100-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCFL"* ]]; then api_key="7765746c-6162-3500-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCPL"* ]]; then api_key="7765746c-6162-3400-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCRL"* ]]; then api_key="7765746c-6162-3200-0000-000000000000"; fi
         checksum=$(md5sum !{path}/!{filename} | awk '{print $1}')
         echo $checksum > !{filename}.checksum
         creation_date=$(grep -Pio '.*startTimeStamp="\\K[^"]*' !{mzml_file} | sed 's/Z//g' | xargs -I{} date -d {} +"%Y-%m-%dT%T")
@@ -86,7 +86,7 @@ process insertDataToQSample {
         file(qccalc_file)
 
         when:
-        fileinfo_file =~ /^((?!QCGV|QCDV|QCFV|QCPV|QCRV).)*$/
+        fileinfo_file =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL).)*$/
 
         shell:
         '''
@@ -116,7 +116,7 @@ process insertQuantToQSample {
     file(csvfile)
 
     when: 
-    csvfile =~ /^((?!QCGV|QCDV|QCFV|QCPV|QCRV).)*$/
+    csvfile =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL).)*$/
 
     shell:
     '''
@@ -234,7 +234,7 @@ process insertWetlabInSolutionDataToQSample {
         file(protinf_file)
 
         when:
-        fileinfo_file.name =~ /QCDV/
+        fileinfo_file.name =~ /QCDL/
 
         shell:
         '''
@@ -258,7 +258,7 @@ process insertWetlabInGelDataToQSample {
         file(protinf_file)
 
         when:
-        fileinfo_file.name =~ /QCGV/
+        fileinfo_file.name =~ /QCGL/
 
         shell:
         '''
@@ -282,7 +282,7 @@ process insertWetlabFaspDataToQSample {
         file(protinf_file)
 
         when:
-        fileinfo_file.name =~ /QCFV/
+        fileinfo_file.name =~ /QCFL/
 
         shell:
         '''
@@ -306,7 +306,7 @@ process insertWetlabPhosphoDataToQSample {
         file(protinf_file)
 
         when:
-        fileinfo_file.name =~ /QCPV/
+        fileinfo_file.name =~ /QCPL/
 
         shell:
         '''
@@ -330,7 +330,7 @@ process insertWetlabAgilentDataToQSample {
         file(protinf_file)
 
         when:
-        fileinfo_file.name =~ /QCRV/
+        fileinfo_file.name =~ /QCRL/
 
         shell:
         '''
