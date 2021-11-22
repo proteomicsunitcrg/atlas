@@ -163,18 +163,31 @@ process insertPTMhistonesToQSample {
      fileinfo_file.name =~ /((^[^_]+)MH)|((^[^_]+)MZ)/
 
      shell:
-        '''
-        checksum=$(cat !{checksum})
-        num_peptides_total=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d'/' -f2 | cut -d'(' -f1 | sed 's/ //g')
-        num_peptides_modif=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d':' -f2 | cut -d'/' -f1 | sed 's/ //g')
-        num_mod_phenylisocyanate=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f3 | cut -d" " -f3 | sed 's/ //g')
-        num_mod_propionyl_k=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f4 | cut -d" " -f3 | sed 's/ //g')
-        num_mod_propionyl_n=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f5 | cut -d" " -f4 | sed 's/ //g')
-        access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-        echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "Phenylisocyanate (N-term)"},"value": "'$num_mod_phenylisocyanate'"},{"modification": {"name": "Propionyl (K)"},"value": "'$num_mod_propionyl_k'"},{"modification": {"name": "Propionyl (Protein N-term)"},"value": "'$num_mod_propionyl_n'"}]}'
-        '''
+'''
+checksum=$(cat !{checksum})
+
+num_peptides_total=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d'/' -f2 | cut -d'(' -f1 | sed 's/ //g')
+num_peptides_modif=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d':' -f2 | cut -d'/' -f1 | sed 's/ //g')
+
+#Derivatization modifications
+num_mod_phenylisocyanate_n=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f6 | cut -d" " -f3 | sed 's/ //g')
+num_mod_propionyl_k=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f8 | cut -d")" -f2 | sed 's/ //g')
+num_mod_propionyl_n=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f7 | cut -d" " -f3 | sed 's/ //g')
+
+#Histone modifications (missing Propyonyl+Methyl at MA, but present at Mascot Server):
+num_mod_acetyl_k=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f2 | cut -d")" -f2 | sed 's/ //g')
+num_mod_dimethyl_k=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f4 | cut -d")" -f2 | sed 's/ //g')
+num_mod_trimethyl_k=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f9 | cut -d")" -f2 | sed 's/ //g')
+
+access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+
+echo $access_token > acces_token
+
+curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
+
+curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "Phenylisocyanate (N-term)"},"value": "'$num_mod_phenylisocyanate_n'"},{"modification": {"name": "Propionyl (K)"},"value": "'$num_mod_propionyl_k'"},{"modification": {"name": "Propionyl (Protein N-term)"},"value": "'$num_mod_propionyl_n'"},{"modification": {"name": "Acetyl (K)"},"value": "'$num_mod_acetyl_k'"},{"modification": {"name": "Dimethyl (K)"},"value": "'$num_mod_dimethyl_k'"},{"modification": {"name": "Trimethyl (K)"},"value": "'$num_mod_trimethyl_k'"}]}'
+
+'''
 }
 
 process insertSilacToQSample {
