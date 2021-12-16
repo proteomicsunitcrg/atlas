@@ -39,6 +39,13 @@ Channel
   .from(params.missed_cleavages)
   .set { missed_cleavages }
 
+Channel
+  .from(params.params_file)
+  .set { params_file }
+
+
+params.params_file
+
 workflow {
   
    //Conversion: raw to mzML
