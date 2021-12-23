@@ -152,43 +152,66 @@ process insertPhosphoModifToQSample {
         '''
 }
 
+
 process insertPTMhistonesToQSample {
      tag { "${fileinfo_file}" }
 
      input:
      file(checksum)
      file(fileinfo_file)
+     file(protinf_file)
 
      when:
      fileinfo_file.name =~ /((^[^_]+)MH)|((^[^_]+)MZ)/
 
      shell:
 '''
+
 checksum=$(cat !{checksum})
 
-num_peptides_total=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d'/' -f2 | cut -d'(' -f1 | sed 's/ //g')
-num_peptides_modif=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d':' -f2 | cut -d'/' -f1 | sed 's/ //g')
+### Extract parameters from FileInfo file:
 
-#Derivatization modifications
-num_mod_phenylisocyanate_n=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f6 | cut -d" " -f3 | sed 's/ //g')
-num_mod_propionyl_k=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f8 | cut -d")" -f2 | sed 's/ //g')
-num_mod_propionyl_n=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f7 | cut -d" " -f3 | sed 's/ //g')
+#Totals:
+num_peptides_total=$(grep -Pio '.* modified top-hits: ([^(]+)' !{fileinfo_file}  | sed 's|.*/||' | sed "s/ //g")
+num_peptides_modif=$(grep -Pio '.* modified top-hits: ([^//]+)' !{fileinfo_file}  | awk '{print $NF}')
 
-#Histone modifications (missing Propyonyl+Methyl at MA, but present at Mascot Server):
-num_mod_acetyl_k=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f2 | cut -d")" -f2 | sed 's/ //g')
-num_mod_dimethyl_k=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f4 | cut -d")" -f2 | sed 's/ //g')
-num_mod_trimethyl_k=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f9 | cut -d")" -f2 | sed 's/ //g')
+#Chemical modifications:
+num_mod_phenylisocyanate_n=$(grep -Pio '.*Phenylisocyanate ([^,]+)' !{fileinfo_file} | awk '{print $NF}')
+num_mod_propionyl_k=$(grep -Pio 'Propionyl ([^,]+)' !{fileinfo_file} | grep K | awk '{print $NF}')
+num_mod_propionyl_n=$(grep -Pio 'Propionyl ([^,]+)' !{fileinfo_file} | grep -v K | awk '{print $NF}')
 
+#PTMs:
+num_mod_acetyl_k=$(grep -Pio 'Acetyl ([^,]+)' !{fileinfo_file} | grep K | awk '{print $NF}')
+num_mod_dimethyl_k=$(grep -Pio '.*Dimethyl \\(K\\) ([^,]+)' !{fileinfo_file} | awk '{print $NF}')
+num_mod_trimethyl_k=$(grep -Pio '.*Trimethyl \\(K\\) ([^,]+)' !{fileinfo_file} | awk '{print $NF}')
+num_mod_propionyl_methyl=$(grep -Pio '.*Crotonaldehyde \\(K\\) ([^,]+)' !{fileinfo_file} | awk '{print $NF}') #same mass
+
+#Additional counts:
+num_K_propionyl=$(cat !{protinf_file} | grep "<PeptideHit" | grep "K(Propionyl)" | wc -l)
+num_not_K_propionyl=$(cat !{protinf_file} | grep "<PeptideHit" | grep -v "K(Propionyl)" | wc -l)
+num_phenylisocyanate_start_seq=$(cat !{protinf_file} | grep "<PeptideHit" | grep ".(Phenylisocyanate)" | wc -l)
+num_not_phenylisocyanate_start_seq=$(cat !{protinf_file} | grep "<PeptideHit" | grep -v ".(Phenylisocyanate)" | wc -l)
+num_propionyl_k_start_protein=$(cat !{protinf_file} | grep "<PeptideHit" | grep '\"K(Propionyl)' | grep -Pio '.*protein_refs="\\K[^"]*' | grep -Pio PH | wc -l)
+num_not_propionyl_k_start_protein=$(cat !{protinf_file} | grep "<PeptideHit" | grep -v '\"K(Propionyl)' | grep -Pio '.*protein_refs="\\K[^"]*' | grep -Pio PH | wc -l)
+
+#Check:
+echo $num_K_propionyl > num_K_propionyl
+echo $num_not_K_propionyl > num_not_K_propionyl
+echo $num_phenylisocyanate_start_seq > num_phenylisocyanate_start_seq
+echo $num_not_phenylisocyanate_start_seq > num_not_phenylisocyanate_start_seq
+echo $num_propionyl_k_start_protein > num_propionyl_k_start_protein
+echo $num_not_propionyl_k_start_protein > num_not_propionyl_k_start_protein
+
+#Insert to database through QSample API: 
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-
-echo $access_token > acces_token
 
 curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
 
-curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "Phenylisocyanate (N-term)"},"value": "'$num_mod_phenylisocyanate_n'"},{"modification": {"name": "Propionyl (K)"},"value": "'$num_mod_propionyl_k'"},{"modification": {"name": "Propionyl (Protein N-term)"},"value": "'$num_mod_propionyl_n'"},{"modification": {"name": "Acetyl (K)"},"value": "'$num_mod_acetyl_k'"},{"modification": {"name": "Dimethyl (K)"},"value": "'$num_mod_dimethyl_k'"},{"modification": {"name": "Trimethyl (K)"},"value": "'$num_mod_trimethyl_k'"}]}'
+curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "Phenylisocyanate (N-term)"},"value": "'$num_mod_phenylisocyanate_n'"},{"modification": {"name": "Propionyl (K)"},"value": "'$num_mod_propionyl_k'"},{"modification": {"name": "Propionyl (Protein N-term)"},"value": "'$num_mod_propionyl_n'"},{"modification": {"name": "Acetyl (K)"},"value": "'$num_mod_acetyl_k'"},{"modification": {"name": "Dimethyl (K)"},"value": "'$num_mod_dimethyl_k'"},{"modification": {"name": "Trimethyl (K)"},"value": "'$num_mod_trimethyl_k'"},{"modification": {"name": "Propionyl+Methyl"},"value": "'$num_mod_propionyl_methyl'"}]}'
 
 '''
 }
+
 
 process insertSilacToQSample {
      tag { "${fileinfo_file}" }

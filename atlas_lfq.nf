@@ -69,7 +69,7 @@ workflow {
 
    // Report Agendo apps to QSample:
    insertPhosphoModifToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
-   insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
+   insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
    insertSilacToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
    insertTmtToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
 }
