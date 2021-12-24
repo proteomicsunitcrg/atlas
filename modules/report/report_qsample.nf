@@ -187,12 +187,13 @@ num_mod_trimethyl_k=$(grep -Pio '.*Trimethyl \\(K\\) ([^,]+)' !{fileinfo_file} |
 num_mod_propionyl_methyl=$(grep -Pio '.*Crotonaldehyde \\(K\\) ([^,]+)' !{fileinfo_file} | awk '{print $NF}') #same mass
 
 #Additional counts:
-num_K_propionyl=$(cat !{protinf_file} | grep "<PeptideHit" | grep "K(Propionyl)" | wc -l)
-num_not_K_propionyl=$(cat !{protinf_file} | grep "<PeptideHit" | grep -v "K(Propionyl)" | wc -l)
+num_precursors_with_n_terminal=$(cat !{protinf_file} | grep "<PeptideHit" | grep -e aa_before=\\"M -e aa_before=\\"\\\\[ | wc -l)
+num_K_propionyl=$(cat !{protinf_file} | grep -Pio '.*sequence="\\K[^"]*' | grep K | grep -e "K(Propionyl)" -e "K(Crotonaldehyde)" | wc -l)
+num_not_K_propionyl=$(cat !{protinf_file} | grep "<PeptideHit" | grep -Pio '.*sequence="\\K[^"]*' | grep K | grep -v "K(Propionyl)" | grep -v "K(Crotonaldehyde)" | wc -l)
 num_phenylisocyanate_start_seq=$(cat !{protinf_file} | grep "<PeptideHit" | grep ".(Phenylisocyanate)" | wc -l)
-num_not_phenylisocyanate_start_seq=$(cat !{protinf_file} | grep "<PeptideHit" | grep -v ".(Phenylisocyanate)" | wc -l)
-num_propionyl_k_start_protein=$(cat !{protinf_file} | grep "<PeptideHit" | grep '\"K(Propionyl)' | grep -Pio '.*protein_refs="\\K[^"]*' | grep -Pio PH | wc -l)
-num_not_propionyl_k_start_protein=$(cat !{protinf_file} | grep "<PeptideHit" | grep -v '\"K(Propionyl)' | grep -Pio '.*protein_refs="\\K[^"]*' | grep -Pio PH | wc -l)
+num_not_phenylisocyanate_start_seq=$((num_peptides_total-num_phenylisocyanate_start_seq-num_precursors_with_n_terminal))
+num_propionyl_k_start_protein=$(cat !{protinf_file} | grep "<PeptideHit" | grep '\"K(Propionyl)' | wc -l)
+num_not_propionyl_k_start_protein=$(cat !{protinf_file} | grep "<PeptideHit" | grep -e aa_before=\\"M -e aa_before=\\"\\\\[ | grep -v ".(Propionyl)" | wc -l)
 
 #Check:
 echo $num_K_propionyl > num_K_propionyl
