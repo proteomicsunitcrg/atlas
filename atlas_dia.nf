@@ -43,6 +43,13 @@ Channel
   .from(params.params_file)
   .set { params_file }
 
+Channel
+  .from(params.instrument_folder)
+  .set { instrument_folder }
+
+Channel
+  .from(params.output_folder)
+  .set { output_folder }
 
 params.params_file
 

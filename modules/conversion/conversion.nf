@@ -47,4 +47,3 @@ process FileConverter_mgf2mzml {
     FileConverter -in !{mgf_file} -out ${basename_sh}.mzML
     '''
 }
-
