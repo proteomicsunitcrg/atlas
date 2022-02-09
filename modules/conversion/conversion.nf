@@ -9,7 +9,7 @@ process ThermoRawFileParser {
     tuple val(filename), val(basename), val(path), file("${basename}.mzML")
 
     """
-    ThermoRawFileParser.sh -i=${path}/${filename} -f=2 -o ./
+    ThermoRawFileParser.sh -i=${path}/${filename} -f=1 -o ./
     """
 }
 

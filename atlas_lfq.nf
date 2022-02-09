@@ -56,7 +56,7 @@ workflow {
 
    //Report to QSample database:
    insertFileToQSample_pr(rawfile_ch,trfp_pr.out)
-   insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,qccalc_pr.out)
+   insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,qccalc_pr.out,trfp_pr.out)
    insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
    
    // Report wetlab to QSample:
@@ -72,4 +72,20 @@ workflow {
    insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
    insertSilacToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
    insertTmtToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
+}
+
+workflow.onComplete {
+
+    def msg = """\
+        Pipeline execution summary
+        ---------------------------
+        Completed at: ${workflow.complete}
+        Duration    : ${workflow.duration}
+        Success     : ${workflow.success}
+        workDir     : ${workflow.workDir}
+        exit status : ${workflow.exitStatus}
+        """
+        .stripIndent()
+
+    sendMail(to: 'roger.olivella@crg.eu', subject: 'QSample pipeline execution summary', body: msg)
 }
