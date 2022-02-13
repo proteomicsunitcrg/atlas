@@ -77,7 +77,8 @@ process insertWetlabFileToQSample {
 
 process insertDataToQSample {
         tag { "${protinf_file}" }
-
+        label 'clitools'
+   
         input:
         file(checksum)
         file(fileinfo_file)
@@ -99,6 +100,8 @@ process insertDataToQSample {
         charge_3=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 3 | wc -l)
         charge_4=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 4 | wc -l)
         sed s@'xmlns=\"http://psi.hupo.org/ms/mzml\"'@@g !{mzml_file} > !{mzml_file}.ok
+        total_tic=$(xmllint --xpath '/mzML/run/spectrumList/spectrum/cvParam[contains(@accession,"MS:1000285")]/@value' !{mzml_file}.ok | sed 's/value=//g' | sed -e 's/ /\\n/g' | grep -oP '(?<=").*(?=")' | paste -sd+ -)
+        echo $total_tic > total_tic
         log_total_tic=$(xmllint --xpath '/mzML/run/spectrumList/spectrum/cvParam[contains(@accession,"MS:1000285")]/@value' !{mzml_file}.ok | sed 's/value=//g' | sed -e 's/ /\\n/g' | grep -oP '(?<=").*(?=")' | paste -sd+ - | bc -l)
         echo $log_total_tic > log_total_tic
         log10_total_tic=$(echo "l($log_total_tic)/l(10)" | bc -l)
