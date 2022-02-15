@@ -77,7 +77,6 @@ process insertWetlabFileToQSample {
 
 process insertDataToQSample {
         tag { "${protinf_file}" }
-        label 'clitools'
    
         input:
         file(checksum)
@@ -99,10 +98,10 @@ process insertDataToQSample {
         charge_2=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 2 | wc -l)
         charge_3=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 3 | wc -l)
         charge_4=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 4 | wc -l)
-        sed s@'xmlns=\"http://psi.hupo.org/ms/mzml\"'@@g !{mzml_file} > !{mzml_file}.ok
-        log_total_tic=$(xmllint --version --nonet --testIO --timing --huge --xpath '/mzML/run/spectrumList/spectrum/cvParam[contains(@accession,"MS:1000285")]/@value' !{mzml_file}.ok | sed 's/value=//g' | sed -e 's/ /\\n/g' | grep -oP '(?<=").*(?=")' | paste -sd+ - | bc -l)
+        #sed s@'xmlns=\"http://psi.hupo.org/ms/mzml\"'@@g !{mzml_file} > !{mzml_file}.ok
+        #log_total_tic=$(xmllint --version --nonet --testIO --timing --huge --xpath '/mzML/run/spectrumList/spectrum/cvParam[contains(@accession,"MS:1000285")]/@value' !{mzml_file}.ok | sed 's/value=//g' | sed -e 's/ /\\n/g' | grep -oP '(?<=").*(?=")' | paste -sd+ - | bc -l)
         echo $log_total_tic > log_total_tic
-        log10_total_tic=$(echo "l($log_total_tic)/l(10)" | bc -l)
+        #log10_total_tic=$(echo "l($log_total_tic)/l(10)" | bc -l)
         echo $num_prots > num_prots
         echo $num_peptd > num_peptd
         access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
@@ -110,7 +109,7 @@ process insertDataToQSample {
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "6","value": "'$missed_cleavages'"}]}]}'
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "3","value": "'$charge_2'"},{"contextSource": "4","value": "'$charge_3'"},{"contextSource": "5","value": "'$charge_4'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3700-0000-000000000000","id": "1"},"values": [{"contextSource": "7","value": "'$log10_total_tic'"}]}]}'
+        #curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3700-0000-000000000000","id": "1"},"values": [{"contextSource": "7","value": "'$log10_total_tic'"}]}]}'
         '''
 }
 
