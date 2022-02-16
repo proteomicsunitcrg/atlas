@@ -69,7 +69,7 @@ workflow {
 
    // Report Agendo apps to QSample:
    insertPhosphoModifToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
-   insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
+   insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,idmapper_pr.out)
    insertSilacToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
    insertTmtToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
 }
@@ -83,9 +83,12 @@ workflow.onComplete {
         Duration    : ${workflow.duration}
         Success     : ${workflow.success}
         workDir     : ${workflow.workDir}
+        Run name    : ${workflow.runName}
         exit status : ${workflow.exitStatus}
         """
         .stripIndent()
 
-    sendMail(to: 'roger.olivella@crg.eu', subject: 'QSample pipeline execution summary', body: msg)
+     def subject_text ="""Pipeline ${workflow.runName} completed!""".stripIndent()
+
+    sendMail(to: 'roger.olivella@crg.eu', subject: subject_text, body: msg)
 }

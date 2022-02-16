@@ -162,10 +162,13 @@ process insertPhosphoModifToQSample {
 process insertPTMhistonesToQSample {
      tag { "${fileinfo_file}" }
 
+
+     label 'clitools' 
+
      input:
      file(checksum)
      file(fileinfo_file)
-     file(protinf_file)
+     file(idmapper_file)
 
      when:
      fileinfo_file.name =~ /((^[^_]+)MH)|((^[^_]+)MZ)/
@@ -181,40 +184,37 @@ checksum=$(cat !{checksum})
 num_peptides_total=$(grep -Pio '.* modified top-hits: ([^(]+)' !{fileinfo_file}  | sed 's|.*/||' | sed "s/ //g")
 num_peptides_modif=$(grep -Pio '.* modified top-hits: ([^//]+)' !{fileinfo_file}  | awk '{print $NF}')
 
-#Chemical modifications:
-num_mod_phenylisocyanate_n=$(grep -Pio '.*Phenylisocyanate ([^,]+)' !{fileinfo_file} | awk '{print $NF}')
-num_mod_propionyl_k=$(grep -Pio 'Propionyl ([^,]+)' !{fileinfo_file} | grep K | awk '{print $NF}')
-num_mod_propionyl_n=$(grep -Pio 'Propionyl ([^,]+)' !{fileinfo_file} | grep -v K | awk '{print $NF}')
+### Extract parameters from IDMapper file: 
 
-#PTMs:
-num_mod_acetyl_k=$(grep -Pio 'Acetyl ([^,]+)' !{fileinfo_file} | grep K | awk '{print $NF}')
-num_mod_dimethyl_k=$(grep -Pio '.*Dimethyl \\(K\\) ([^,]+)' !{fileinfo_file} | awk '{print $NF}')
-num_mod_trimethyl_k=$(grep -Pio '.*Trimethyl \\(K\\) ([^,]+)' !{fileinfo_file} | awk '{print $NF}')
-num_mod_propionyl_methyl=$(grep -Pio '.*Crotonaldehyde \\(K\\) ([^,]+)' !{fileinfo_file} | awk '{print $NF}') #same mass
+#Propionyl Protein N-term:
+sum_area_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
 
-#Additional counts:
-num_precursors_with_n_terminal=$(cat !{protinf_file} | grep "<PeptideHit" | grep -e aa_before=\\"M -e aa_before=\\"\\\\[ | wc -l)
-num_K_propionyl=$(cat !{protinf_file} | grep -Pio '.*sequence="\\K[^"]*' | grep K | grep -e "K(Propionyl)" -e "K(Crotonaldehyde)" | wc -l)
-num_not_K_propionyl=$(cat !{protinf_file} | grep "<PeptideHit" | grep -Pio '.*sequence="\\K[^"]*' | grep K | grep -v "K(Propionyl)" | grep -v "K(Crotonaldehyde)" | wc -l)
-num_phenylisocyanate_start_seq=$(cat !{protinf_file} | grep "<PeptideHit" | grep ".(Phenylisocyanate)" | wc -l)
-num_not_phenylisocyanate_start_seq=$((num_peptides_total-num_phenylisocyanate_start_seq-num_precursors_with_n_terminal))
-num_propionyl_k_start_protein=$(cat !{protinf_file} | grep "<PeptideHit" | grep '\"K(Propionyl)' | wc -l)
-num_not_propionyl_k_start_protein=$(cat !{protinf_file} | grep "<PeptideHit" | grep -e aa_before=\\"M -e aa_before=\\"\\\\[ | grep -v ".(Propionyl)" | wc -l)
+#NOT Propionyl Protein N-term:
+sum_area_not_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
 
-#Check:
-echo $num_K_propionyl > num_K_propionyl
-echo $num_not_K_propionyl > num_not_K_propionyl
-echo $num_phenylisocyanate_start_seq > num_phenylisocyanate_start_seq
-echo $num_not_phenylisocyanate_start_seq > num_not_phenylisocyanate_start_seq
-echo $num_propionyl_k_start_protein > num_propionyl_k_start_protein
-echo $num_not_propionyl_k_start_protein > num_not_propionyl_k_start_protein
+#PIC Peptide N-term: 
+sum_area_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
 
-#Insert to database through QSample API: 
+#NOT PIC Peptide N-term
+sum_area_not_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
+
+### Check:
+echo $sum_area_propionyl_protein_n_terminal > sum_area_propionyl_protein_n_terminal
+echo $sum_area_not_propionyl_protein_n_terminal > sum_area_not_propionyl_protein_n_terminal
+echo $sum_area_phenylisocyanate_precursors_n_terminal > sum_area_phenylisocyanate_precursors_n_terminal
+echo $sum_area_not_phenylisocyanate_precursors_n_terminal > sum_area_not_phenylisocyanate_precursors_n_terminal
+
+
+#Insert to database through QSample API:
+
+# Get token:  
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
 
+# Insert number of modified peptides:
 curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
 
-curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "Phenylisocyanate (N-term)"},"value": "'$num_mod_phenylisocyanate_n'"},{"modification": {"name": "Propionyl (K)"},"value": "'$num_mod_propionyl_k'"},{"modification": {"name": "Propionyl (Protein N-term)"},"value": "'$num_mod_propionyl_n'"},{"modification": {"name": "Acetyl (K)"},"value": "'$num_mod_acetyl_k'"},{"modification": {"name": "Dimethyl (K)"},"value": "'$num_mod_dimethyl_k'"},{"modification": {"name": "Trimethyl (K)"},"value": "'$num_mod_trimethyl_k'"},{"modification": {"name": "Propionyl+Methyl"},"value": "'$num_mod_propionyl_methyl'"}]}'
+# Insert modifications counts: 
+curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "Sum. area Propionyl N-term"},"value": "'$sum_area_propionyl_protein_n_terminal'"},{"modification": {"name": "Sum. area not Propionyl N-term"},"value": "'$sum_area_not_propionyl_protein_n_terminal'"},{"modification": {"name": "Sum. area PIC precursors N-term"},"value": "'$sum_area_phenylisocyanate_precursors_n_terminal'"},{"modification": {"name": "Sum. area not PIC precursors N-term"},"value": "'$sum_area_not_phenylisocyanate_precursors_n_terminal'"}]}'
 
 '''
 }
