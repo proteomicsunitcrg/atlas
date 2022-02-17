@@ -187,16 +187,16 @@ num_peptides_modif=$(grep -Pio '.* modified top-hits: ([^//]+)' !{fileinfo_file}
 ### Extract parameters from IDMapper file: 
 
 #Propionyl Protein N-term:
-sum_area_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
+sum_area_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\\n" | paste -sd+ - | bc -l)
 
 #NOT Propionyl Protein N-term:
-sum_area_not_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
+sum_area_not_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\\n" | paste -sd+ - | bc -l)
 
 #PIC Peptide N-term: 
-sum_area_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
+sum_area_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\\n" | paste -sd+ - | bc -l)
 
 #NOT PIC Peptide N-term
-sum_area_not_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
+sum_area_not_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\\n" | paste -sd+ - | bc -l)
 
 ### Check:
 echo $sum_area_propionyl_protein_n_terminal > sum_area_propionyl_protein_n_terminal
@@ -214,7 +214,7 @@ access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: applicati
 curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
 
 # Insert modifications counts: 
-curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "Sum. area Propionyl N-term"},"value": "'$sum_area_propionyl_protein_n_terminal'"},{"modification": {"name": "Sum. area not Propionyl N-term"},"value": "'$sum_area_not_propionyl_protein_n_terminal'"},{"modification": {"name": "Sum. area PIC precursors N-term"},"value": "'$sum_area_phenylisocyanate_precursors_n_terminal'"},{"modification": {"name": "Sum. area not PIC precursors N-term"},"value": "'$sum_area_not_phenylisocyanate_precursors_n_terminal'"}]}'
+curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "N-term Propionyl"},"value": "'$sum_area_propionyl_protein_n_terminal'"},{"modification": {"name": "N-term no Propionyl"},"value": "'$sum_area_not_propionyl_protein_n_terminal'"},{"modification": {"name": "N-term PIC"},"value": "'$sum_area_phenylisocyanate_precursors_n_terminal'"},{"modification": {"name": "N-term no PIC"},"value": "'$sum_area_not_phenylisocyanate_precursors_n_terminal'"}]}'
 
 '''
 }
