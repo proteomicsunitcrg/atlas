@@ -158,12 +158,10 @@ process insertPhosphoModifToQSample {
         '''
 }
 
-
 process insertPTMhistonesToQSample {
      tag { "${fileinfo_file}" }
 
-
-     label 'clitools' 
+     label 'clitools'
 
      input:
      file(checksum)
@@ -171,7 +169,7 @@ process insertPTMhistonesToQSample {
      file(idmapper_file)
 
      when:
-     fileinfo_file.name =~ /((^[^_]+)MH)|((^[^_]+)MZ)/
+     fileinfo_file.name =~ /((^[^_]+)MH)|((^[^_]+)MZ)|QCHL/
 
      shell:
 '''
@@ -184,41 +182,53 @@ checksum=$(cat !{checksum})
 num_peptides_total=$(grep -Pio '.* modified top-hits: ([^(]+)' !{fileinfo_file}  | sed 's|.*/||' | sed "s/ //g")
 num_peptides_modif=$(grep -Pio '.* modified top-hits: ([^//]+)' !{fileinfo_file}  | awk '{print $NF}')
 
-### Extract parameters from IDMapper file: 
+### Extract parameters from IDMapper file:
 
 #Propionyl Protein N-term:
-sum_area_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\\n" | paste -sd+ - | bc -l)
+sum_area_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
 
 #NOT Propionyl Protein N-term:
-sum_area_not_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\\n" | paste -sd+ - | bc -l)
+sum_area_not_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
 
-#PIC Peptide N-term: 
-sum_area_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\\n" | paste -sd+ - | bc -l)
+#Percentage Propionyl:
+percentage_propionyl=$(echo "$sum_area_propionyl_protein_n_terminal/($sum_area_propionyl_protein_n_terminal+$sum_area_not_propionyl_protein_n_terminal)" | bc -l)
+
+#PIC Peptide N-term:
+sum_area_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
 
 #NOT PIC Peptide N-term
-sum_area_not_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\\n" | paste -sd+ - | bc -l)
+sum_area_not_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
+
+#Percentage PIC:
+percentage_pic=$(echo "$sum_area_phenylisocyanate_precursors_n_terminal/($sum_area_phenylisocyanate_precursors_n_terminal+$sum_area_not_phenylisocyanate_precursors_n_terminal)" | bc -l)
 
 ### Check:
 echo $sum_area_propionyl_protein_n_terminal > sum_area_propionyl_protein_n_terminal
 echo $sum_area_not_propionyl_protein_n_terminal > sum_area_not_propionyl_protein_n_terminal
 echo $sum_area_phenylisocyanate_precursors_n_terminal > sum_area_phenylisocyanate_precursors_n_terminal
 echo $sum_area_not_phenylisocyanate_precursors_n_terminal > sum_area_not_phenylisocyanate_precursors_n_terminal
-
+echo $percentage_propionyl > percentage_propionyl
+echo $percentage_pic > percentage_pic
 
 #Insert to database through QSample API:
 
-# Get token:  
+# Get token:
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
 
 # Insert number of modified peptides:
 curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
 
-# Insert modifications counts: 
-curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "N-term Propionyl"},"value": "'$sum_area_propionyl_protein_n_terminal'"},{"modification": {"name": "N-term no Propionyl"},"value": "'$sum_area_not_propionyl_protein_n_terminal'"},{"modification": {"name": "N-term PIC"},"value": "'$sum_area_phenylisocyanate_precursors_n_terminal'"},{"modification": {"name": "N-term no PIC"},"value": "'$sum_area_not_phenylisocyanate_precursors_n_terminal'"}]}'
+# Insert modifications counts:
+curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "Sum. area Propionyl N-term"},"value": "'$sum_area_propionyl_protein_n_terminal'"},{"modification": {"name": "Sum. area not Propionyl N-term"},"value": "'$sum_area_not_propionyl_protein_n_terminal'"},{"modification": {"name": "Sum. area PIC precursors N-term"},"value": "'$sum_area_phenylisocyanate_precursors_n_terminal'"},{"modification": {"name": "Sum. area not PIC precursors N-term"},"value": "'$sum_area_not_phenylisocyanate_precursors_n_terminal'"}]}'
+
+# Insert percentages for HistoneQC:
+if [[ !{fileinfo_file} == *"QCHL"* ]]; then
+    curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3600-0000-000000000000","id": "6"},"values": [{"contextSource": "8","value": "'$percentage_propionyl'"},{"contextSource": "9","value": "'$percentage_pic'"}]}]}'
+fi
+
 
 '''
 }
-
 
 process insertSilacToQSample {
      tag { "${fileinfo_file}" }
