@@ -28,7 +28,7 @@ process output_folder_diaqc {
         log_total_tic=$(cat !{mzml_file} | grep -Pio '.*accession="MS:1000505" value="\\K[^"]*' | paste -sd+ - | bc -l)    
         log10_total_tic=$(echo "l($log_total_tic)/l(10)" | bc -l)
 
-        mkdir -p !{output_folder}/!{instrument_folder}/!{protinf_file}
+        mkdir -p !{output_folder}/!{instrument_folder}
         echo $num_prots > !{output_folder}/!{instrument_folder}/!{protinf_file}.num_prots
         echo $num_peptd > !{output_folder}/!{instrument_folder}/!{protinf_file}.num_peptd
         echo $missed_cleavages > !{output_folder}/!{instrument_folder}/!{protinf_file}.missed_cleavages
