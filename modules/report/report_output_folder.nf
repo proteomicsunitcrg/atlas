@@ -11,9 +11,10 @@ process output_folder_diaqc {
         file(protinf_file)
         file(idfilter_score_file)
         file(qccalc_file)
+        tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
 
         when:
-        fileinfo_file =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL).)*$/
+        fileinfo_file =~ /QCDI/
 
         shell:
         '''
@@ -24,9 +25,16 @@ process output_folder_diaqc {
         charge_2=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 2 | wc -l)
         charge_3=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 3 | wc -l)
         charge_4=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 4 | wc -l)
-    
-        mkdir -p !{output_folder}/!{instrument_folder}
-        echo $num_prots > !{output_folder}/!{instrument_folder}/!{protinf_file}.num_prots
+        log_total_tic=$(cat !{mzml_file} | grep -Pio '.*accession="MS:1000505" value="\\K[^"]*' | paste -sd+ - | bc -l)    
+        log10_total_tic=$(echo "l($log_total_tic)/l(10)" | bc -l)
 
+        mkdir -p !{output_folder}/!{instrument_folder}/!{protinf_file}
+        echo $num_prots > !{output_folder}/!{instrument_folder}/!{protinf_file}.num_prots
+        echo $num_peptd > !{output_folder}/!{instrument_folder}/!{protinf_file}.num_peptd
+        echo $missed_cleavages > !{output_folder}/!{instrument_folder}/!{protinf_file}.missed_cleavages
+        echo $charge_2 > !{output_folder}/!{instrument_folder}/!{protinf_file}.charge_2
+        echo $charge_3 > !{output_folder}/!{instrument_folder}/!{protinf_file}.charge_3
+        echo $charge_4 > !{output_folder}/!{instrument_folder}/!{protinf_file}.charge_4
+        echo $log10_total_tic > !{output_folder}/!{instrument_folder}/!{protinf_file}.log10_total_tic
         '''
 }
