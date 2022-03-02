@@ -11,8 +11,9 @@ qcloud2_api_insert_wetlab_file = params.qcloud2_api_insert_wetlab_file
 qcloud2_api_insert_wetlab_data = params.qcloud2_api_insert_wetlab_data
 num_max_prots                  = params.num_max_prots
 
-//SHell scripts folder:
+//Bash scripts folder:
 binfolder                = "$baseDir/bin"
+
 
 process insertFileToQSample {
         tag { "${mzml_file}" }
@@ -24,22 +25,22 @@ process insertFileToQSample {
         output:
         file("${filename}.checksum")
 
-        when: 
+        when:
         filename =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL).)*$/
 
         shell:
         '''
         request_code=$(echo !{filename} | awk -F'[_.]' '{print $1}')
-        checksum=$(md5sum !{path}/!{filename} | awk '{print $1}')
+        checksum=$(source !{binfolder}/utils.sh; get_checksum !{path} !{filename})
         echo $checksum > !{filename}.checksum
         creation_date=$(grep -Pio '.*startTimeStamp="\\K[^"]*' !{mzml_file} | sed 's/Z//g' | xargs -I{} date -d {} +"%Y-%m-%dT%T")
         echo $creation_date > creation_date
-        access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{qcloud2_api_signin} !{qcloud2_api_user} !{qcloud2_api_pass})
         echo $access_token > acces_token
-        echo 'data: ------------->{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}<-----------------'
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_file}/$request_code -H "Content-Type: application/json" --data '{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
         '''
 }
+
 
 process insertWetlabFileToQSample {
         tag { "${mzml_file}" }
@@ -184,22 +185,11 @@ num_peptides_modif=$(grep -Pio '.* modified top-hits: ([^//]+)' !{fileinfo_file}
 
 ### Extract parameters from IDMapper file:
 
-#Propionyl Protein N-term:
-sum_area_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
-
-#NOT Propionyl Protein N-term:
-sum_area_not_propionyl_protein_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
-
-#Percentage Propionyl:
+sum_area_propionyl_protein_n_terminal=$(source !{binfolder}/parsing.sh; get_sum_area_propionyl_protein_n_terminal !{idmapper_file})
+sum_area_not_propionyl_protein_n_terminal=$(source !{binfolder}/parsing.sh; get_sum_area_not_propionyl_protein_n_terminal !{idmapper_file})
 percentage_propionyl=$(echo "$sum_area_propionyl_protein_n_terminal/($sum_area_propionyl_protein_n_terminal+$sum_area_not_propionyl_protein_n_terminal)" | bc -l)
-
-#PIC Peptide N-term:
-sum_area_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
-
-#NOT PIC Peptide N-term
-sum_area_not_phenylisocyanate_precursors_n_terminal=$(xmllint --xpath '/featureMap/featureList/feature/PeptideIdentification/PeptideHit[not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' !{idmapper_file} | xargs printf "%1.0f\n" | paste -sd+ - | bc -l)
-
-#Percentage PIC:
+sum_area_phenylisocyanate_precursors_n_terminal=$(source !{binfolder}/parsing.sh; get_sum_area_phenylisocyanate_precursors_n_terminal !{idmapper_file})
+sum_area_not_phenylisocyanate_precursors_n_terminal=$(source !{binfolder}/parsing.sh; get_sum_area_not_phenylisocyanate_precursors_n_terminal !{idmapper_file})
 percentage_pic=$(echo "$sum_area_phenylisocyanate_precursors_n_terminal/($sum_area_phenylisocyanate_precursors_n_terminal+$sum_area_not_phenylisocyanate_precursors_n_terminal)" | bc -l)
 
 ### Check:
