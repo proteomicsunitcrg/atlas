@@ -4,7 +4,7 @@ params_file          = params.params_file
 lib_folder           = params.lib_folder
 
 process dia_umpire {
-    label 'openms'
+    label 'diaumpire'
     tag  { "${filename}" }
 
     input:
