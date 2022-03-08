@@ -9,8 +9,9 @@ qcloud2_api_fileinfo           = params.qcloud2_api_fileinfo
 qcloud2_api_insert_modif       = params.qcloud2_api_insert_modif
 
 //Bash scripts folder:
-binfolder                = "$baseDir/bin"
-
+binfolder                      = "$baseDir/bin"
+  
+sec_react_modif                = params.sec_react_modif     
 
 process insertFileToQSample {
         tag { "${mzml_file}" }
@@ -107,7 +108,33 @@ process insertSecReactDataToQSample {
 
         ### Insert sec. react. percentages:
         echo "Inserting sec. react. percentages..."
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "10","value": "'$percentage_carbamyl_k'"},{"contextSource": "11","value": "'$percentage_carbamyl_n_term'"},{"contextSource": "12","value": "'$percentage_carbamyl_r'"},{"contextSource": "13","value": "'$percentage_deamidated_n'"},{"contextSource": "14","value": "'$percentage_formyl_k'"},{"contextSource": "15","value": "'$percentage_formyl_n_term'"},{"contextSource": "16","value": "'$percentage_formyl_s'"},{"contextSource": "17","value": "'$percentage_formyl_t'"},{"contextSource": "18","value": "'$percentage_pyro_glu'"}]}]}'
-
+        if [[ !{sec_react_modif} == "K(Carbamyl)" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "10","value": "'$percentage_carbamyl_k'"}]}]}'
+        fi
+        if [[ !{sec_react_modif} == ".(Carbamyl)" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "11","value": "'$percentage_carbamyl_n_term'"}]}]}'
+        fi
+        if [[ !{sec_react_modif} == "R(Carbamyl)" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "12","value": "'$percentage_carbamyl_r'"}]}]}'
+        fi
+        if [[ !{sec_react_modif} == "N(Deamidated)" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "13","value": "'$percentage_deamidated_n'"}]}]}'
+        fi
+        if [[ !{sec_react_modif} == "K(Formyl)" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "14","value": "'$percentage_formyl_k'"}]}]}'
+        fi
+        if [[ !{sec_react_modif} == ".(Formyl)" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "15","value": "'$percentage_formyl_n_term'"}]}]}'
+        fi
+        if [[ !{sec_react_modif} == "S(Formyl)" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "16","value": "'$percentage_formyl_s'"}]}]}'
+        fi
+        if [[ !{sec_react_modif} == "T(Formyl)" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "17","value": "'$percentage_formyl_t'"}]}]}'
+        fi
+        if [[ !{sec_react_modif} == "pyro-Glu" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "18","value": "'$percentage_pyro_glu'"}]}]}'
+        fi
+        echo "Sec. react. percentages inserted!"
         '''
 }
