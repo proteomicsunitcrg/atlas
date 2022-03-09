@@ -54,21 +54,3 @@ workflow {
    
 }
 
-workflow.onComplete {
-
-    def msg = """\
-        Pipeline execution summary
-        ---------------------------
-        Completed at: ${workflow.complete}
-        Duration    : ${workflow.duration}
-        Success     : ${workflow.success}
-        workDir     : ${workflow.workDir}
-        Run name    : ${workflow.runName}
-        exit status : ${workflow.exitStatus}
-        """
-        .stripIndent()
-
-     def subject_text ="""Pipeline ${workflow.runName} completed!""".stripIndent()
-
-    sendMail(to: 'roger.olivella@crg.eu', subject: subject_text, body: msg)
-}
