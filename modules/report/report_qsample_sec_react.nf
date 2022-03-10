@@ -137,7 +137,7 @@ process insertSecReactDataToQSample {
           curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "17","value": "'$percentage_formyl_t'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Gln->pyro-Glu (N-term Q)" ]]; then
-         cho "Inserting pyro-Glu"
+         echo "Inserting pyro-Glu"
          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "pyro-Glu"},"value": "'$sec_react_pyro_glu'"}]}' 
          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "18","value": "'$percentage_pyro_glu'"}]}]}'
         fi
