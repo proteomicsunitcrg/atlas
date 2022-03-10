@@ -26,7 +26,7 @@ process insertFileToQSample {
         file("${filename}.checksum")
 
         when:
-        filename =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL).)*$/
+        filename =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL|QCHL).)*$/
 
         shell:
         '''
@@ -53,7 +53,7 @@ process insertWetlabFileToQSample {
         file("${filename}.checksum")
 
         when:
-        filename =~ /QCGL|QCDL|QCFL|QCPL|QCRL/
+        filename =~ /QCGL|QCDL|QCFL|QCPL|QCRL|QCHL/
 
         shell:
         '''
@@ -64,6 +64,7 @@ process insertWetlabFileToQSample {
         if [[ $basename_sh == *"QCFL"* ]]; then api_key="7765746c-6162-3500-0000-000000000000"; fi
         if [[ $basename_sh == *"QCPL"* ]]; then api_key="7765746c-6162-3400-0000-000000000000"; fi
         if [[ $basename_sh == *"QCRL"* ]]; then api_key="7765746c-6162-3200-0000-000000000000"; fi
+        if [[ $basename_sh == *"QCHL"* ]]; then api_key="7765746c-6162-3600-0000-000000000000"; fi
         checksum=$(md5sum !{path}/!{filename} | awk '{print $1}')
         echo $checksum > !{filename}.checksum
         creation_date=$(grep -Pio '.*startTimeStamp="\\K[^"]*' !{mzml_file} | sed 's/Z//g' | xargs -I{} date -d {} +"%Y-%m-%dT%T")
@@ -187,6 +188,8 @@ checksum=$(cat !{checksum})
 
 ### Extract parameters from FileInfo file:
 
+echo "Calculating parameters..."
+
 #Totals:
 num_peptides_total=$(grep -Pio '.* modified top-hits: ([^(]+)' !{fileinfo_file}  | sed 's|.*/||' | sed "s/ //g")
 num_peptides_modif=$(grep -Pio '.* modified top-hits: ([^//]+)' !{fileinfo_file}  | awk '{print $NF}')
@@ -221,7 +224,8 @@ curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_mo
 
 # Insert percentages for HistoneQC:
 if [[ !{fileinfo_file} == *"QCHL"* ]]; then
-    curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3600-0000-000000000000","id": "6"},"values": [{"contextSource": "8","value": "'$percentage_propionyl'"},{"contextSource": "9","value": "'$percentage_pic'"}]}]}'
+    echo "Inserting QCHL percentages..."
+    curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3400-0000-000000000000","id": "1"},"values": [{"contextSource": "8","value": "'$percentage_propionyl'"},{"contextSource": "9","value": "'$percentage_pic'"}]}]}'
 fi
 
 
