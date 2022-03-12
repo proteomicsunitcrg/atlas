@@ -28,13 +28,9 @@ process output_folder_diaqc {
         log_total_tic=$(cat !{mzml_file} | grep -Pio '.*accession="MS:1000505" value="\\K[^"]*' | paste -sd+ - | bc -l)    
         log10_total_tic=$(echo "l($log_total_tic)/l(10)" | bc -l)
 
-        mkdir -p !{output_folder}/!{instrument_folder}
-        echo $num_prots > !{output_folder}/!{instrument_folder}/!{protinf_file}.num_prots
-        echo $num_peptd > !{output_folder}/!{instrument_folder}/!{protinf_file}.num_peptd
-        echo $missed_cleavages > !{output_folder}/!{instrument_folder}/!{protinf_file}.missed_cleavages
-        echo $charge_2 > !{output_folder}/!{instrument_folder}/!{protinf_file}.charge_2
-        echo $charge_3 > !{output_folder}/!{instrument_folder}/!{protinf_file}.charge_3
-        echo $charge_4 > !{output_folder}/!{instrument_folder}/!{protinf_file}.charge_4
-        echo $log10_total_tic > !{output_folder}/!{instrument_folder}/!{protinf_file}.log10_total_tic
+        basename_sh=$(basename !{mzml_file} | cut -f 1 -d '.')
+
+        echo "$basename_sh\t!{instrument_folder}\t$num_prots\t$num_peptd\t$missed_cleavages\t$charge_2\t$charge_3\t$log10_total_tic" >> !{output_folder}/qcdi_data.tsv
+
         '''
 }
