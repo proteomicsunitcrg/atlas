@@ -78,8 +78,10 @@ process insertWetlabFileToQSample {
 }
 
 process insertDataToQSample {
+
         tag { "${protinf_file}" }
-   
+        label 'clitools'
+
         input:
         file(checksum)
         file(fileinfo_file)
@@ -93,33 +95,44 @@ process insertDataToQSample {
 
         shell:
         '''
-        checksum=$(cat !{checksum})
-        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
-        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
-        missed_cleavages=$(grep -Pio '.*accession="QC:0000037"[^>]*' !{qccalc_file} | grep -Pio '.*value="\\K[^"]*')
-        charge_2=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 2 | wc -l)
-        charge_3=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 3 | wc -l)
-        charge_4=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 4 | wc -l)
-        log_total_tic=$(cat !{mzml_file} | grep -Pio '.*accession="MS:1000505" value="\\K[^"]*' | paste -sd+ - | bc -l)
-        echo $log_total_tic > log_total_tic
-        log10_total_tic=$(echo "l($log_total_tic)/l(10)" | bc -l)
+        # Parsings: 
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prots !{protinf_file})
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptd !{fileinfo_file})      
+        missed_cleavages_2=$(source !{binfolder}/parsing.sh; get_miscleavages_by_charge !{protinf_file} 2)
+        missed_cleavages_3=$(source !{binfolder}/parsing.sh; get_miscleavages_by_charge !{protinf_file} 3)
+        missed_cleavages_4=$(source !{binfolder}/parsing.sh; get_miscleavages_by_charge !{protinf_file} 4)
+        charge_2=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 2)
+        charge_3=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 3)
+        charge_4=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 4)
+        total_base_peak_intenisty=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000505)
+        total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
+        log10_total_base_peak_intenisty=$(source !{binfolder}/utils.sh; get_log_base_n $total_base_peak_intenisty 10)
+        log10_total_tic=$(source !{binfolder}/utils.sh; get_log_base_n $total_tic 10)
+ 
+        # Checks: 
+        echo $total_base_peak_intenisty > total_base_peak_intenisty
+        echo $total_tic > total_tic
+        echo $log10_total_base_peak_intenisty > log10_base_peak_intenisty
         echo $log10_total_tic > log10_total_tic
         echo $num_prots > num_prots
         echo $num_peptd > num_peptd
+        echo $missed_cleavages_2 > missed_cleavages_2
+        echo $missed_cleavages_3 > missed_cleavages_3
+        echo $missed_cleavages_4 > missed_cleavages_4
+        echo $charge_2 > charge_2
+        echo $charge_3 > charge_3 
+        echo $charge_4 > charge_4
 
-        ### Inserts API:
-        access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-        echo $access_token > acces_token
-        
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
-        
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "6","value": "'$missed_cleavages'"}]}]}'
-        
+        # QCloud2 API posts:
+        checksum=$(cat !{checksum})
+        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{qcloud2_api_signin} !{qcloud2_api_user} !{qcloud2_api_pass})
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'        
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "3","value": "'$charge_2'"},{"contextSource": "4","value": "'$charge_3'"},{"contextSource": "5","value": "'$charge_4'"}]}]}'
-        
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3700-0000-000000000000","id": "1"},"values": [{"contextSource": "7","value": "'$log10_total_tic'"}]}]}'
-       
-
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "7","value": "'$log10_total_base_peak_intenisty'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "19","value": "'$log10_total_tic'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "20","value": "'$missed_cleavages_2'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "21","value": "'$missed_cleavages_3'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "22","value": "'$missed_cleavages_4'"}]}]}'
         '''
 }
 

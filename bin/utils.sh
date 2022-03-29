@@ -9,3 +9,7 @@
 get_checksum(){
   md5sum $1/$2 | awk '{print $1}'
 }
+
+get_log_base_n(){
+ echo 'l('$1')/l('$2')' | bc -l
+}
