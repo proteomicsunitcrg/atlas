@@ -1,6 +1,9 @@
 output_folder             = params.output_folder
 instrument_folder         = params.instrument_folder
 
+//Bash scripts folder:
+binfolder                = "$baseDir/bin"
+
 process output_folder_diaqc {
 
         tag { "${protinf_file}" }
@@ -18,19 +21,23 @@ process output_folder_diaqc {
 
         shell:
         '''
-        checksum=$(cat !{checksum})
-        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
-        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
-        missed_cleavages=$(grep -Pio '.*accession="QC:0000037"[^>]*' !{qccalc_file} | grep -Pio '.*value="\\K[^"]*')
-        charge_2=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 2 | wc -l)
-        charge_3=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 3 | wc -l)
-        charge_4=$(grep -Pio '.*charge="\\K[^"]*' !{idfilter_score_file} | grep 4 | wc -l)
-        log_total_tic=$(cat !{mzml_file} | grep -Pio '.*accession="MS:1000505" value="\\K[^"]*' | paste -sd+ - | bc -l)    
-        log10_total_tic=$(echo "l($log_total_tic)/l(10)" | bc -l)
+        # Parsings:
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prots !{protinf_file})
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptd !{fileinfo_file})
+        missed_cleavages_2=$(source !{binfolder}/parsing.sh; get_miscleavages_by_charge !{protinf_file} 2)
+        missed_cleavages_3=$(source !{binfolder}/parsing.sh; get_miscleavages_by_charge !{protinf_file} 3)
+        missed_cleavages_4=$(source !{binfolder}/parsing.sh; get_miscleavages_by_charge !{protinf_file} 4)
+        charge_2=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 2)
+        charge_3=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 3)
+        charge_4=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 4)
+        total_base_peak_intenisty=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000505)
+        total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
+        log10_total_base_peak_intenisty=$(source !{binfolder}/utils.sh; get_log_base_n $total_base_peak_intenisty 10)
+        log10_total_tic=$(source !{binfolder}/utils.sh; get_log_base_n $total_tic 10)
 
+        checksum=$(cat !{checksum})
         basename_sh=$(basename !{mzml_file} | cut -f 1 -d '.')
 
-        echo "$basename_sh\t!{instrument_folder}\t$num_prots\t$num_peptd\t$missed_cleavages\t$charge_2\t$charge_3\t$log10_total_tic" >> !{output_folder}/qcdi_data.tsv
-
+        echo "$basename_sh\t!{instrument_folder}\t$num_prots\t$num_peptd\t$missed_cleavages_2\t$missed_cleavages_3\t$missed_cleavages_4\t$charge_2\t$charge_3\t$charge_4\t$log10_total_base_peak_intenisty\t$log10_total_tic" >> !{output_folder}/qcdi_data_last_version.tsv
         '''
 }
