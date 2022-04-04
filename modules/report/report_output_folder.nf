@@ -32,12 +32,12 @@ process output_folder_diaqc {
         charge_4=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 4)
         total_base_peak_intenisty=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000505)
         total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
-        log10_total_base_peak_intenisty=$(source !{binfolder}/utils.sh; get_log_base_n $total_base_peak_intenisty 10)
-        log10_total_tic=$(source !{binfolder}/utils.sh; get_log_base_n $total_tic 10)
+        #log10_total_base_peak_intenisty=$(source !{binfolder}/utils.sh; get_log_base_n $total_base_peak_intenisty 10)
+        #log10_total_tic=$(source !{binfolder}/utils.sh; get_log_base_n $total_tic 10)
 
         checksum=$(cat !{checksum})
         basename_sh=$(basename !{mzml_file} | cut -f 1 -d '.')
 
-        echo "$basename_sh\t!{instrument_folder}\t$num_prots\t$num_peptd\t$missed_cleavages_2\t$missed_cleavages_3\t$missed_cleavages_4\t$charge_2\t$charge_3\t$charge_4\t$log10_total_base_peak_intenisty\t$log10_total_tic" >> !{output_folder}/qcdi_data_last_version.tsv
+        echo "$basename_sh\t!{instrument_folder}\t$num_prots\t$num_peptd\t$missed_cleavages_2\t$missed_cleavages_3\t$missed_cleavages_4\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic" >> !{output_folder}/qcdi_data_last_version.tsv
         '''
 }
