@@ -24,9 +24,11 @@ process output_folder_diaqc {
         # Parsings:
         num_prots=$(source !{binfolder}/parsing.sh; get_num_prots !{protinf_file})
         num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptd !{fileinfo_file})
-        missed_cleavages_2=$(source !{binfolder}/parsing.sh; get_miscleavages_by_charge !{protinf_file} 2)
-        missed_cleavages_3=$(source !{binfolder}/parsing.sh; get_miscleavages_by_charge !{protinf_file} 3)
-        missed_cleavages_4=$(source !{binfolder}/parsing.sh; get_miscleavages_by_charge !{protinf_file} 4)
+        source !{binfolder}/parsing.sh; get_miscleavages_counts !{protinf_file}
+        miscleavages_0=$(cat *.miscleavages.0)
+        miscleavages_1=$(cat *.miscleavages.1)
+        miscleavages_2=$(cat *.miscleavages.2)
+        miscleavages_3=$(cat *.miscleavages.3)
         charge_2=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 2)
         charge_3=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 3)
         charge_4=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 4)
@@ -38,6 +40,6 @@ process output_folder_diaqc {
         checksum=$(cat !{checksum})
         basename_sh=$(basename !{mzml_file} | cut -f 1 -d '.')
 
-        echo "$basename_sh\t!{instrument_folder}\t$num_prots\t$num_peptd\t$missed_cleavages_2\t$missed_cleavages_3\t$missed_cleavages_4\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic" >> !{output_folder}/qcdi_data_last_version.tsv
+        echo "$basename_sh\t!{instrument_folder}\t$num_prots\t$num_peptd\t$miscleavages_0\t$miscleavages_1\t$miscleavages_2\t$miscleavages_3\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic" >> !{output_folder}/qcdi_data_last_version.tsv
         '''
 }
