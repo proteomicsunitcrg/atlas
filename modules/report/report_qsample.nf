@@ -379,11 +379,17 @@ process insertWetlabPhosphoDataToQSample {
         checksum=$(cat !{checksum})
         num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
         num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        num_mod_phospho_s=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f4 | cut -d")" -f2 | sed 's/ //g')
+        num_mod_phospho_t=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f5 | cut -d")" -f2 | sed 's/ //g')
+        num_mod_phospho_y=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f6 | cut -d")" -f2 | sed 's/ //g')
+        num_total_phospho=$(expr $num_mod_phospho_s + $num_mod_phospho_t + $num_mod_phospho_y)
         echo $num_prots > num_prots
         echo $num_peptd > num_peptd
+        echo $num_total_phospho > num_total_phospho
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3400-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3400-0000-000000000000","id": "1"},"values": [{"contextSource": "24","value": "'$num_total_phospho'"}]}]}'
         '''
 }
 
