@@ -382,7 +382,7 @@ process insertWetlabPhosphoDataToQSample {
         num_mod_phospho_s=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f4 | cut -d")" -f2 | sed 's/ //g')
         num_mod_phospho_t=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f5 | cut -d")" -f2 | sed 's/ //g')
         num_mod_phospho_y=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f6 | cut -d")" -f2 | sed 's/ //g')
-        num_total_phospho=$(expr $num_mod_phospho_s + $num_mod_phospho_t + $num_mod_phospho_y)
+        num_total_phospho=$(source !{binfolder}/parsing.sh; get_num_total_unique_phospho_peptides !{protinf_file}) 
         echo $num_prots > num_prots
         echo $num_peptd > num_peptd
         echo $num_total_phospho > num_total_phospho

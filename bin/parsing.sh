@@ -71,3 +71,15 @@ get_charges(){
 get_mzml_param_by_cv(){
  cat $1 | grep -Pio '.*accession="'$2'" value="\K[^"]*' | paste -sd+ - | bc -l
 }
+
+get_num_total_unique_peptide_hits(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+}
+
+get_num_total_unique_phospho_peptides(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,"Phospho")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+}
+
+
+
+
