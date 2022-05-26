@@ -22,20 +22,21 @@ process output_folder_diaqc {
         shell:
         '''
         # Parsings:
-        num_prots=$(source !{binfolder}/parsing.sh; get_num_prots !{protinf_file})
-        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptd !{fileinfo_file})
-        source !{binfolder}/parsing.sh; get_miscleavages_counts !{protinf_file}
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        source !{binfolder}/parsing.sh; get_peptidoform_miscleavages_counts !{protinf_file}
         miscleavages_0=$(cat *.miscleavages.0)
         miscleavages_1=$(cat *.miscleavages.1)
         miscleavages_2=$(cat *.miscleavages.2)
         miscleavages_3=$(cat *.miscleavages.3)
-        charge_2=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 2)
-        charge_3=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 3)
-        charge_4=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 4)
+        charge_2=$(source !{binfolder}/parsing.sh; get_num_charges !{protinf_file} 2)
+        charge_3=$(source !{binfolder}/parsing.sh; get_num_charges !{protinf_file} 3)
+        charge_4=$(source !{binfolder}/parsing.sh; get_num_charges !{protinf_file} 4)
         total_base_peak_intenisty=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000505)
         total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
-        #log10_total_base_peak_intenisty=$(source !{binfolder}/utils.sh; get_log_base_n $total_base_peak_intenisty 10)
-        #log10_total_tic=$(source !{binfolder}/utils.sh; get_log_base_n $total_tic 10)
+
+        #Check: 
+        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.qcdi
 
         checksum=$(cat !{checksum})
         basename_sh=$(basename !{mzml_file} | cut -f 1 -d '.')

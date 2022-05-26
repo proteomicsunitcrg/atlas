@@ -69,10 +69,10 @@ workflow {
    insertWetlabAgilentDataToQSample_pr(insertWetlabFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)    
 
    // Report Agendo apps to QSample:
-   insertPhosphoModifToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
-   insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out.mix(insertWetlabFileToQSample_pr.out),fileinfo_pr.out,idmapper_pr.out)
-   insertSilacToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
-   insertTmtToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out)
+   insertPhosphoModifToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
+   insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out.mix(insertWetlabFileToQSample_pr.out),fileinfo_pr.out,idmapper_pr.out,protinf_pr.out)
+   insertSilacToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
+   insertTmtToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
 }
 
 workflow.onComplete {

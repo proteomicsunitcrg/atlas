@@ -3,31 +3,45 @@
 # Author : Roger Olivella
 # Created: 02/03/2022
 
-get_sum_area_propionyl_protein_n_terminal(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
-}
-
-get_sum_area_not_propionyl_protein_n_terminal(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
-}
-
-get_sum_area_phenylisocyanate_precursors_n_terminal(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
-}
-
-get_sum_area_not_phenylisocyanate_precursors_n_terminal(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
-}
-
-get_miscleavages_by_charge(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@charge,"'$2'") and (starts-with(@sequence,"R") and not(contains(@sequence,"RP"))) or (starts-with(@sequence,"K") and not(contains(@sequence,"KP"))) or (not(starts-with(@aa_before,"K")) and not(starts-with(@aa_before,"R"))) or (not(substring(@sequence, string-length(@sequence)) = "K") and not(substring(@sequence, string-length(@sequence)) = "R"))]' $1 | grep "<PeptideHit" | wc -l
-}
-
-get_num_prots(){
+get_num_prot_groups(){
  grep -Pio 'indistinguishable_proteins_' $1 | wc -l
 }
 
-get_miscleavages_counts(){
+# "peptidoform" as defined as https://arxiv.org/pdf/2109.11352.pdf
+
+get_num_peptidoforms(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+}
+
+get_num_peptidoform_sites(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | grep $2 | wc -l
+}
+
+get_num_peptidoform_modif_phospho(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,"(Phospho)")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+}
+
+get_num_peptidoform_modif_histones(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,".(Phenylisocyanate)") or contains(@sequence,"K(Propionyl)") or contains(@sequence,".(Propionyl)") or contains(@sequence,"K(Dimethyl)") or contains(@sequence,"K(Trimethyl)") or contains(@sequence,"K(Acetyl)") or contains(@sequence,"K(Crotonaldehyde)")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+}
+
+get_num_peptidoform_modif_silac(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,"R(Label:13C(6)15N(4))") or contains(@sequence,"K(Label:13C(6)15N(2))")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+}
+
+get_num_peptidoform_modif_tmt(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,"K(TMT6plex)") or contains(@sequence,".(TMT6plex)")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+}
+
+get_num_charges(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@charge,"'$2'")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+}
+
+get_mzml_param_by_cv(){
+ cat $1 | grep -Pio '.*accession="'$2'" value="\K[^"]*' | paste -sd+ - | bc -l
+}
+
+get_peptidoform_miscleavages_counts(){
 
  # Input params: 
  idxml_file=$1
@@ -44,7 +58,7 @@ get_miscleavages_counts(){
     missed=0
     for (( i=0; i<${#line}; i++ )); do
      pair=${line:$i:2}
-     if [[ $pair = "K"* && ${#pair} == 2 && $pair != "KP" ]] || [[ $pair = "R"* && ${#pair} == 2 && $pair != "RP" ]]
+     if [[ $pair = "K"* && ${#pair} == 2 && $pair != "KP" && $pair != "K(" ]] || [[ $pair = "R"* && ${#pair} == 2 && $pair != "RP"  && $pair != "R(" ]]
      then
       ((missed+=1))
      fi
@@ -53,33 +67,25 @@ get_miscleavages_counts(){
  done
  echo "EOF"
 
- grep -o '0' $curr_dir/$basename.miscleavages.tsv | wc -l > $curr_dir/$basename.miscleavages.0
- grep -o '1' $curr_dir/$basename.miscleavages.tsv | wc -l > $curr_dir/$basename.miscleavages.1
- grep -o '2' $curr_dir/$basename.miscleavages.tsv | wc -l > $curr_dir/$basename.miscleavages.2
- grep -o '3' $curr_dir/$basename.miscleavages.tsv | wc -l > $curr_dir/$basename.miscleavages.3
+ cat $curr_dir/$basename.miscleavages.tsv | awk '{print $2}' | grep 0 | wc -l > $curr_dir/$basename.miscleavages.0
+ cat $curr_dir/$basename.miscleavages.tsv | awk '{print $2}' | grep 1 | wc -l > $curr_dir/$basename.miscleavages.1
+ cat $curr_dir/$basename.miscleavages.tsv | awk '{print $2}' | grep 2 | wc -l > $curr_dir/$basename.miscleavages.2
+ cat $curr_dir/$basename.miscleavages.tsv | awk '{print $2}' | grep 3 | wc -l > $curr_dir/$basename.miscleavages.3
 
 }
 
-get_num_peptd(){
- grep 'non-redundant peptide hits:' $1 | sed 's/^.*: //'
+get_sum_area_propionyl_protein_n_terminal(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
 }
 
-get_charges(){
- grep -Pio '.*charge="\K[^"]*' $1 | grep $2 | wc -l
+get_sum_area_not_propionyl_protein_n_terminal(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
 }
 
-get_mzml_param_by_cv(){
- cat $1 | grep -Pio '.*accession="'$2'" value="\K[^"]*' | paste -sd+ - | bc -l
+get_sum_area_phenylisocyanate_precursors_n_terminal(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
 }
 
-get_num_total_unique_peptide_hits(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+get_sum_area_not_phenylisocyanate_precursors_n_terminal(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
 }
-
-get_num_total_unique_phospho_peptides(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,"Phospho")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
-}
-
-
-
-

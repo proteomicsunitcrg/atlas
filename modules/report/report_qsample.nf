@@ -96,25 +96,32 @@ process insertDataToQSample {
         shell:
         '''
         # Parsings: 
-        num_prots=$(source !{binfolder}/parsing.sh; get_num_prots !{protinf_file})
-        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptd !{fileinfo_file})      
-        ###########
-        source !{binfolder}/parsing.sh; get_miscleavages_counts !{protinf_file}
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+ 
+        source !{binfolder}/parsing.sh; get_peptidoform_miscleavages_counts !{protinf_file}
         miscleavages_0=$(cat *.miscleavages.0)
         miscleavages_1=$(cat *.miscleavages.1)
         miscleavages_2=$(cat *.miscleavages.2)
         miscleavages_3=$(cat *.miscleavages.3)
-        charge_2=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 2)
-        charge_3=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 3)
-        charge_4=$(source !{binfolder}/parsing.sh; get_charges !{protinf_file} 4)
+        charge_2=$(source !{binfolder}/parsing.sh; get_num_charges !{protinf_file} 2)
+        charge_3=$(source !{binfolder}/parsing.sh; get_num_charges !{protinf_file} 3)
+        charge_4=$(source !{binfolder}/parsing.sh; get_num_charges !{protinf_file} 4)
         total_base_peak_intenisty=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000505)
         total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
  
         # Checks: 
+        #echo $miscleavages_0 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.miscleavages_0
+        #echo $miscleavages_1 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.miscleavages_1
+        #echo $miscleavages_2 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.miscleavages_2
+        #echo $miscleavages_3 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.miscleavages_3
+        #echo $charge_2 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.charge_2
+        #echo $charge_3 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.charge_3
+        #echo $charge_4 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.charge_4
+        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{basename_mzml}.num_peptd.insertDataToQSample_pr
         echo $total_base_peak_intenisty > total_base_peak_intenisty
         echo $total_tic > total_tic
         echo $num_prots > num_prots
-        echo $num_peptd > num_peptd
         echo $charge_2 > charge_2
         echo $charge_3 > charge_3 
         echo $charge_4 > charge_4
@@ -160,6 +167,7 @@ process insertPhosphoModifToQSample {
      input:
      file(checksum)
      file(fileinfo_file)
+     file(protinf_file)
 
      when:
      fileinfo_file.name =~ /((^[^_]+)MP)|((^[^_]+)MA)|((^[^_]+)MB)/
@@ -167,11 +175,16 @@ process insertPhosphoModifToQSample {
      shell:
         '''
         checksum=$(cat !{checksum})
-        num_peptides_total=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d'/' -f2 | cut -d'(' -f1 | sed 's/ //g')
-        num_peptides_modif=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d':' -f2 | cut -d'/' -f1 | sed 's/ //g')
-        num_mod_phospho_s=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f4 | cut -d")" -f2 | sed 's/ //g')
-        num_mod_phospho_t=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f5 | cut -d")" -f2 | sed 's/ //g')
-        num_mod_phospho_y=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f6 | cut -d")" -f2 | sed 's/ //g')
+
+        num_peptides_total=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        num_mod_phospho_s=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "S(Phospho)")
+        num_mod_phospho_t=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "T(Phospho)")
+        num_mod_phospho_y=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "Y(Phospho)")
+        num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_peptidoform_modif_phospho !{protinf_file})
+ 
+        #echo $num_peptides_total > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptides_total.phospho
+        #echo $num_peptides_modif > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptides_modif.phospho
+
         access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
@@ -188,6 +201,7 @@ process insertPTMhistonesToQSample {
      file(checksum)
      file(fileinfo_file)
      file(idmapper_file)
+     file(protinf_file)
 
      when:
      fileinfo_file.name =~ /((^[^_]+)MH)|((^[^_]+)MZ)|QCHL/
@@ -202,8 +216,16 @@ checksum=$(cat !{checksum})
 echo "Calculating parameters..."
 
 #Totals:
-num_peptides_total=$(grep -Pio '.* modified top-hits: ([^(]+)' !{fileinfo_file}  | sed 's|.*/||' | sed "s/ //g")
-num_peptides_modif=$(grep -Pio '.* modified top-hits: ([^//]+)' !{fileinfo_file}  | awk '{print $NF}')
+num_peptides_total=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+#num_pic_n_term=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} ".(Phenylisocyanate)")
+#num_prop_k=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Propionyl)")
+#num_prop_n_term=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} ".(Propionyl)")
+#num_k_dim=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Dimethyl)")
+#num_k_trim=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Trimethyl)")
+#num_k_acet=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Acetyl)")
+#num_k_croton=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Crotonaldehyde)")
+#num_peptides_modif=$(echo "$num_pic_n_term+$num_prop_k+$num_prop_n_term+$num_k_dim+$num_k_trim+$num_k_acet+$num_k_croton" | bc -l)
+num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_peptidoform_modif_histones !{protinf_file})
 
 ### Extract parameters from IDMapper file:
 
@@ -215,6 +237,8 @@ sum_area_not_phenylisocyanate_precursors_n_terminal=$(source !{binfolder}/parsin
 percentage_pic=$(echo "$sum_area_phenylisocyanate_precursors_n_terminal/($sum_area_phenylisocyanate_precursors_n_terminal+$sum_area_not_phenylisocyanate_precursors_n_terminal)" | bc -l)
 
 ### Check:
+#echo $num_peptides_total > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptides_total.histones
+#echo $num_peptides_modif > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptides_modif.histones
 echo $sum_area_propionyl_protein_n_terminal > sum_area_propionyl_protein_n_terminal
 echo $sum_area_not_propionyl_protein_n_terminal > sum_area_not_propionyl_protein_n_terminal
 echo $sum_area_phenylisocyanate_precursors_n_terminal > sum_area_phenylisocyanate_precursors_n_terminal
@@ -249,6 +273,7 @@ process insertSilacToQSample {
      input:
      file(checksum)
      file(fileinfo_file)
+     file(protinf_file)
 
      when:
      fileinfo_file.name =~ /((^[^_]+)LC)|((^[^_]+)LP)|((^[^_]+)LQ)|((^[^_]+)LU)/
@@ -256,10 +281,16 @@ process insertSilacToQSample {
      shell:
         '''
         checksum=$(cat !{checksum})
-        num_peptides_total=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d'/' -f2 | cut -d'(' -f1 | sed 's/ //g')
-        num_peptides_modif=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d':' -f2 | cut -d'/' -f1 | sed 's/ //g')
-        num_mod_label_K=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f5 | cut -d")" -f4 | sed 's/ //g')
-        num_mod_label_R=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f6 | cut -d")" -f4 | sed 's/ //g')
+        num_peptides_total=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        num_mod_label_R=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "R(Label:13C(6)15N(4))")
+        num_mod_label_K=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Label:13C(6)15N(2))")
+        #num_peptides_modif=$(echo "$num_mod_label_R+$num_mod_label_K" | bc -l)
+        num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_peptidoform_modif_silac !{protinf_file})
+
+        #Check: 
+        #echo $num_peptides_total > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptides_total.silac
+        #echo $num_peptides_modif > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptides_modif.silac
+       
         access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
@@ -273,6 +304,7 @@ process insertTmtToQSample {
      input:
      file(checksum)
      file(fileinfo_file)
+     file(protinf_file)
 
      when:
      fileinfo_file.name =~ /((^[^_]+)LT)|((^[^_]+)LF)/
@@ -280,10 +312,18 @@ process insertTmtToQSample {
      shell:
         '''
         checksum=$(cat !{checksum})
-        num_peptides_total=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d'/' -f2 | cut -d'(' -f1 | sed 's/ //g')
-        num_peptides_modif=$(grep 'modified top-hits:' !{fileinfo_file} | cut -d':' -f2 | cut -d'/' -f1 | sed 's/ //g')
-        num_mod_tmt_K=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f5 | cut -d")" -f2 | sed 's/ //g')
-        num_mod_tmt_N=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f4 | cut -d" " -f3 | sed 's/ //g')
+        num_peptides_total=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        num_mod_tmt_K=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(TMT6plex)")
+        num_mod_tmt_N=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} ".(TMT6plex)")       
+        #num_peptides_modif=$(echo "$num_mod_tmt_K+$num_mod_tmt_N" | bc -l)
+        num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_peptidoform_modif_tmt !{protinf_file})
+
+        #Check: 
+        #echo $num_peptides_total > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptides_total.tmt
+        #echo $num_peptides_modif > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptides_modif.tmt
+        #echo $num_mod_tmt_K > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.tmt_k
+        #echo $num_mod_tmt_N > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.tmt_n
+        
         access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
@@ -305,10 +345,13 @@ process insertWetlabInSolutionDataToQSample {
         shell:
         '''
         checksum=$(cat !{checksum})
-        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
-        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        
+        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.wetlab_insolution
         echo $num_prots > num_prots
         echo $num_peptd > num_peptd
+
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
@@ -329,10 +372,13 @@ process insertWetlabInGelDataToQSample {
         shell:
         '''
         checksum=$(cat !{checksum})
-        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
-        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        
+        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.wetlab_ingel
         echo $num_prots > num_prots
         echo $num_peptd > num_peptd
+
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3300-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
@@ -353,10 +399,13 @@ process insertWetlabFaspDataToQSample {
         shell:
         '''
         checksum=$(cat !{checksum})
-        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
-        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        
+        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.wetlab_fasp
         echo $num_prots > num_prots
         echo $num_peptd > num_peptd
+
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3500-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
@@ -377,19 +426,19 @@ process insertWetlabPhosphoDataToQSample {
         shell:
         '''
         checksum=$(cat !{checksum})
-        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
-        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
-        num_mod_phospho_s=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f4 | cut -d")" -f2 | sed 's/ //g')
-        num_mod_phospho_t=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f5 | cut -d")" -f2 | sed 's/ //g')
-        num_mod_phospho_y=$(grep 'Modification count (top-hits only):' !{fileinfo_file} | cut -d"," -f6 | cut -d")" -f2 | sed 's/ //g')
-        num_total_phospho=$(source !{binfolder}/parsing.sh; get_num_total_unique_phospho_peptides !{protinf_file}) 
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})        
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_peptidoform_modif_phospho !{protinf_file})
+
+        #Check: 
+        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.wetlab_phospho
+        #echo $num_peptides_modif > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd_modif.wetlab_phospho
         echo $num_prots > num_prots
-        echo $num_peptd > num_peptd
-        echo $num_total_phospho > num_total_phospho
+
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3400-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3400-0000-000000000000","id": "1"},"values": [{"contextSource": "24","value": "'$num_total_phospho'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3400-0000-000000000000","id": "1"},"values": [{"contextSource": "24","value": "'$num_peptides_modif'"}]}]}'
         '''
 }
 
@@ -407,10 +456,14 @@ process insertWetlabAgilentDataToQSample {
         shell:
         '''
         checksum=$(cat !{checksum})
-        num_prots=$(grep -Pio 'indistinguishable_proteins_' !{protinf_file} | wc -l)
-        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        
+        #Check: 
+        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.wetlab_agilent  
         echo $num_prots > num_prots
         echo $num_peptd > num_peptd
+
 access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "7765746c-6162-3200-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'

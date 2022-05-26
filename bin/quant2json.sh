@@ -14,7 +14,7 @@ num_prots=$4
 #Remove 3 first rows: 
 sed -i '1,3d' $csvfile
 
-#List of all prots: 
+#List of all prots (TODO: parse accessions without pipes '|'): 
 all_prots=($(sort -r -g -k 5 -t $'\t' $csvfile | awk -F '\t' '{print $1}' | tr -d '"' | awk -F '|' '{print $2}'))
 all_descr=($(sort -r -g -k 5 -t $'\t' $csvfile | awk -F '\t' '{print $1}' | tr -d '"' | awk -F '|' '{print $3}'))
 all_abund=($(sort -r -g -k 5 -t $'\t' $csvfile | awk -F '\t' '{print $5}'))

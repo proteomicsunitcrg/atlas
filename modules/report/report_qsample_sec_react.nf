@@ -57,30 +57,40 @@ process insertSecReactDataToQSample {
         shell:
         '''
         checksum=$(cat !{checksum})
-        num_peptd=$(grep 'non-redundant peptide hits:' !{fileinfo_file} | sed 's/^.*: //')
-        echo $num_peptd > num_peptd
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
 
         ### Secondary reactions: 
-        sec_react_carbamyl_k=$(cat !{protinf_file} | grep "<PeptideHit" | grep "K(Carbamyl)" | wc -l)
-        sec_react_carbamyl_n_term=$(cat !{protinf_file} | grep "<PeptideHit" | grep ".(Carbamyl)" | wc -l)       
-        sec_react_carbamyl_r=$(cat !{protinf_file} | grep "<PeptideHit" | grep "R(Carbamyl)" | wc -l)
-        sec_react_deamidated_n=$(cat !{protinf_file} | grep "<PeptideHit" | grep "N(Deamidated)" | wc -l)      
-        sec_react_formyl_k=$(cat !{protinf_file} | grep "<PeptideHit" | grep "K(Formyl)" | wc -l)
-        sec_react_formyl_n_term=$(cat !{protinf_file} | grep "<PeptideHit" | grep ".(Formyl)" | wc -l)
-        sec_react_formyl_s=$(cat !{protinf_file} | grep "<PeptideHit" | grep "S(Formyl)" | wc -l)
-        sec_react_formyl_t=$(cat !{protinf_file} | grep "<PeptideHit" | grep "T(Formyl)" | wc -l)
-        sec_react_pyro_glu=$(cat !{protinf_file} | grep "<PeptideHit" | grep "pyro-Glu" | wc -l)
+        sec_react_carbamyl_k=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Carbamyl)")        
+        sec_react_carbamyl_n=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} ".(Carbamyl)")
+        sec_react_carbamyl_r=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "R(Carbamyl)")
+        sec_react_deamidated_n=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "N(Deamidated)")
+        sec_react_formyl_k=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Formyl)")
+        sec_react_formyl_n=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} ".(Formyl)")
+        sec_react_formyl_s=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "S(Formyl)")
+        sec_react_formyl_t=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "T(Formyl)")
+        sec_react_pyro_glu=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "pyro-Glu")
 
         percentage_carbamyl_k=$(echo "$sec_react_carbamyl_k/$num_peptd" | bc -l)
-        percentage_carbamyl_n_term=$(echo "$sec_react_carbamyl_n_term/$num_peptd" | bc -l)
+        percentage_carbamyl_n_term=$(echo "$sec_react_carbamyl_n/$num_peptd" | bc -l)
         percentage_carbamyl_r=$(echo "$sec_react_carbamyl_r/$num_peptd" | bc -l)
         percentage_deamidated_n=$(echo "$sec_react_deamidated_n/$num_peptd" | bc -l)
         percentage_formyl_k=$(echo "$sec_react_formyl_k/$num_peptd" | bc -l)
-        percentage_formyl_n_term=$(echo "$sec_react_formyl_n_term/$num_peptd" | bc -l)
+        percentage_formyl_n_term=$(echo "$sec_react_formyl_n/$num_peptd" | bc -l)
         percentage_formyl_s=$(echo "$sec_react_formyl_s/$num_peptd" | bc -l)
         percentage_formyl_t=$(echo "$sec_react_formyl_t/$num_peptd" | bc -l)
         percentage_pyro_glu=$(echo "$sec_react_pyro_glu/$num_peptd" | bc -l)
 
+        #Check:
+        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec_total
+        #echo $sec_react_carbamyl_k > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.carbamyl_k
+        #echo $sec_react_carbamyl_n > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.carbamyl_n
+        #echo $sec_react_carbamyl_r > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.carbamyl_r
+        #echo $sec_react_deamidated_n > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.deamidated_n
+        #echo $sec_react_formyl_k > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.formyl_k
+        #echo $sec_react_formyl_n > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.formyl_n  
+        #echo $sec_react_formyl_s > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.formyl_s      
+        #echo $sec_react_formyl_t > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.formyl_t
+        #echo $sec_react_pyro_glu > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.pyro_glu
         echo $percentage_carbamyl_k > percentage_carbamyl_k
         echo $percentage_carbamyl_n_term > percentage_carbamyl_n_term
         echo $percentage_carbamyl_r > percentage_carbamyl_r
@@ -90,7 +100,7 @@ process insertSecReactDataToQSample {
         echo $percentage_formyl_s > percentage_formyl_s
         echo $percentage_formyl_t > percentage_formyl_t
         echo $percentage_pyro_glu > percentage_pyro_glu
-    
+        
         ### Inserts API:
         access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
@@ -103,7 +113,7 @@ process insertSecReactDataToQSample {
         fi
         if [[ !{sec_react_modif} == "Carbamyl (N-term)" ]]; then
           echo "Inserting .(Carbamyl)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": ".(Carbamyl)"},"value": "'$sec_react_carbamyl_n_term'"}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": ".(Carbamyl)"},"value": "'$sec_react_carbamyl_n'"}]}'
           curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "11","value": "'$percentage_carbamyl_n_term'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Carbamyl (R)" ]]; then
@@ -123,7 +133,7 @@ process insertSecReactDataToQSample {
         fi
         if [[ !{sec_react_modif} == "Formyl (N-term)" ]]; then
           echo "Inserting  .(Formyl)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": ".(Formyl)"},"value": "'$sec_react_formyl_n_term'"}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": ".(Formyl)"},"value": "'$sec_react_formyl_n'"}]}'
           curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "15","value": "'$percentage_formyl_n_term'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Formyl (S)" ]]; then
