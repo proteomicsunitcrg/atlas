@@ -8,6 +8,7 @@ include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './modules/identification/identification_lfq'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './modules/quantification/quantification_lfq'
 include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr; insertPhosphoModifToQSample as insertPhosphoModifToQSample_pr; insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr; insertWetlabFileToQSample as insertWetlabFileToQSample_pr; insertSilacToQSample as insertSilacToQSample_pr; insertTmtToQSample as insertTmtToQSample_pr; insertWetlabInGelDataToQSample as insertWetlabInGelDataToQSample_pr; insertWetlabFaspDataToQSample as insertWetlabFaspDataToQSample_pr; insertWetlabInSolutionDataToQSample as insertWetlabInSolutionDataToQSample_pr; insertWetlabPhosphoDataToQSample as insertWetlabPhosphoDataToQSample_pr; insertWetlabAgilentDataToQSample as insertWetlabAgilentDataToQSample_pr} from './modules/report/report_qsample'
+include { output_folder_wetlab_phospho as output_folder_wetlab_phospho_pr} from './modules/report/report_output_folder'
 
 Channel
   .fromPath(params.rawfile)
@@ -66,7 +67,10 @@ workflow {
    insertWetlabInGelDataToQSample_pr(insertWetlabFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
    insertWetlabFaspDataToQSample_pr(insertWetlabFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
    insertWetlabPhosphoDataToQSample_pr(insertWetlabFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
-   insertWetlabAgilentDataToQSample_pr(insertWetlabFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)    
+   insertWetlabAgilentDataToQSample_pr(insertWetlabFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)   
+
+   //Report to output folder:
+   output_folder_wetlab_phospho_pr(insertWetlabFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out) 
 
    // Report Agendo apps to QSample:
    insertPhosphoModifToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)

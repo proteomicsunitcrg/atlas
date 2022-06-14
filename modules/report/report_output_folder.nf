@@ -44,3 +44,28 @@ process output_folder_diaqc {
         echo "$basename_sh\t!{instrument_folder}\t$num_prots\t$num_peptd\t$miscleavages_0\t$miscleavages_1\t$miscleavages_2\t$miscleavages_3\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic" >> !{output_folder}/qcdi_data_last_version.tsv
         '''
 }
+
+process output_folder_wetlab_phospho {
+        tag { "${fileinfo_file}" }
+
+        input:
+        file(checksum)
+        file(fileinfo_file)
+        file(protinf_file)
+
+        when:
+        fileinfo_file.name =~ /QCPL/
+
+        shell:
+        '''
+        checksum=$(cat !{checksum})
+        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
+        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_peptidoform_modif_phospho !{protinf_file})
+     
+        checksum=$(cat !{checksum})
+        basename_sh=$(basename !{fileinfo_file} | cut -f 1 -d '.')
+
+        echo "$basename_sh\t$num_prots\t$num_peptd\t$num_peptides_modif" >> !{output_folder}/QCPL_data_last_version.tsv
+        '''
+}
