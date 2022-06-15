@@ -106,6 +106,10 @@ process CometAdapter {
 
     shell:
     '''
-    CometAdapter -force -in !{comet_mzml_file} -out !{basename}_comet.idXML -database !{fastafile_decoy} -precursor_charge !{precursor_charge} -comet_executable !{comet_executable} -precursor_mass_tolerance !{precursor_mass_tolerance} -precursor_error_units !{precursor_error_units} -fragment_mass_tolerance !{frag_mass_tol} -fragment_error_units !{frag_err_uni} -fixed_modifications !{fixed_modifications} -variable_modifications !{var_modif} !{sec_react_modif}
+    if [[ !{sec_react_modif} == "" ]]; then
+       CometAdapter -force -in !{comet_mzml_file} -out !{basename}_comet.idXML -database !{fastafile_decoy} -precursor_charge !{precursor_charge} -comet_executable !{comet_executable} -precursor_mass_tolerance !{precursor_mass_tolerance} -precursor_error_units !{precursor_error_units} -fragment_mass_tolerance !{frag_mass_tol} -fragment_error_units !{frag_err_uni} -fixed_modifications !{fixed_modifications} -variable_modifications !{var_modif}
+    else 
+       CometAdapter -force -in !{comet_mzml_file} -out !{basename}_comet.idXML -database !{fastafile_decoy} -precursor_charge !{precursor_charge} -comet_executable !{comet_executable} -precursor_mass_tolerance !{precursor_mass_tolerance} -precursor_error_units !{precursor_error_units} -fragment_mass_tolerance !{frag_mass_tol} -fragment_error_units !{frag_err_uni} -fixed_modifications !{fixed_modifications} -variable_modifications !{var_modif} !{sec_react_modif} 
+    fi
     '''
 }
