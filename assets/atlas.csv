@@ -1,4 +1,4 @@
-pattern,workflow,name,var_modif,fragment_mass_tolerance,fragment_error_units,search_engine
+pattern,workflow,name,var_modif,fragment_mass_tolerance,fragment_error_units,missed_cleavages,output_folder,is_instrument_folder_in_filename,search_engine
 MQ,main,ProteomeLfq,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',mascot
 LA,main,PPIpilot,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',mascot
 LB,main,PPIexperiment,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',mascot
@@ -25,9 +25,9 @@ LT,main,TmtQuantitation,'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6pl
 LF,main,TmtUltra,'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)',0.5,Da,7,ppm,3,'','',mascot
 MK,dia,DIA,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,10,ppm,1,'','',mascot
 QCDI,dia,DIAQC,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,10,ppm,1,/users/pr/qsample/diaqc-output,true,mascot
-QCHL,main,HistonesQC,'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)',0.5,Da,10,ppm,1,/users/pr/qsample/qchl-output,true,mascot
+QCHL,main,HistonesQC,'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)',0.5,Da,10,ppm,1,/users/pr/qsample/qchl-output,'',mascot
 QCGL,main,InGel,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',mascot
 QCDL,main,InSolution,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',mascot
 QCFL,main,FASP,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',mascot
 QCRL,main,Agilent,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',mascot
-QCPL,main,Phospho,'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)',0.5,Da,7,ppm,3,'','',mascot
+QCPL,main,Phospho,'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)',0.5,Da,7,ppm,3,/users/pr/qsample/qcpl-output,'',mascot

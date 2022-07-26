@@ -4,14 +4,27 @@
 # Created: 30/03/2021
 
 ################HARDCODES: 
+
+#prod (reminder: enable launch sec_rec!)
 LOGS_FOLDER=/users/pr/qsample/logs
 ORIGIN_FOLDER=/users/pr/backuppr/scratch
-OUTPUT_DIAQC_FOLDER=/users/pr/qsample/diaqc-output
 TIME=-7
 SLEEP_PROCESS=900
 ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
 ATLAS_CSV=/users/pr/qsample/atlas/assets/atlas.csv
 SEC_REACT_WF=/users/pr/qsample/atlas/secreact.nf
+WF_ROOT_FOLDER=/users/pr/qsample/atlas
+
+#test (reminder: disable launch sec_rec!)
+#LOGS_FOLDER=/users/pr/qsample/test/logs
+#ORIGIN_FOLDER=/users/pr/qsample/test/toy-dataset/files_to_process
+#TIME=-7777
+#SLEEP_PROCESS=60
+#ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
+#ATLAS_CSV=/users/pr/qsample/test/atlas-tsv/assets/atlas.csv
+#SEC_REACT_WF=/users/pr/qsample/test/atlas-tsv/secreact.nf
+#WF_ROOT_FOLDER=/users/pr/qsample/test/atlas-tsv
+
 ################VARIABLES END
 
 

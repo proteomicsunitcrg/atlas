@@ -69,3 +69,36 @@ process output_folder_wetlab_phospho {
         echo "$basename_sh\t$num_prots\t$num_peptd\t$num_peptides_modif" >> !{output_folder}/QCPL_data_last_version.tsv
         '''
 }
+
+
+process output_folder_qchl {
+
+	tag { "${fileinfo_file}" }
+
+        input:
+        file(checksum)
+        file(fileinfo_file)
+        file(protinf_file)
+        file(idmapper_file)
+
+        when:
+        fileinfo_file.name =~ /QCHL/
+
+        shell:
+        '''
+        checksum=$(cat !{checksum})
+	num_peptides_total=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+	num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_peptidoform_modif_histones !{protinf_file})
+	sum_area_propionyl_protein_n_terminal=$(source !{binfolder}/parsing.sh; get_sum_area_propionyl_protein_n_terminal !{idmapper_file})
+	sum_area_not_propionyl_protein_n_terminal=$(source !{binfolder}/parsing.sh; get_sum_area_not_propionyl_protein_n_terminal !{idmapper_file})
+	percentage_propionyl=$(echo "$sum_area_propionyl_protein_n_terminal/($sum_area_propionyl_protein_n_terminal+$sum_area_not_propionyl_protein_n_terminal)" | bc -l)
+	sum_area_phenylisocyanate_precursors_n_terminal=$(source !{binfolder}/parsing.sh; get_sum_area_phenylisocyanate_precursors_n_terminal !{idmapper_file})
+	sum_area_not_phenylisocyanate_precursors_n_terminal=$(source !{binfolder}/parsing.sh; get_sum_area_not_phenylisocyanate_precursors_n_terminal !{idmapper_file})
+	percentage_pic=$(echo "$sum_area_phenylisocyanate_precursors_n_terminal/($sum_area_phenylisocyanate_precursors_n_terminal+$sum_area_not_phenylisocyanate_precursors_n_terminal)" | bc -l)
+
+        checksum=$(cat !{checksum})
+        basename_sh=$(basename !{fileinfo_file} | cut -f 1 -d '.')
+
+        echo "$basename_sh\t$num_peptides_total\t$num_peptides_modif\t$percentage_propionyl\t$percentage_pic" >> !{output_folder}/QCHL_data_last_version.tsv
+        '''
+}
