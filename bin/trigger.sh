@@ -105,7 +105,7 @@ do
 
  for j in ${LIST_PATTERNS}
  do
-  if [ "$(echo $REQUEST | grep $j)" ] || [ "$(echo $QCCODE | grep $j)" ]; then
+  if [ "$(echo $REQUEST | grep $j)" ] || [ "$(echo $QCCODE | grep '^$j_')" ]; then
 
     CURRENT_UUID=$(uuidgen)
     CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
