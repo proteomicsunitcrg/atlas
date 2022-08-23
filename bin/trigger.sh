@@ -3,33 +3,41 @@
 # Author: Roger Olivella
 # Created: 30/03/2021
 
-################HARDCODES: 
+##############################
+################HARDCODES##### 
+##############################
 
-#prod (reminder: enable launch sec_rec!)
-LOGS_FOLDER=/users/pr/qsample/logs
-ORIGIN_FOLDER=/users/pr/backuppr/scratch
-TIME=-7
-SLEEP_PROCESS=900
-ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
-ATLAS_CSV=/users/pr/qsample/atlas/assets/atlas.csv
-SEC_REACT_WF=/users/pr/qsample/atlas/secreact.nf
-WF_ROOT_FOLDER=/users/pr/qsample/atlas
+TEST_MODE=false
 
-#test (reminder: disable launch sec_rec!)
-#LOGS_FOLDER=/users/pr/qsample/test/logs
-#ORIGIN_FOLDER=/users/pr/qsample/test/toy-dataset/files_to_process
-#TIME=-7777
-#SLEEP_PROCESS=60
-#ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
-#ATLAS_CSV=/users/pr/qsample/test/atlas-tsv/assets/atlas.csv
-#SEC_REACT_WF=/users/pr/qsample/test/atlas-tsv/secreact.nf
-#WF_ROOT_FOLDER=/users/pr/qsample/test/atlas-tsv
+if [ "$TEST_MODE" = false ] ; then
+ LOGS_FOLDER=/users/pr/qsample/logs
+ ORIGIN_FOLDER=/users/pr/backuppr/scratch
+ TIME=-7
+ SLEEP_PROCESS=900
+ ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
+ ATLAS_CSV=/users/pr/qsample/atlas/assets/atlas.csv
+ SEC_REACT_WF=/users/pr/qsample/atlas/secreact.nf
+ WF_ROOT_FOLDER=/users/pr/qsample/atlas
 
-################VARIABLES END
+elif [ "$TEST_MODE" = true ] ; then
+ #Remeber to edit atlas test repo
+ LOGS_FOLDER=/users/pr/qsample/test/logs
+ ORIGIN_FOLDER=/users/pr/qsample/test/toy-dataset/files_to_process
+ TIME=-7777
+ SLEEP_PROCESS=60
+ ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
+ ATLAS_CSV=/users/pr/qsample/test/atlas-trigger/assets/atlas.csv
+ SEC_REACT_WF=/users/pr/qsample/test/atlas-trigger/secreact.nf
+ WF_ROOT_FOLDER=/users/pr/qsample/test/atlas-trigger
+fi
+
+################HARCODES END
 
 
-################FUNCTIONS
-##Secondary reactions:
+##################################
+################FUNCTIONS#########
+##################################
+
 secondary_reaction () {
  echo "Sending secondary reaction workflow for modification $1 and file $2 ..."
  nextflow run ${SEC_REACT_WF} -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --sec_react_modif "$1" --fragment_mass_tolerance '0.5' --fragment_error_units 'Da' --search_engine comet --rawfile $2 > $3
@@ -85,8 +93,9 @@ launch_all_secondary_reactions (){
 ################FUNCTIONS END
 
 
-
-################KERNEL
+###########################
+################KERNEL#####
+###########################
 
 DATE_LOG=`date '+%Y-%m-%d %H:%M:%S'`
 echo "[INFO] -----------------START---[${DATE_LOG}]"
@@ -105,15 +114,20 @@ do
 
  for j in ${LIST_PATTERNS}
  do
-  if [ "$(echo $REQUEST | grep $j)" ] || [ "$(echo $QCCODE | grep '^$j_')" ]; then
+
+  if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
+
+    echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
 
     CURRENT_UUID=$(uuidgen)
     CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
-    mkdir -p $CURRENT_UUID_FOLDER
-    cd $CURRENT_UUID_FOLDER
-    mv $i $CURRENT_UUID_FOLDER
+    
+    if [ "$TEST_MODE" = false ] ; then
+     mkdir -p $CURRENT_UUID_FOLDER
+     cd $CURRENT_UUID_FOLDER
+     mv $i $CURRENT_UUID_FOLDER
+    fi
 
-    echo "[INFO] Found pattern "$j" in request "$REQUEST
     WF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f2)
     NAME=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f3)
     VAR_MODIF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f4)
@@ -126,9 +140,14 @@ do
     IF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f11)
     ENGINE=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f12)
    
-    ###############LAUNCH NEXTFLOW RUN
-    launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log
-    if [ "$(echo $REQUEST | grep $j)" ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
+    ###############LAUNCH NEXTFLOW PROCESSES
+    if [ "$TEST_MODE" = false ] ; then
+     launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log
+     if [ "$(echo $REQUEST | grep $j)" ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
+    elif [ "$TEST_MODE" = true ] ; then
+     echo "FAKE launch_nf_run..."
+     if [ "$(echo $REQUEST | grep $j)" ]; then echo "FAKE launch_all_secondary_reactions..."; fi
+    fi 
 
   fi
  done
