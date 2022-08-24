@@ -102,7 +102,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 
 LIST_PATTERNS=$(cat ${ATLAS_CSV} | cut -d',' -f1 | tail -n +2)
 
-FILE_TO_PROCESS=$(find /users/pr/qsample/test/toy-dataset/files_to_process/bckp/ \( -iname "*.raw.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
 
 FILE_BASENAME=$(basename $FILE_TO_PROCESS)
 FILE_ARR=($(echo $FILE_BASENAME | tr "_" "\n"))
