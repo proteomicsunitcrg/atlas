@@ -102,57 +102,53 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 
 LIST_PATTERNS=$(cat ${ATLAS_CSV} | cut -d',' -f1 | tail -n +2)
 
-LIST_FILES=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" \) -type f -mtime ${TIME} -printf "%h %f\n" | awk '{print $1"/"$2}')
+FILE_TO_PROCESS=$(find /users/pr/qsample/test/toy-dataset/files_to_process/bckp/ \( -iname "*.raw.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
 
-for i in ${LIST_FILES}
+FILE_BASENAME=$(basename $FILE_TO_PROCESS)
+FILE_ARR=($(echo $FILE_BASENAME | tr "_" "\n"))
+REQUEST="${FILE_ARR[0]}"
+QCCODE="${FILE_ARR[1]}"
+
+for j in ${LIST_PATTERNS}
 do
 
- FILE_BASENAME=$(basename $i)
- FILE_ARR=($(echo $FILE_BASENAME | tr "_" "\n"))
- REQUEST="${FILE_ARR[0]}"
- QCCODE="${FILE_ARR[1]}"
+ if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
 
- for j in ${LIST_PATTERNS}
- do
+   echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
 
-  if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
-
-    echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
-
-    CURRENT_UUID=$(uuidgen)
-    CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
+   CURRENT_UUID=$(uuidgen)
+   CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
     
-    if [ "$TEST_MODE" = false ] ; then
-     mkdir -p $CURRENT_UUID_FOLDER
-     cd $CURRENT_UUID_FOLDER
-     mv $i $CURRENT_UUID_FOLDER
-    fi
+   if [ "$TEST_MODE" = false ] ; then
+    mkdir -p $CURRENT_UUID_FOLDER
+    cd $CURRENT_UUID_FOLDER
+    mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
+   fi
 
-    WF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f2)
-    NAME=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f3)
-    VAR_MODIF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f4)
-    FMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f5)
-    FEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f6)
-    PMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f7)
-    PEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f8)
-    MC=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f9)
-    OF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f10)
-    IF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f11)
-    ENGINE=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f12)
-   
-    ###############LAUNCH NEXTFLOW PROCESSES
-    if [ "$TEST_MODE" = false ] ; then
-     launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log
-     if [ "$(echo $REQUEST | grep $j)" ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
-    elif [ "$TEST_MODE" = true ] ; then
-     echo "FAKE launch_nf_run..."
-     if [ "$(echo $REQUEST | grep $j)" ]; then echo "FAKE launch_all_secondary_reactions..."; fi
-    fi 
-
-  fi
- done
+   WF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f2)
+   NAME=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f3)
+   VAR_MODIF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f4)
+   FMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f5)
+   FEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f6)
+   PMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f7)
+   PEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f8)
+   MC=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f9)
+   OF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f10)
+   IF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f11)
+   ENGINE=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f12)
+  
+   ###############LAUNCH NEXTFLOW PROCESSES
+   if [ "$TEST_MODE" = false ] ; then
+    launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log
+    if [ "$(echo $REQUEST | grep $j)" ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
+   elif [ "$TEST_MODE" = true ] ; then
+    echo "FAKE launch_nf_run..."
+    if [ "$(echo $REQUEST | grep $j)" ]; then echo "FAKE launch_all_secondary_reactions..."; fi
+   fi 
+ fi
 
 done
+
 echo "[INFO] -----------------EOF"
 
 ################KERNEL END
