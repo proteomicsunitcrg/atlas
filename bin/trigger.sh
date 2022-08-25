@@ -13,7 +13,6 @@ if [ "$TEST_MODE" = false ] ; then
  LOGS_FOLDER=/users/pr/qsample/logs
  ORIGIN_FOLDER=/users/pr/backuppr/scratch
  TIME=-7
- SLEEP_PROCESS=900
  ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
  ATLAS_CSV=/users/pr/qsample/atlas/assets/atlas.csv
  SEC_REACT_WF=/users/pr/qsample/atlas/secreact.nf
@@ -24,7 +23,6 @@ elif [ "$TEST_MODE" = true ] ; then
  LOGS_FOLDER=/users/pr/qsample/test/logs
  ORIGIN_FOLDER=/users/pr/qsample/test/toy-dataset/files_to_process
  TIME=-7777
- SLEEP_PROCESS=60
  ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
  ATLAS_CSV=/users/pr/qsample/test/atlas-trigger/assets/atlas.csv
  SEC_REACT_WF=/users/pr/qsample/test/atlas-trigger/secreact.nf
@@ -75,7 +73,6 @@ launch_nf_run () {
       echo "[INFO] ###############################################################"
       echo "[INFO] ###############################################################"
       echo "[INFO] This file was sent to the QSample pipeline..." | mail -s ${FILE_BASENAME} "roger.olivella@crg.eu"
-      sleep ${SLEEP_PROCESS}
 
 }
 
@@ -104,50 +101,55 @@ LIST_PATTERNS=$(cat ${ATLAS_CSV} | cut -d',' -f1 | tail -n +2)
 
 FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
 
-FILE_BASENAME=$(basename $FILE_TO_PROCESS)
-FILE_ARR=($(echo $FILE_BASENAME | tr "_" "\n"))
-REQUEST="${FILE_ARR[0]}"
-QCCODE="${FILE_ARR[1]}"
+if [ -n "$FILE_TO_PROCESS" ]; then
 
-for j in ${LIST_PATTERNS}
-do
+ FILE_BASENAME=$(basename $FILE_TO_PROCESS)
+ FILE_ARR=($(echo $FILE_BASENAME | tr "_" "\n"))
+ REQUEST="${FILE_ARR[0]}"
+ QCCODE="${FILE_ARR[1]}"
 
- if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
+ for j in ${LIST_PATTERNS}
+ do
 
-   echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
+  if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
 
-   CURRENT_UUID=$(uuidgen)
-   CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
-    
-   if [ "$TEST_MODE" = false ] ; then
-    mkdir -p $CURRENT_UUID_FOLDER
-    cd $CURRENT_UUID_FOLDER
-    mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
-   fi
+    echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
 
-   WF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f2)
-   NAME=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f3)
-   VAR_MODIF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f4)
-   FMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f5)
-   FEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f6)
-   PMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f7)
-   PEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f8)
-   MC=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f9)
-   OF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f10)
-   IF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f11)
-   ENGINE=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f12)
-  
-   ###############LAUNCH NEXTFLOW PROCESSES
-   if [ "$TEST_MODE" = false ] ; then
-    launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log
-    if [ "$(echo $REQUEST | grep $j)" ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
-   elif [ "$TEST_MODE" = true ] ; then
-    echo "FAKE launch_nf_run..."
-    if [ "$(echo $REQUEST | grep $j)" ]; then echo "FAKE launch_all_secondary_reactions..."; fi
-   fi 
- fi
+    CURRENT_UUID=$(uuidgen)
+    CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
 
-done
+    if [ "$TEST_MODE" = false ] ; then
+     mkdir -p $CURRENT_UUID_FOLDER
+     cd $CURRENT_UUID_FOLDER
+     mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
+    fi
+
+    WF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f2)
+    NAME=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f3)
+    VAR_MODIF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f4)
+    FMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f5)
+    FEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f6)
+    PMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f7)
+    PEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f8)
+    MC=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f9)
+    OF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f10)
+    IF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f11)
+    ENGINE=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f12)
+
+    ###############LAUNCH NEXTFLOW PROCESSES
+    if [ "$TEST_MODE" = false ] ; then
+     launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log
+     if [ "$(echo $REQUEST | grep $j)" ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
+    elif [ "$TEST_MODE" = true ] ; then
+     echo "FAKE launch_nf_run..."
+     if [ "$(echo $REQUEST | grep $j)" ]; then echo "FAKE launch_all_secondary_reactions..."; fi
+    fi
+
+  fi
+
+ done
+
+fi
 
 echo "[INFO] -----------------EOF"
 
