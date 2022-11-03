@@ -8,7 +8,7 @@ include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './modules/identification/identification_lfq'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './modules/quantification/quantification_lfq'
 include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr} from './modules/report/report_qsample'
-include { output_folder_diaqc as output_folder_diaqc_pr} from './modules/report/report_output_folder'
+include { output_folder_diaqc as output_folder_diaqc_pr; output_folder_test as output_folder_test_pr} from './modules/report/report_output_folder'
 
 
 Channel
@@ -95,5 +95,5 @@ workflow {
   
    //Report to output folder: 
    output_folder_diaqc_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,qccalc_pr.out,trfp_pr.out)   
- 
+   output_folder_test_pr(protinf_pr.out)
 }
