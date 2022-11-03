@@ -14,7 +14,7 @@ if [[ $1 = "test" ]]; then
     echo "[INFO] Running in test mode..."
     TEST_MODE=true
     TEST_SUBFOLDER="test"
-    WF_ROOT_FOLDER=/users/pr/qsample/test/atlas-test
+    WF_ROOT_FOLDER=/users/pr/qsample/test/atlas-diann
 
     if [[ $2 = "fast" ]]; then
     	TEST_FILENAME="2022ZZ999_QC01_DDA_test.raw.SP_Bovine"
@@ -51,7 +51,7 @@ elif [[ $1 = "debug" ]]; then
     if [[ $2 = "fake" ]]; then
       DEBUG_MODE_FAKE=true
     fi
-    WF_ROOT_FOLDER=/users/pr/qsample/test/atlas-test
+    WF_ROOT_FOLDER=/users/pr/qsample/test/atlas-diann
     LOGS_FOLDER=/users/pr/qsample/test/logs
     ORIGIN_FOLDER=/users/pr/qsample/test/toy-dataset/files_to_process
     TIME=-7
@@ -83,7 +83,7 @@ fi
 
 secondary_reaction () {
  echo "Sending secondary reaction workflow for modification $1 and file $2 ..."
- nextflow run ${SEC_REACT_WF} -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -profile tiny --sec_react_modif "$1" --fragment_mass_tolerance '0.5' --fragment_error_units 'Da' --search_engine comet --rawfile $2 > $3
+ nextflow run ${SEC_REACT_WF} -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -profile small --sec_react_modif "$1" --fragment_mass_tolerance '0.5' --fragment_error_units 'Da' --search_engine comet --rawfile $2 > $3
  sleep 60
 }
 
@@ -184,7 +184,7 @@ if [ "$TEST_MODE" = true ] ; then
                         #nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --rawfile /users/pr/qsample/test/atlas-test/test/2021MK017_EVBO_003_01_2ug.raw.SP_Human -profile medium --test_mode --test_folder /users/pr/qsample/test/atlas-test/test/2021MK017_EVBO_003_01_2ug_raw
                         #nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --rawfile /users/pr/qsample/test/atlas-test/test/2021MK017_EVBO_003_01_2ug.mzML.SP_Human -profile medium --test_mode --test_folder /users/pr/qsample/test/atlas-test/test/2021MK017_EVBO_003_01_2ug_mzML
                         #nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --rawfile /users/pr/qsample/test/atlas-test/test/2022MK006_FEAN_Comercial_001_01_1ug.mzML.SP_Human -profile medium --test_mode --test_folder /users/pr/qsample/test/atlas-test/test/2022MK006_FEAN_Comercial_001_01_1ug_mzML
-                        nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --rawfile /users/pr/qsample/test/dia-nn/test/2021MK017_EVBO_001_01_2ug.mzML.SP_Human -profile medium --test_mode --test_folder /users/pr/qsample/test/atlas-test/test/2022MK006_FEAN_Comercial_001_01_1ug_raw
+                        nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --rawfile /users/pr/qsample/test/atlas-diann/test/2022MK006_FEAN_Comercial_001_01_1ug.mzML.SP_Human -profile medium --test_mode --test_folder /users/pr/qsample/test/atlas-test/test/2022MK006_FEAN_Comercial_001_01_1ug_raw
                            
                 fi
 
