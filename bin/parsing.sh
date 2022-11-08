@@ -17,22 +17,6 @@ get_num_peptidoform_sites(){
  xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | grep -o $2 | wc -l
 }
 
-get_num_peptidoform_modif_phospho(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,"(Phospho)")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
-}
-
-get_num_peptidoform_modif_histones(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,".(Phenylisocyanate)") or contains(@sequence,"K(Propionyl)") or contains(@sequence,".(Propionyl)") or contains(@sequence,"K(Dimethyl)") or contains(@sequence,"K(Trimethyl)") or contains(@sequence,"K(Acetyl)") or contains(@sequence,"K(Crotonaldehyde)")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
-}
-
-get_num_peptidoform_modif_silac(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,"R(Label:13C(6)15N(4))") or contains(@sequence,"K(Label:13C(6)15N(2))")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
-}
-
-get_num_peptidoform_modif_tmt(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@sequence,"K(TMT6plex)") or contains(@sequence,".(TMT6plex)")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
-}
-
 get_num_charges(){
  xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@charge,"'$2'")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
 }

@@ -14,7 +14,7 @@ if [[ $1 = "test" ]]; then
     echo "[INFO] Running in test mode..."
     TEST_MODE=true
     TEST_SUBFOLDER="test"
-    WF_ROOT_FOLDER=/users/pr/qsample/atlas/test/test_folder_here
+    WF_ROOT_FOLDER=/users/pr/qsample/test/test_folder_here
 
     if [[ $2 = "fast" ]]; then
     	TEST_FILENAME="2022ZZ999_QC01_DDA_test.raw.SP_Bovine"
@@ -180,11 +180,7 @@ if [ "$TEST_MODE" = true ] ; then
                         nextflow run $WF_ROOT_FOLDER/"dia.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER 
                elif [[ $2 = "diann" ]]; then
                         echo "[INFO] Running DIA-NN test, please do not stop this process..."
-                        #nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                        #nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --rawfile /users/pr/qsample/test/atlas-test/test/2021MK017_EVBO_003_01_2ug.raw.SP_Human -profile medium --test_mode --test_folder /users/pr/qsample/test/atlas-test/test/2021MK017_EVBO_003_01_2ug_raw
-                        #nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --rawfile /users/pr/qsample/test/atlas-test/test/2021MK017_EVBO_003_01_2ug.mzML.SP_Human -profile medium --test_mode --test_folder /users/pr/qsample/test/atlas-test/test/2021MK017_EVBO_003_01_2ug_mzML
-                        #nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --rawfile /users/pr/qsample/test/atlas-test/test/2022MK006_FEAN_Comercial_001_01_1ug.mzML.SP_Human -profile medium --test_mode --test_folder /users/pr/qsample/test/atlas-test/test/2022MK006_FEAN_Comercial_001_01_1ug_mzML
-                        nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --rawfile /users/pr/qsample/test/atlas-diann/test/2022MK006_FEAN_Comercial_001_01_1ug.mzML.SP_Human -profile medium --test_mode --test_folder /users/pr/qsample/test/atlas-test/test/2022MK006_FEAN_Comercial_001_01_1ug_raw
+                        nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
                            
                 fi
 
