@@ -14,7 +14,7 @@ get_num_peptidoforms(){
 }
 
 get_num_peptidoform_sites(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | grep $2 | wc -l
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | grep -o $2 | wc -l
 }
 
 get_num_peptidoform_modif_phospho(){
