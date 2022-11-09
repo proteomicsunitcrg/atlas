@@ -10,15 +10,15 @@ get_num_prot_groups(){
 # "peptidoform" as defined as https://arxiv.org/pdf/2109.11352.pdf
 
 get_num_peptidoforms(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | wc -l
 }
 
 get_num_peptidoform_sites(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | grep -o $2 | wc -l
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | grep -o $2 | wc -l
 }
 
 get_num_charges(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@charge,"'$2'")]' $1 | grep -Pio '.*sequence="\K[^"]*' | uniq -u | wc -l
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@charge,"'$2'")]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | wc -l
 }
 
 get_mzml_param_by_cv(){
@@ -32,7 +32,7 @@ get_peptidoform_miscleavages_counts(){
  curr_dir=$(pwd)
  basename=$(basename $curr_dir/$idxml_file | cut -f 1 -d '.')
 
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $curr_dir/$idxml_file | grep -Pio '.*sequence="\K[^"]*' | uniq -u > $curr_dir/$basename.seq
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $curr_dir/$idxml_file | grep -Pio '.*sequence="\K[^"]*' | sort -u > $curr_dir/$basename.seq
 
  lines=$(cat $curr_dir/$basename.seq)
 
