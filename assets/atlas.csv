@@ -13,18 +13,18 @@ ZZ,main,Test,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',comet,small,
 MP,main,PhosphoLFQ,'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)',0.5,Da,7,ppm,3,'','',comet,big,true
 MA,main,PTMpilot,'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)',0.5,Da,7,ppm,3,'','',comet,big,true
 MB,main,PTMexperiment,'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)',0.5,Da,7,ppm,3,'','',comet,big,true
-LC,main,SilacCheck,'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)' 'Label:13C(6) (K)' 'Label:13C(6) (R)',0.5,Da,7,ppm,3,'','',comet,big,true
-LP,main,SilacPhospho,'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)' 'Label:13C(6) (K)' 'Label:13C(6) (R)',0.5,Da,7,ppm,3,'','',comet,big,true
-LQ,main,SilacProteome,'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)' 'Label:13C(6) (K)' 'Label:13C(6) (R)',0.5,Da,7,ppm,3,'','',comet,big,true
-LU,main,SilacUltra,'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)' 'Label:13C(6) (K)' 'Label:13C(6) (R)',0.5,Da,7,ppm,3,'','',comet,big,true
+LC,main,SilacCheck,'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)',0.5,Da,7,ppm,3,'','',comet,big,true
+LP,main,SilacPhospho,'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)',0.5,Da,7,ppm,3,'','',comet,big,true
+LQ,main,SilacProteome,'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)',0.5,Da,7,ppm,3,'','',comet,big,true
+LU,main,SilacUltra,'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)',0.5,Da,7,ppm,3,'','',comet,big,true
 MH,main,PtmHistonesPilot,'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)',0.02,Da,7,ppm,3,'','',mascot,medium,true
 MZ,main,PtmHistonesExperiment,'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)',0.02,Da,7,ppm,3,'','',mascot,medium,true
 MW,main,PrmMethod,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,7,ppm,3,'','',comet,small,true
 MT,main,PrmExperiment,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,7,ppm,3,'','',comet,small,true
 LT,main,TmtQuantitation,'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)',0.5,Da,7,ppm,3,'','',comet,big,true
 LF,main,TmtUltra,'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)',0.5,Da,7,ppm,3,'','',comet,big,true
-MK,dia,DIA,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,10,ppm,1,'','','',medium,false
-QCDI,dia,DIAQC,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,10,ppm,1,/users/pr/qsample/diaqc-output,true,'',medium,false
+MK,dia,DIA,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,10,ppm,1,'','',comet,medium,false
+QCDI,dia,DIAQC,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,10,ppm,1,/users/pr/qsample/diaqc-output,true,comet,medium,false
 QCHL,main,HistonesQC,'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)',0.5,Da,10,ppm,1,/users/pr/qsample/qchl-output,'',mascot,medium,false
 QCGL,main,InGel,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',comet,small,false
 QCDL,main,InSolution,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',comet,small,false
