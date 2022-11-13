@@ -14,13 +14,13 @@ if [[ $1 = "test" ]]; then
     echo "[INFO] Running in test mode..."
     TEST_MODE=true
     TEST_SUBFOLDER="test"
-    WF_ROOT_FOLDER=/users/pr/qsample/test/test_folder_here
+    WF_ROOT_FOLDER=/users/pr/qsample/test/atlas-qcdi
 
     if [[ $2 = "fast" ]]; then
     	TEST_FILENAME="2022MQ999_QC01_DDA_test.raw.SP_Bovine"
     	TEST_FILE_REMOTE="https://www.dropbox.com/s/z1xh8wkyltjqkne/"$TEST_FILENAME
-    	NUM_PROTS_REF="0"
-    	NUM_PEPTD_REF="0"
+    	NUM_PROTS_REF="72"
+    	NUM_PEPTD_REF="130"
     elif [[ $2 = "dda" ]]; then
     	TEST_FILENAME="2022MQ999_QC02_DDA_test.raw.SP_Human"
         TEST_FILE_REMOTE="https://www.dropbox.com/s/xodjur6dryiw34h/"$TEST_FILENAME
@@ -37,10 +37,10 @@ if [[ $1 = "test" ]]; then
         NUM_PROTS_REF="0"
         NUM_PEPTD_REF="0"
     elif [[ $2 = "diann" ]]; then
-        TEST_FILENAME="2022MK999_DIA_test.raw.SP_Human"
-        TEST_FILE_REMOTE="https://www.dropbox.com/s/d0foqea6bzpdook/"$TEST_FILENAME
-        NUM_PROTS_REF="0"
-        NUM_PEPTD_REF="0"
+        TEST_FILENAME="2022MK999_DIANN_test.raw.SP_Human"
+        TEST_FILE_REMOTE="https://www.dropbox.com/s/1bgxllnp15xxz22/"$TEST_FILENAME
+        NUM_PROTS_REF="391"
+        NUM_PEPTD_REF="2613"
     fi
 
 

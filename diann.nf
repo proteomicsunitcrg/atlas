@@ -2,14 +2,10 @@
 
 nextflow.enable.dsl=2
 
-include { ThermoRawFileParser as trfp_pr; FileConverter_mzml2mzxml as fileconverter_mzml2mzxml_pr; FileConverter_mgf2mzml as fileconverter_mgf2mzml_pr } from './modules/conversion/conversion'
-include { dia_umpire as dia_umpire_pr; diann as diann_pr } from './modules/dia/dia'
-include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter as comet_adapter_pr } from './modules/search_engine/search_engine'
-include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './modules/identification/identification_lfq'
-include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './modules/quantification/quantification_lfq'
-include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr} from './modules/report/report_qsample'
-include { output_folder_diaqc as output_folder_diaqc_pr; output_folder_test as output_folder_test_pr} from './modules/report/report_output_folder'
-
+include { ThermoRawFileParserDiann as trfp_diann_pr } from './modules/conversion/conversion'
+include { diann as diann_pr } from './modules/dia/dia'
+include { insertFileToQSample as insertFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr} from './modules/report/report_qsample'
+include { output_folder_diann_test as output_folder_diann_test_pr} from './modules/report/report_output_folder'
 
 Channel
   .fromPath(params.rawfile)
@@ -56,16 +52,18 @@ Channel
 params.params_file
 
 workflow {
-  
-   //DIA: 
-   diann_pr(rawfile_ch)
+ 
+   //Conversion:
+   trfp_diann_pr(rawfile_ch)
+
+   //DIA-NN: 
+   diann_pr(trfp_diann_pr.out)
 
    //Report to QSample database:
-   //insertFileToQSample_pr(rawfile_ch,trfp_pr.out)
-   //insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,qccalc_pr.out,trfp_pr.out)
-   //insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
+   insertFileToQSample_pr(rawfile_ch,trfp_diann_pr.out)
+   insertDIANNDataToQSample_pr(insertFileToQSample_pr.out,diann_pr.out,trfp_diann_pr.out)
+
+   //Test output folder: 
+   output_folder_diann_test_pr(diann_pr.out)
   
-   //Report to output folder: 
-   //output_folder_diaqc_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,qccalc_pr.out,trfp_pr.out)   
-   //output_folder_test_pr(protinf_pr.out)
 }

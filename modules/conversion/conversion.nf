@@ -13,6 +13,27 @@ process ThermoRawFileParser {
     """
 }
 
+process ThermoRawFileParserDiann {
+    label 'thermoconvert'
+    tag  { "${filename}" }
+
+    input:
+    tuple val(filename), val(basename), val(path)
+
+    output:
+    file("*.mzML.*")
+
+    shell:
+    '''
+    path_sh=!{path}
+    filename_sh=!{filename}
+    organism_sh=$(echo ${filename_sh##*.})
+    ThermoRawFileParser.sh -i=$path_sh/$filename_sh -f=2 -o ./
+    basename_sh=!{basename}
+    mv $basename_sh.mzML $basename_sh.mzML.$organism_sh  
+    '''
+}
+
 process FileConverter_mzml2mzxml {
     label 'openms'
     tag  { "${filename}" }

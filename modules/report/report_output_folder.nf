@@ -30,6 +30,31 @@ process output_folder_test {
         ''' 
 }
 
+process output_folder_diann_test {
+
+        tag { "test" }
+
+        publishDir params.test_folder, mode: 'copy', overwrite: true
+
+        input:
+        file(tsv_file)
+
+        output:
+        path '*num*'
+
+        when:
+        params.test_mode == true
+
+        shell:
+        '''
+        # Parsings:
+        num_prots=$(source !{binfolder}/parsing_diann.sh; get_num_prot_groups_diann !{tsv_file})
+        num_peptd=$(source !{binfolder}/parsing_diann.sh; get_num_peptidoforms_diann !{tsv_file})
+        basename_sh=$(basename !{tsv_file} | cut -f 1 -d '.')
+        echo $num_prots > $basename_sh".num_prots"
+        echo $num_peptd > $basename_sh".num_peptd"
+        '''
+}
 
 process output_folder_diaqc {
 

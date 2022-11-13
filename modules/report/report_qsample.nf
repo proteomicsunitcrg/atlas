@@ -111,19 +111,61 @@ process insertDataToQSample {
         total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
  
         # Checks: 
-        #echo $miscleavages_0 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.miscleavages_0
-        #echo $miscleavages_1 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.miscleavages_1
-        #echo $miscleavages_2 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.miscleavages_2
-        #echo $miscleavages_3 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.miscleavages_3
-        #echo $charge_2 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.charge_2
-        #echo $charge_3 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.charge_3
-        #echo $charge_4 > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.charge_4
-        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{basename_mzml}.num_peptd.insertDataToQSample_pr
         echo $total_base_peak_intenisty > total_base_peak_intenisty
         echo $total_tic > total_tic
         echo $num_prots > num_prots
         echo $charge_2 > charge_2
         echo $charge_3 > charge_3 
+        echo $charge_4 > charge_4
+
+        # QCloud2 API posts:
+        checksum=$(cat !{checksum})
+        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{qcloud2_api_signin} !{qcloud2_api_user} !{qcloud2_api_pass})
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "3","value": "'$charge_2'"},{"contextSource": "4","value": "'$charge_3'"},{"contextSource": "5","value": "'$charge_4'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "7","value": "'$total_base_peak_intenisty'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "19","value": "'$total_tic'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "20","value": "'$miscleavages_0'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "21","value": "'$miscleavages_1'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "22","value": "'$miscleavages_2'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "23","value": "'$miscleavages_3'"}]}]}'
+
+        '''
+}
+
+process insertDIANNDataToQSample {
+
+        tag { "${tsv_file}" }
+        label 'clitools'
+
+        input:
+        file(checksum)
+        file(tsv_file)
+        file(mzml_file)
+
+        shell:
+        '''
+        # Parsings:
+        num_prots=$(source !{binfolder}/parsing_diann.sh; get_num_prot_groups_diann !{tsv_file})
+        num_peptd=$(source !{binfolder}/parsing_diann.sh; get_num_peptidoforms_diann !{tsv_file})
+
+        source !{binfolder}/parsing_diann.sh; get_peptidoform_miscleavages_counts_diann !{tsv_file}
+        miscleavages_0=$(cat *.miscleavages.0)
+        miscleavages_1=$(cat *.miscleavages.1)
+        miscleavages_2=$(cat *.miscleavages.2)
+        miscleavages_3=$(cat *.miscleavages.3)
+        charge_2=$(source !{binfolder}/parsing_diann.sh; get_num_charges_diann !{tsv_file} 2)
+        charge_3=$(source !{binfolder}/parsing_diann.sh; get_num_charges_diann !{tsv_file} 3)
+        charge_4=$(source !{binfolder}/parsing_diann.sh; get_num_charges_diann !{tsv_file} 4)
+        total_base_peak_intenisty=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000505)
+        total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
+
+        # Checks:
+        echo $total_base_peak_intenisty > total_base_peak_intenisty
+        echo $total_tic > total_tic
+        echo $num_prots > num_prots
+        echo $charge_2 > charge_2
+        echo $charge_3 > charge_3
         echo $charge_4 > charge_4
 
         # QCloud2 API posts:
