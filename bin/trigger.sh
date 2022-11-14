@@ -12,7 +12,7 @@ PROD_MODE=false
 if [[ $1 = "test" ]]; then
 
     echo "[INFO] Running in test mode..."
-    source ../conf/trigger_test.cf
+    source $3/trigger_test.cf
 
     if [[ $2 = "fast" ]]; then
     	TEST_FILENAME=$TEST_FILENAME_FAST
@@ -44,15 +44,15 @@ if [[ $1 = "test" ]]; then
 
 elif [[ $1 = "debug" ]]; then
     echo "[INFO] Running in debug mode..."
-    source ../conf/trigger_debug.cf
+    source $3/trigger_debug.cf
     if [[ $2 = "fake" ]]; then
       DEBUG_MODE_FAKE=true
     fi
 
-else
+elif [[ $1 = "prod" ]]; then
 
     echo "[INFO] Running in production mode..."
-    source ../conf/trigger_prod.cf
+    source $2/trigger_prod.cf
 fi
 
 
