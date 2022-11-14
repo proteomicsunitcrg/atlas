@@ -30,10 +30,15 @@ if [[ $1 = "test" ]]; then
         NUM_PROTS_REF=$NUM_PROTS_REF_SILAC
         NUM_PEPTD_REF=$NUM_PEPTD_REF_SILAC
     elif [[ $2 = "diann" ]]; then
-        TEST_FILENAME=$TEST_FILENAME_DIA
-        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_DIA
-        NUM_PROTS_REF=$NUM_PROTS_REF_DIA
-        NUM_PEPTD_REF=$NUM_PEPTD_REF_DIA
+        TEST_FILENAME=$TEST_FILENAME_DIANN
+        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_DIANN
+        NUM_PROTS_REF=$NUM_PROTS_REF_DIANN
+        NUM_PEPTD_REF=$NUM_PEPTD_REF_DIANN
+    elif [[ $2 = "diaumpire" ]]; then
+        TEST_FILENAME=$TEST_FILENAME_DIAUMPIRE
+        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_DIAUMPIRE
+        NUM_PROTS_REF=$NUM_PROTS_REF_DIAUMPIRE
+        NUM_PEPTD_REF=$NUM_PEPTD_REF_DIAUMPIRE
     fi
 
 
@@ -150,9 +155,11 @@ if [ "$TEST_MODE" = true ] ; then
                         echo "[INFO] Running SILAC big test, please do not stop this process..."
                         nextflow run $WF_ROOT_FOLDER/"main.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)' 'Label:13C(6) (K)' 'Label:13C(6) (R)'" -with-tower --fragment_mass_tolerance "0.5" --fragment_error_units "Da" --precursor_mass_tolerance "7" --precursor_error_units "ppm" --missed_cleavages "3" --search_engine "comet" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile big --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
                elif [[ $2 = "diann" ]]; then
-                        echo "[INFO] Running DIA test, please do not stop this process..."
+                        echo "[INFO] Running DIA-NN test, please do not stop this process..."
                         nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                           
+                elif [[ $2 = "diaumpire" ]]; then
+                        echo "[INFO] Running DIA UMPIRE test, please do not stop this process..."
+                        nextflow run $WF_ROOT_FOLDER/"diaumpire.nf" --search_engine "comet" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER           
                 fi
 
          	FILE_BASENAME=`basename $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME |  cut -f 1 -d '.'`
