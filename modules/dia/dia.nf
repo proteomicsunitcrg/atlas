@@ -4,7 +4,7 @@ params_file          = params.params_file
 lib_folder           = params.lib_folder
 
 //DIA-NN params: 
-databases_folder         = params.databases_folder
+databases_folder     = params.databases_folder
 
 process dia_umpire {
     label 'diaumpire'
@@ -45,9 +45,10 @@ process diann {
     organism_sh=$(echo ${filename_sh##*.})
 
     # Load fasta file:
-    fastafile=$(basename /users/pr/qsample/databases/${organism_sh}/current/*.fasta)
+    databases_folder_sh=!{databases_folder}
+    fastafile=$(basename ${databases_folder_sh}/${organism_sh}/current/*.fasta)
     fastafilename=$(echo ${fastafile%.*})
-    fasta_orig_path=/users/pr/qsample/databases/${organism_sh}/current/${fastafile}
+    fasta_orig_path=${databases_folder_sh}/${organism_sh}/current/${fastafile}
     cp $fasta_orig_path .
     echo "Fasta complete filename: "$fastafile
 
@@ -62,7 +63,6 @@ process diann {
 
     echo "Running DIA-NN command line..."
     /usr/diann/1.8/./diann-1.8  --f "$diann_filename"  --lib "" --threads 5 --verbose 10 --out "$output_file" --qvalue 0.01 --gen-spec-lib --predictor --fasta ${fastafile} --fasta-search --min-fr-mz 350 --max-fr-mz 1850 --met-excision --cut K*,R* --missed-cleavages 1 --min-pep-len 7 --max-pep-len 30 --min-pr-mz 500 --max-pr-mz 900 --min-pr-charge 1 --max-pr-charge 4 --unimod4 --var-mods 1 --var-mod UniMod:35,15.994915,M --smart-profiling --pg-level 1 --peak-center --no-ifs-removal --relaxed-prot-inf
-
 
     '''
 }

@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 ##############################
-################HARDCODES##### 
+################RUN MODES##### 
 ##############################
 
 TEST_MODE=false
@@ -12,69 +12,46 @@ PROD_MODE=false
 if [[ $1 = "test" ]]; then
 
     echo "[INFO] Running in test mode..."
-    TEST_MODE=true
-    TEST_SUBFOLDER="test"
-    WF_ROOT_FOLDER=/users/pr/qsample/test/atlas-qcdi
+    source ../conf/trigger_test.cf
 
     if [[ $2 = "fast" ]]; then
-    	TEST_FILENAME="2022MQ999_QC01_DDA_test.raw.SP_Bovine"
-    	TEST_FILE_REMOTE="https://www.dropbox.com/s/z1xh8wkyltjqkne/"$TEST_FILENAME
-    	NUM_PROTS_REF="72"
-    	NUM_PEPTD_REF="130"
+    	TEST_FILENAME=$TEST_FILENAME_FAST
+    	TEST_FILE_REMOTE=$TEST_FILE_REMOTE_FAST
+    	NUM_PROTS_REF=$NUM_PROTS_REF_FAST
+    	NUM_PEPTD_REF=$NUM_PEPTD_REF_FAST
     elif [[ $2 = "dda" ]]; then
-    	TEST_FILENAME="2022MQ999_QC02_DDA_test.raw.SP_Human"
-        TEST_FILE_REMOTE="https://www.dropbox.com/s/xodjur6dryiw34h/"$TEST_FILENAME
-        NUM_PROTS_REF="0"
-        NUM_PEPTD_REF="0"
+    	TEST_FILENAME=$TEST_FILENAME_DDA
+        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_DDA
+        NUM_PROTS_REF=$NUM_PROTS_REF_DDA
+        NUM_PEPTD_REF=$NUM_PEPTD_REF_DDA
     elif [[ $2 = "silac" ]]; then
-        TEST_FILENAME="2022LC999_SILAC_test.raw.SP_Human"
-        TEST_FILE_REMOTE="https://www.dropbox.com/s/ttp0llvqm2yupb4/"$TEST_FILENAME
-        NUM_PROTS_REF="0"
-        NUM_PEPTD_REF="0"
-    elif [[ $2 = "dia" ]]; then
-        TEST_FILENAME="2022MK999_DIA_test.raw.SP_Human"
-        TEST_FILE_REMOTE="https://www.dropbox.com/s/d0foqea6bzpdook/"$TEST_FILENAME
-        NUM_PROTS_REF="0"
-        NUM_PEPTD_REF="0"
+        TEST_FILENAME=$TEST_FILENAME_SILAC
+        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_SILAC
+        NUM_PROTS_REF=$NUM_PROTS_REF_SILAC
+        NUM_PEPTD_REF=$NUM_PEPTD_REF_SILAC
     elif [[ $2 = "diann" ]]; then
-        TEST_FILENAME="2022MK999_DIANN_test.raw.SP_Human"
-        TEST_FILE_REMOTE="https://www.dropbox.com/s/1bgxllnp15xxz22/"$TEST_FILENAME
-        NUM_PROTS_REF="391"
-        NUM_PEPTD_REF="2613"
+        TEST_FILENAME=$TEST_FILENAME_DIA
+        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_DIA
+        NUM_PROTS_REF=$NUM_PROTS_REF_DIA
+        NUM_PEPTD_REF=$NUM_PEPTD_REF_DIA
     fi
 
 
 elif [[ $1 = "debug" ]]; then
-
     echo "[INFO] Running in debug mode..."
-    DEBUG_MODE=true
+    source ../conf/trigger_debug.cf
     if [[ $2 = "fake" ]]; then
       DEBUG_MODE_FAKE=true
     fi
-    WF_ROOT_FOLDER=/users/pr/qsample/atlas
-    LOGS_FOLDER=/users/pr/qsample/test/logs
-    ORIGIN_FOLDER=/users/pr/qsample/test/toy-dataset/files_to_process
-    TIME=-7
-    ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
-    ATLAS_CSV=$WF_ROOT_FOLDER/assets/atlas.csv
-    SEC_REACT_WF=$WF_ROOT_FOLDER/secreact.nf
 
 else
 
     echo "[INFO] Running in production mode..."
-    PROD_MODE=true
-    LOGS_FOLDER=/users/pr/qsample/logs
-    ORIGIN_FOLDER=/users/pr/backuppr/scratch
-    TIME=-7
-    ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
-    ATLAS_CSV=/users/pr/qsample/atlas/assets/atlas.csv
-    SEC_REACT_WF=/users/pr/qsample/atlas/secreact.nf
-    WF_ROOT_FOLDER=/users/pr/qsample/atlas
-
+    source ../conf/trigger_prod.cf
 fi
 
 
-################HARCODES END
+################RUN MODES END
 
 
 ##################################
@@ -169,17 +146,11 @@ if [ "$TEST_MODE" = true ] ; then
                 elif [[ $2 = "dda" ]]; then
                  	echo "[INFO] Running DDA test, please do not stop this process..."
                 	nextflow run $WF_ROOT_FOLDER/"main.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --fragment_mass_tolerance "0.5" --fragment_error_units "Da" --precursor_mass_tolerance "7" --precursor_error_units "ppm" --missed_cleavages "3" --search_engine "comet" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                elif [[ $2 = "dia" ]]; then
-                        echo "[INFO] Running DIA test, please do not stop this process..."
-                        nextflow run $WF_ROOT_FOLDER/"dia.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --fragment_mass_tolerance "0.02" --fragment_error_units "Da" --precursor_mass_tolerance "10" --precursor_error_units "ppm" --missed_cleavages "1" --search_engine "mascot" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
                 elif [[ $2 = "silac" ]]; then
                         echo "[INFO] Running SILAC big test, please do not stop this process..."
                         nextflow run $WF_ROOT_FOLDER/"main.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)' 'Label:13C(6) (K)' 'Label:13C(6) (R)'" -with-tower --fragment_mass_tolerance "0.5" --fragment_error_units "Da" --precursor_mass_tolerance "7" --precursor_error_units "ppm" --missed_cleavages "3" --search_engine "comet" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile big --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                elif [[ $2 = "dia" ]]; then
-                        echo "[INFO] Running DIA UMPIRE test, please do not stop this process..."
-                        nextflow run $WF_ROOT_FOLDER/"dia.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER 
                elif [[ $2 = "diann" ]]; then
-                        echo "[INFO] Running DIA-NN test, please do not stop this process..."
+                        echo "[INFO] Running DIA test, please do not stop this process..."
                         nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
                            
                 fi
