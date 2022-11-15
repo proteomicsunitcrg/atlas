@@ -77,6 +77,33 @@ process insertWetlabFileToQSample {
         '''
 }
 
+process insertDIANNFileToQSample {
+        tag { "${mzml_file}" }
+
+        input:
+        tuple val(filename), val(basename), val(path)
+        tuple file(mzml_file)
+
+        output:
+        file("${filename}.checksum")
+
+        when:
+        filename =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL|QCHL).)*$/
+
+        shell:
+        '''
+        request_code=$(echo !{filename} | awk -F'[_.]' '{print $1}')
+        checksum=$(source !{binfolder}/utils.sh; get_checksum !{path} !{filename})
+        echo $checksum > !{filename}.checksum
+        creation_date=$(grep -Pio '.*startTimeStamp="\\K[^"]*' !{mzml_file} | sed 's/Z//g' | xargs -I{} date -d {} +"%Y-%m-%dT%T")
+        echo $creation_date > creation_date
+        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{qcloud2_api_signin} !{qcloud2_api_user} !{qcloud2_api_pass})
+        echo $access_token > acces_token
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_file}/$request_code -H "Content-Type: application/json" --data '{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
+        '''
+}
+
+
 process insertDataToQSample {
 
         tag { "${protinf_file}" }

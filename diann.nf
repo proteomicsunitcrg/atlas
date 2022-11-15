@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 include { ThermoRawFileParserDiann as trfp_diann_pr } from './modules/conversion/conversion'
 include { diann as diann_pr } from './modules/dia/dia'
-include { insertFileToQSample as insertFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr} from './modules/report/report_qsample'
+include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr} from './modules/report/report_qsample'
 include { output_folder_diann_test as output_folder_diann_test_pr} from './modules/report/report_output_folder'
 
 Channel
@@ -60,8 +60,8 @@ workflow {
    diann_pr(trfp_diann_pr.out)
 
    //Report to QSample database:
-   insertFileToQSample_pr(rawfile_ch,trfp_diann_pr.out)
-   insertDIANNDataToQSample_pr(insertFileToQSample_pr.out,diann_pr.out,trfp_diann_pr.out)
+   insertDIANNFileToQSample_pr(rawfile_ch,trfp_diann_pr.out)
+   insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out,trfp_diann_pr.out)
 
    //Test output folder: 
    output_folder_diann_test_pr(diann_pr.out)

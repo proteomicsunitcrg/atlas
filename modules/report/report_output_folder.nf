@@ -113,8 +113,11 @@ process output_folder_wetlab_phospho {
         checksum=$(cat !{checksum})
         num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
         num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
-        num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_peptidoform_modif_phospho !{protinf_file})
-     
+        num_mod_phospho_s=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "S(Phospho)")
+        num_mod_phospho_t=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "T(Phospho)")
+        num_mod_phospho_y=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "Y(Phospho)")
+        num_peptides_modif=$(echo "$num_mod_phospho_s+$num_mod_phospho_t+$num_mod_phospho_y" | bc -l)
+
         checksum=$(cat !{checksum})
         basename_sh=$(basename !{fileinfo_file} | cut -f 1 -d '.')
 
