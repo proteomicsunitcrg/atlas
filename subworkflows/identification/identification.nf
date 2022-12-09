@@ -7,6 +7,8 @@ decoy_string             = params.decoy_string
 decoy_string_position    = params.decoy_string_position
 missing_decoy_action     = params.missing_decoy_action
 unmatched_action         = params.unmatched_action
+aaa_max                  = params.aaa_max
+enzyme_specificity       = params.enzyme_specificity
 
 //FalseDiscoveryRate params:
 PSM                      = params.PSM
@@ -35,7 +37,7 @@ process PeptideIndexer {
     file("${search_engine_idxml_file.baseName}_peptideindexer.idXML")
 
     """
-    PeptideIndexer -aaa_max 0 -debug 1 -threads 4 -enzyme:specificity full -IL_equivalent -in ${search_engine_idxml_file} -out ${search_engine_idxml_file.baseName}_peptideindexer.idXML -write_protein_sequence -fasta ${fastafile_decoy} -decoy_string ${decoy_string} -decoy_string_position ${decoy_string_position} -unmatched_action ${unmatched_action} -missing_decoy_action ${missing_decoy_action} -write_protein_sequence
+    PeptideIndexer -aaa_max ${aaa_max} -enzyme:specificity ${enzyme_specificity} -IL_equivalent -in ${search_engine_idxml_file} -out ${search_engine_idxml_file.baseName}_peptideindexer.idXML -write_protein_sequence -fasta ${fastafile_decoy} -decoy_string ${decoy_string} -decoy_string_position ${decoy_string_position} -unmatched_action ${unmatched_action} -missing_decoy_action ${missing_decoy_action} -write_protein_sequence
     """
 }
 

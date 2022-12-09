@@ -1,23 +1,24 @@
 #!/bin/bash
 
-# Author : Roger Olivella
-# Created: 03/03/2021
-# Modif. : 21/09/2021, added number of output proteins
-
-# Usage: ./quantjson.sh 2021MQ001_MEGI_009_01_2ug.raw_ffm_idmapper_proteinquantifier.csv 21312ed1dfwfqfv test.json 100
-
 csvfile=$1
 checksum=$2
 output=$3
 num_prots=$4
+is_diann_file=$5
 
 #Remove 3 first rows: 
 sed -i '1,3d' $csvfile
 
 #List of all prots (TODO: parse accessions without pipes '|'): 
-all_prots=($(sort -r -g -k 5 -t $'\t' $csvfile | awk -F '\t' '{print $1}' | tr -d '"' | awk -F '|' '{print $2}'))
-all_descr=($(sort -r -g -k 5 -t $'\t' $csvfile | awk -F '\t' '{print $1}' | tr -d '"' | awk -F '|' '{print $3}'))
-all_abund=($(sort -r -g -k 5 -t $'\t' $csvfile | awk -F '\t' '{print $5}'))
+if [ "${5}" = true ]; then
+   all_prots=($(tail -n +2 $csvfile | sort -u -r -g -k 9 -t $'\t' | awk -F '\t' '{print $3}' | cut -d ";" -f1))
+   all_descr=($(tail -n +2 $csvfile | sort -u -r -g -k 9 -t $'\t' | awk -F '\t' '{print $5}' | cut -d ";" -f1))
+   all_abund=($(tail -n +2 $csvfile | sort -u -r -g -k 9 -t $'\t' | awk -F '\t' '{print $9}' | cut -d ";" -f1))
+else
+   all_prots=($(sort -r -g -k 5 -t $'\t' $csvfile | awk -F '\t' '{print $1}' | tr -d '"' | awk -F '|' '{print $2}'))
+   all_descr=($(sort -r -g -k 5 -t $'\t' $csvfile | awk -F '\t' '{print $1}' | tr -d '"' | awk -F '|' '{print $3}'))
+   all_abund=($(sort -r -g -k 5 -t $'\t' $csvfile | awk -F '\t' '{print $5}'))
+fi
 
 #Initialize counters: 
 count_prot=0

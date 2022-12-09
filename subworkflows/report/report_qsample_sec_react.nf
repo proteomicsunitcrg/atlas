@@ -81,16 +81,6 @@ process insertSecReactDataToQSample {
         percentage_pyro_glu=$(echo "$sec_react_pyro_glu/$num_peptd" | bc -l)
 
         #Check:
-        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec_total
-        #echo $sec_react_carbamyl_k > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.carbamyl_k
-        #echo $sec_react_carbamyl_n > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.carbamyl_n
-        #echo $sec_react_carbamyl_r > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.carbamyl_r
-        #echo $sec_react_deamidated_n > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.deamidated_n
-        #echo $sec_react_formyl_k > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.formyl_k
-        #echo $sec_react_formyl_n > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.formyl_n  
-        #echo $sec_react_formyl_s > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.formyl_s      
-        #echo $sec_react_formyl_t > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.formyl_t
-        #echo $sec_react_pyro_glu > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.sec_rec.pyro_glu
         echo $percentage_carbamyl_k > percentage_carbamyl_k
         echo $percentage_carbamyl_n_term > percentage_carbamyl_n_term
         echo $percentage_carbamyl_r > percentage_carbamyl_r

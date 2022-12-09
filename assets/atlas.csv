@@ -24,7 +24,7 @@ MT,main,PrmExperiment,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,7,ppm,3,'','',co
 LT,main,TmtQuantitation,'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)',0.5,Da,7,ppm,3,'','',comet,big,true
 LF,main,TmtUltra,'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)',0.5,Da,7,ppm,3,'','',comet,big,true
 MK,diann,DIANN,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,10,ppm,1,'','',comet,medium,false
-QCDI,diaumpire,DIAQC,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,10,ppm,1,/users/pr/qsample/diaqc-output,true,comet,medium,false
+QCDI,diann,DIAQC,'Oxidation (M)' 'Acetyl (N-term)',0.02,Da,10,ppm,1,/users/pr/qsample/diaqc-output,true,comet,medium,false
 QCHL,main,HistonesQC,'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)',0.5,Da,10,ppm,1,/users/pr/qsample/qchl-output,'',comet,medium,false
 QCGL,main,InGel,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',comet,small,false
 QCDL,main,InSolution,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',comet,small,false

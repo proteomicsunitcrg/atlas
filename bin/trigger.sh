@@ -39,6 +39,16 @@ if [[ $1 = "test" ]]; then
         TEST_FILE_REMOTE=$TEST_FILE_REMOTE_DIAUMPIRE
         NUM_PROTS_REF=$NUM_PROTS_REF_DIAUMPIRE
         NUM_PEPTD_REF=$NUM_PEPTD_REF_DIAUMPIRE
+    elif [[ $2 = "insolution" ]]; then 
+        TEST_FILENAME=$TEST_FILENAME_INSOLUTION
+        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_INSOLUTION
+        NUM_PROTS_REF=$NUM_PROTS_REF_INSOLUTION
+        NUM_PEPTD_REF=$NUM_PEPTD_REF_INSOLUTION
+    elif [[ $2 = "qcdi" ]]; then
+        TEST_FILENAME=$TEST_FILENAME_QCDI
+        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_QCDI
+        NUM_PROTS_REF=$NUM_PROTS_REF_QCDI
+        NUM_PEPTD_REF=$NUM_PEPTD_REF_QCDI
     fi
 
 
@@ -154,12 +164,18 @@ if [ "$TEST_MODE" = true ] ; then
                 elif [[ $2 = "silac" ]]; then
                         echo "[INFO] Running SILAC big test, please do not stop this process..."
                         nextflow run $WF_ROOT_FOLDER/"main.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)' 'Label:13C(6) (K)' 'Label:13C(6) (R)'" -with-tower --fragment_mass_tolerance "0.5" --fragment_error_units "Da" --precursor_mass_tolerance "7" --precursor_error_units "ppm" --missed_cleavages "3" --search_engine "comet" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile big --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-               elif [[ $2 = "diann" ]]; then
+                elif [[ $2 = "diann" ]]; then
                         echo "[INFO] Running DIA-NN test, please do not stop this process..."
                         nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
                 elif [[ $2 = "diaumpire" ]]; then
                         echo "[INFO] Running DIA UMPIRE test, please do not stop this process..."
-                        nextflow run $WF_ROOT_FOLDER/"diaumpire.nf" --search_engine "comet" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER           
+                        nextflow run $WF_ROOT_FOLDER/"diaumpire.nf" --search_engine "comet" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER          
+                elif [[ $2 = "insolution" ]]; then
+                        echo "[INFO] Running INSOLUTION test, please do not stop this process..."
+                        nextflow run $WF_ROOT_FOLDER/"main.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --fragment_mass_tolerance "0.5" --fragment_error_units "Da" --precursor_mass_tolerance "7" --precursor_error_units "ppm" --missed_cleavages "3" --search_engine "comet" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile small --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
+                elif [[ $2 = "qcdi" ]]; then
+                        echo "[INFO] Running QCDI test, please do not stop this process..."
+                        nextflow run $WF_ROOT_FOLDER/"diann.nf" -with-tower --var_modif "'Oxidation (M)' 'Acetyl (N-term)" --fragment_mass_tolerance 0.02 --fragment_error_units Da --precursor_mass_tolerance 10 --precursor_error_units ppm --missed_cleavages 1 --output_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER --instrument_folder orbitrap_lumos1 --search_engine comet -profile medium --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
                 fi
 
          	FILE_BASENAME=`basename $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME |  cut -f 1 -d '.'`

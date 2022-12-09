@@ -2,13 +2,13 @@
 
 nextflow.enable.dsl=2
 
-include { ThermoRawFileParser as trfp_pr; FileConverter_mzml2mzxml as fileconverter_mzml2mzxml_pr; FileConverter_mgf2mzml as fileconverter_mgf2mzml_pr } from './modules/conversion/conversion'
-include { dia_umpire as dia_umpire_pr } from './modules/dia/dia'
-include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter as comet_adapter_pr } from './modules/search_engine/search_engine'
-include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './modules/identification/identification_lfq'
-include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './modules/quantification/quantification_lfq'
-include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr} from './modules/report/report_qsample'
-include { output_folder_diaqc as output_folder_diaqc_pr; output_folder_test as output_folder_test_pr} from './modules/report/report_output_folder'
+include { ThermoRawFileParser as trfp_pr; FileConverter_mzml2mzxml as fileconverter_mzml2mzxml_pr; FileConverter_mgf2mzml as fileconverter_mgf2mzml_pr } from './subworkflows/conversion/conversion'
+include { dia_umpire as dia_umpire_pr } from './subworkflows/dia/dia'
+include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter as comet_adapter_pr } from './subworkflows/search_engine/search_engine'
+include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './subworkflows/identification/identification'
+include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
+include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr} from './subworkflows/report/report_qsample'
+include { output_folder_diaqc as output_folder_diaqc_pr; output_folder_test as output_folder_test_pr} from './subworkflows/report/report_output_folder'
 
 
 Channel
