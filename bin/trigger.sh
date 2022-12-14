@@ -1,73 +1,60 @@
 #!/bin/bash -l
 
-##############################
-################RUN MODES##### 
-##############################
+# EXAMPLES: 
+#./bin/trigger.sh crg prod /users/pr/qsample/atlas/assets 
+#./bin/trigger.sh crg test /users/pr/qsample/test/atlas-last/assets BSA 
 
-TEST_MODE=false
-DEBUG_MODE=false
-DEBUG_MODE_FAKE=false
-PROD_MODE=false
+## INPUT PARAMS
 
-if [[ $1 = "test" ]]; then
+die () {
+    echo >&2 "$@"
+    exit 1
+}
 
-    echo "[INFO] Running in test mode..."
-    source $3/trigger_test.cf
+LAB=$1
+MODE=$2
+ASSETS_FOLDER=$3
+DATA=$4
 
-    if [[ $2 = "fast" ]]; then
-    	TEST_FILENAME=$TEST_FILENAME_FAST
-    	TEST_FILE_REMOTE=$TEST_FILE_REMOTE_FAST
-    	NUM_PROTS_REF=$NUM_PROTS_REF_FAST
-    	NUM_PEPTD_REF=$NUM_PEPTD_REF_FAST
-    elif [[ $2 = "dda" ]]; then
-    	TEST_FILENAME=$TEST_FILENAME_DDA
-        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_DDA
-        NUM_PROTS_REF=$NUM_PROTS_REF_DDA
-        NUM_PEPTD_REF=$NUM_PEPTD_REF_DDA
-    elif [[ $2 = "silac" ]]; then
-        TEST_FILENAME=$TEST_FILENAME_SILAC
-        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_SILAC
-        NUM_PROTS_REF=$NUM_PROTS_REF_SILAC
-        NUM_PEPTD_REF=$NUM_PEPTD_REF_SILAC
-    elif [[ $2 = "diann" ]]; then
-        TEST_FILENAME=$TEST_FILENAME_DIANN
-        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_DIANN
-        NUM_PROTS_REF=$NUM_PROTS_REF_DIANN
-        NUM_PEPTD_REF=$NUM_PEPTD_REF_DIANN
-    elif [[ $2 = "diaumpire" ]]; then
-        TEST_FILENAME=$TEST_FILENAME_DIAUMPIRE
-        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_DIAUMPIRE
-        NUM_PROTS_REF=$NUM_PROTS_REF_DIAUMPIRE
-        NUM_PEPTD_REF=$NUM_PEPTD_REF_DIAUMPIRE
-    elif [[ $2 = "insolution" ]]; then 
-        TEST_FILENAME=$TEST_FILENAME_INSOLUTION
-        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_INSOLUTION
-        NUM_PROTS_REF=$NUM_PROTS_REF_INSOLUTION
-        NUM_PEPTD_REF=$NUM_PEPTD_REF_INSOLUTION
-    elif [[ $2 = "qcdi" ]]; then
-        TEST_FILENAME=$TEST_FILENAME_QCDI
-        TEST_FILE_REMOTE=$TEST_FILE_REMOTE_QCDI
-        NUM_PROTS_REF=$NUM_PROTS_REF_QCDI
-        NUM_PEPTD_REF=$NUM_PEPTD_REF_QCDI
-    fi
+## PARSE CSV FILENAMES
+CSV_FILENAME_RUN_MODES=$(ls $3 | grep $LAB | grep "run_modes")
+CSV_FILENAME_RUN_MODES=$3/$CSV_FILENAME_RUN_MODES
 
+## PARSE RUN MODES VARIABLES
+if [[ $2 = "prod" ]]; then PROD_MODE="true"; elif [[ $2 = "test" ]]; then TEST_MODE="true"; fi
+ORIGIN_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f2)
+WF_ROOT_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f3)
+ATLAS_RUNS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f4)
+LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f5)
+NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f6)
+SEC_REACT_WF=$WF_ROOT_FOLDER"/workflows/secreact.nf"
+METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
+METHODS_CSV=$3/$METHODS_CSV
 
-elif [[ $1 = "debug" ]]; then
-    echo "[INFO] Running in debug mode..."
-    source $3/trigger_debug.cf
-    if [[ $2 = "fake" ]]; then
-      DEBUG_MODE_FAKE=true
-    fi
+## MANAGE TEST DATA
+if [ "$TEST_MODE" = true ] ; then
 
-elif [[ $1 = "prod" ]]; then
+   CSV_FILENAME_TEST_PARAMS=$(ls $3 | grep $LAB | grep "test_params")
+   CSV_FILENAME_TEST_PARAMS=$3/$CSV_FILENAME_TEST_PARAMS
 
-    echo "[INFO] Running in production mode..."
-    source $2/trigger_prod.cf
+   ## Parse test parameters
+   TEST_FILE_REMOTE=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d',' -f2)
+   TEST_FILENAME=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d',' -f3)
+   TEST_NUM_PROTS_REF=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d',' -f5)
+   TEST_NUM_PEPTD_REF=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d',' -f6)
+   TEST_FILE_REMOTE=$TEST_FILE_REMOTE"/"$TEST_FILENAME
+
+   # Download files and data, if needed
+   mkdir -p $ORIGIN_FOLDER
+	 
+   # Files
+   if [ -f "$ORIGIN_FOLDER/$TEST_FILENAME" ] ; then
+      echo "[INFO] Test file $ORIGIN_FOLDER/$TEST_FILENAME already downloaded."
+   else 
+      wget $TEST_FILE_REMOTE -P $ORIGIN_FOLDER
+   fi
+
 fi
-
-
-################RUN MODES END
-
 
 ##################################
 ################FUNCTIONS#########
@@ -75,7 +62,7 @@ fi
 
 secondary_reaction () {
  echo "Sending secondary reaction workflow for modification $1 and file $2 ..."
- nextflow run ${SEC_REACT_WF} -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -profile small --sec_react_modif "$1" --fragment_mass_tolerance '0.5' --fragment_error_units 'Da' --search_engine comet --rawfile $2 > $3
+ nextflow run ${SEC_REACT_WF} -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -profile $LAB,small --sec_react_modif "$1" --fragment_mass_tolerance '0.5' --fragment_error_units 'Da' --search_engine comet --rawfile $2 > $3
  sleep 60
 }
 
@@ -88,7 +75,7 @@ launch_nf_run () {
         INSTRUMENT_FOLDER=''
       fi
       ####### LAUNCH TO NEXTFLOW ####### 
-      nextflow run $2 -with-tower -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --fragment_mass_tolerance "$4" --fragment_error_units "$5" --precursor_mass_tolerance "$6" --precursor_error_units "$7" --missed_cleavages "$8" --output_folder "$9" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${11}" -profile "${12}" --rawfile ${13} > ${14}
+      nextflow run $2 -with-tower -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --fragment_mass_tolerance "$4" --fragment_error_units "$5" --precursor_mass_tolerance "$6" --precursor_error_units "$7" --missed_cleavages "$8" --output_folder "$9" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${11}" -profile $LAB,"${12}" --rawfile ${13} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER > ${14}
  
       # Reporting log:
       echo "[INFO] ################################################################"
@@ -104,13 +91,13 @@ launch_nf_run () {
       echo "[INFO] Ouptut folder: $9"
       echo "[INFO] Instrument subfolder: $INSTRUMENT_FOLDER"
       echo "[INFO] Search engine: ${11}"
-      echo "[INFO] NF Profile: ${12}"
+      echo "[INFO] NF Profile: $LAB,${12}"
       echo "[INFO] Raw file: ${13}"
       echo "[INFO] Log file: ${14}"
       echo "[INFO] Working folder: $ATLAS_RUNS_FOLDER/$CURRENT_UUID"
       echo "[INFO] ###############################################################"
       echo "[INFO] ###############################################################"
-      echo "[INFO] This file was sent to the QSample pipeline..." | mail -s ${FILE_BASENAME} "roger.olivella@crg.eu"
+      echo "[INFO] This file was sent to the QSample pipeline..." | mail -s ${FILE_BASENAME} "$NOTIF_EMAIL"
 
 }
 
@@ -137,72 +124,8 @@ launch_all_secondary_reactions () {
 DATE_LOG=`date '+%Y-%m-%d %H:%M:%S'`
 echo "[INFO] -----------------START---[${DATE_LOG}]"
 
-if [ "$TEST_MODE" = true ] ; then
 
-	 mkdir -p $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-      	 cd $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-	 
- 	 if [ -f "$WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME" ] ; then
-            echo "[INFO] Test file $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME already downloaded."
-         else 
-            wget $TEST_FILE_REMOTE
-         fi
-
-         echo "[INFO] Cheking Nextflow installation..."
-         NF_VER=`nextflow -v`
-
-         if [[ $NF_VER == *"nextflow"* ]]; then
-
-                echo "[INFO] Nextflow present!"
-      
-                if [[ $2 = "fast" ]]; then
-                        echo "[INFO] Running DDA fast test, please do not stop this process..."
-                        nextflow run $WF_ROOT_FOLDER/"main.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --fragment_mass_tolerance "0.5" --fragment_error_units "Da" --precursor_mass_tolerance "7" --precursor_error_units "ppm" --missed_cleavages "3" --search_engine "comet" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile small --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                elif [[ $2 = "dda" ]]; then
-                 	echo "[INFO] Running DDA test, please do not stop this process..."
-                	nextflow run $WF_ROOT_FOLDER/"main.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --fragment_mass_tolerance "0.5" --fragment_error_units "Da" --precursor_mass_tolerance "7" --precursor_error_units "ppm" --missed_cleavages "3" --search_engine "comet" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                elif [[ $2 = "silac" ]]; then
-                        echo "[INFO] Running SILAC big test, please do not stop this process..."
-                        nextflow run $WF_ROOT_FOLDER/"main.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)' 'Label:13C(6) (K)' 'Label:13C(6) (R)'" -with-tower --fragment_mass_tolerance "0.5" --fragment_error_units "Da" --precursor_mass_tolerance "7" --precursor_error_units "ppm" --missed_cleavages "3" --search_engine "comet" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile big --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                elif [[ $2 = "diann" ]]; then
-                        echo "[INFO] Running DIA-NN test, please do not stop this process..."
-                        nextflow run $WF_ROOT_FOLDER/"diann.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                elif [[ $2 = "diaumpire" ]]; then
-                        echo "[INFO] Running DIA UMPIRE test, please do not stop this process..."
-                        nextflow run $WF_ROOT_FOLDER/"diaumpire.nf" --search_engine "comet" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -with-tower -profile medium --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER          
-                elif [[ $2 = "insolution" ]]; then
-                        echo "[INFO] Running INSOLUTION test, please do not stop this process..."
-                        nextflow run $WF_ROOT_FOLDER/"main.nf" --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -with-tower --fragment_mass_tolerance "0.5" --fragment_error_units "Da" --precursor_mass_tolerance "7" --precursor_error_units "ppm" --missed_cleavages "3" --search_engine "comet" --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME -profile small --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                elif [[ $2 = "qcdi" ]]; then
-                        echo "[INFO] Running QCDI test, please do not stop this process..."
-                        nextflow run $WF_ROOT_FOLDER/"diann.nf" -with-tower --var_modif "'Oxidation (M)' 'Acetyl (N-term)" --fragment_mass_tolerance 0.02 --fragment_error_units Da --precursor_mass_tolerance 10 --precursor_error_units ppm --missed_cleavages 1 --output_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER --instrument_folder orbitrap_lumos1 --search_engine comet -profile medium --rawfile $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME --test_mode --test_folder $WF_ROOT_FOLDER/$TEST_SUBFOLDER
-                fi
-
-         	FILE_BASENAME=`basename $WF_ROOT_FOLDER/$TEST_SUBFOLDER/$TEST_FILENAME |  cut -f 1 -d '.'`
-         	NUM_PROTS_COMP=`cat $FILE_BASENAME".num_prots"`
-         	NUM_PEPTD_COMP=`cat $FILE_BASENAME".num_peptd"`
-                echo "[INFO] Removing result files..."
-                rm $FILE_BASENAME".num_prots"
-                rm $FILE_BASENAME".num_peptd"
-
-         	if [ "$NUM_PROTS_REF" = "$NUM_PROTS_COMP" ]; then
-            		echo "[INFO] TEST SUCCESSFUL! :) Tested run gave same number of proteins as the reference value."
-         	else
-            		echo "[ERROR] TEST UNSUCCESSFUL! :( Tested run DOES NOT gave same number of proteins as the reference value ($NUM_PROTS_REF). Please check."
-         	fi
-
-         	if [ "$NUM_PEPTD_REF" = "$NUM_PEPTD_COMP" ]; then
-            		echo "[INFO] TEST SUCCESSFUL! :) Tested run gave same number of peptides as the reference value."
-         	else
-            		echo "[ERROR] TEST UNSUCCESSFUL! :( Tested run DOES NOT gave same number of peptides as the reference value ($NUM_PEPTD_REF). Please check."
-         	fi
-         else
-         	echo "[ERROR] Nextflow not present. Please install it from https://www.nextflow.io."
-         fi
-   
-elif [ "$DEBUG_MODE" = true ] || [ "$PROD_MODE" = true ]; then
-
-	LIST_PATTERNS=$(cat ${ATLAS_CSV} | cut -d',' -f1 | tail -n +2)
+	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d',' -f1 | tail -n +2)
 
 	FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
 
@@ -223,49 +146,45 @@ elif [ "$DEBUG_MODE" = true ] || [ "$PROD_MODE" = true ]; then
 	    CURRENT_UUID=$(uuidgen)
 	    CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
 
-	    if [ "$DEBUG_MODE_FAKE" = false ] ; then
-	     mkdir -p $CURRENT_UUID_FOLDER
-	     cd $CURRENT_UUID_FOLDER
-	     mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
-	    fi
+            mkdir -p $CURRENT_UUID_FOLDER
+            cd $CURRENT_UUID_FOLDER
+            mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
 
-	    WF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f2)
-	    NAME=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f3)
-	    VAR_MODIF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f4)
-	    FMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f5)
-	    FEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f6)
-	    PMT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f7)
-	    PEU=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f8)
-	    MC=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f9)
-	    OF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f10)
-	    IF=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f11)
-	    ENGINE=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f12)
-            NF_PROFILE=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f13)
-            COMPUTE_SEC_REACT=$(cat ${ATLAS_CSV} | grep "^$j," | cut -d',' -f14)
+	    WF=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f2)
+	    NAME=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f3)
+	    VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f4)
+	    FMT=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f5)
+	    FEU=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f6)
+	    PMT=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f7)
+	    PEU=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f8)
+	    MC=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f9)
+	    OF=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f10)
+	    IF=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f11)
+	    ENGINE=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f12)
+            NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f13)
+            COMPUTE_SEC_REACT=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f14)
 
-	    ###############LAUNCH NEXTFLOW PROCESSES
-	    if [ "$DEBUG_MODE" = false ] ; then
-	     launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $NF_PROFILE $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log
-	     if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
-	    elif [ "$DEBUG_MODE" = true ] ; then
-             if [ "$DEBUG_MODE_FAKE" = true ] ; then
- 		echo "FAKE launch_nf_run..."
-                if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then echo "FAKE launch_all_secondary_reactions..."; fi
-             else
-                launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $NF_PROFILE $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log
-                if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi 
-             fi 
-	    fi
+	    ##############LAUNCH NEXTFLOW PROCESSES
+            # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
+            if [ "$TEST_MODE" = "true" ] ; then
+               RAWFILE_TO_PROCESS=$ORIGIN_FOLDER/$TEST_FILENAME
+               COMPUTE_SEC_REACT=false
+            elif [ "$PROD_MODE" = "true" ] ; then
+               RAWFILE_TO_PROCESS=$CURRENT_UUID_FOLDER/${FILE_BASENAME}
+               TEST_MODE="false"
+            fi
+            if [ -f "$RAWFILE_TO_PROCESS" ]; then
+             launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $NF_PROFILE $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
+             if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
+            else 
+             echo "[ERROR] File ${RAWFILE_TO_PROCESS} not found."
+            fi
 
 	  fi
 
 	 done
 
 	fi
-
-fi
-
-
 
 echo "[INFO] -----------------EOF"
 

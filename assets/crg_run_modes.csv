@@ -1,0 +1,3 @@
+mode,incoming_folder,main_nf_folder,runs_folder,logs_folder,notification_email
+prod,/users/pr/backuppr/scratch,/users/pr/qsample/atlas,/users/pr/qsample/atlas-runs,/users/pr/qsample/logs,roger.olivella@crg.eu
+test,/users/pr/qsample/test/atlas-last/test,/users/pr/qsample/test/atlas-last,/users/pr/qsample/test/atlas-last/test,/users/pr/qsample/test/atlas-last/test,roger.olivella@crg.eu

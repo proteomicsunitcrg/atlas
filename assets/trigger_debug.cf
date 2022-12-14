@@ -1,8 +1,0 @@
-DEBUG_MODE=true
-WF_ROOT_FOLDER=/users/pr/qsample/atlas
-LOGS_FOLDER=/users/pr/qsample/test/logs
-ORIGIN_FOLDER=/users/pr/qsample/test/toy-dataset/files_to_process
-TIME=-7
-ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
-ATLAS_CSV=$WF_ROOT_FOLDER/assets/atlas.csv
-SEC_REACT_WF=$WF_ROOT_FOLDER/secreact.nf

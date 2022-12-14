@@ -1,8 +1,0 @@
-PROD_MODE=true
-LOGS_FOLDER=/users/pr/qsample/logs
-ORIGIN_FOLDER=/users/pr/backuppr/scratch
-TIME=-7
-ATLAS_RUNS_FOLDER=/users/pr/qsample/atlas-runs
-ATLAS_CSV=/users/pr/qsample/atlas/assets/atlas.csv
-SEC_REACT_WF=/users/pr/qsample/atlas/secreact.nf
-WF_ROOT_FOLDER=/users/pr/qsample/atlas
