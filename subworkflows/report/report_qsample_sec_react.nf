@@ -1,12 +1,12 @@
 //QCloud2 API:
-qcloud2_api_signin             = params.qcloud2_api_signin
-qcloud2_api_user               = params.qcloud2_api_user
-qcloud2_api_pass               = params.qcloud2_api_pass
-qcloud2_api_insert_file        = params.qcloud2_api_insert_file
-qcloud2_api_insert_data        = params.qcloud2_api_insert_data
-qcloud2_api_insert_quant       = params.qcloud2_api_insert_quant
-qcloud2_api_fileinfo           = params.qcloud2_api_fileinfo
-qcloud2_api_insert_modif       = params.qcloud2_api_insert_modif
+url_api_signin             = params.url_api_signin
+url_api_user               = params.url_api_user
+url_api_pass               = params.url_api_pass
+url_api_insert_file        = params.url_api_insert_file
+url_api_insert_data        = params.url_api_insert_data
+url_api_insert_quant       = params.url_api_insert_quant
+url_api_fileinfo           = params.url_api_fileinfo
+url_api_insert_modif       = params.url_api_insert_modif
 
 //Bash scripts folder:
 binfolder                      = "$baseDir/bin"
@@ -33,9 +33,9 @@ process insertFileToQSample {
         echo $checksum > !{filename}.checksum
         creation_date=$(grep -Pio '.*startTimeStamp="\\K[^"]*' !{mzml_file} | sed 's/Z//g' | xargs -I{} date -d {} +"%Y-%m-%dT%T")
         echo $creation_date > creation_date
-        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{qcloud2_api_signin} !{qcloud2_api_user} !{qcloud2_api_pass})
+        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
         echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_file}/$request_code -H "Content-Type: application/json" --data '{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_file}/$request_code -H "Content-Type: application/json" --data '{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
         '''
 }
 
@@ -92,54 +92,54 @@ process insertSecReactDataToQSample {
         echo $percentage_pyro_glu > percentage_pyro_glu
         
         ### Inserts API:
-        access_token=$(curl -s -X POST !{qcloud2_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{qcloud2_api_user}'","password":"'!{qcloud2_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         
         echo "Inserting sec. react. totals and percentages..."
         if [[ !{sec_react_modif} == "Carbamyl (K)" ]]; then
           echo "Inserting K(Carbamyl)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "K(Carbamyl)"},"value": "'$sec_react_carbamyl_k'"}]}'
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "10","value": "'$percentage_carbamyl_k'"}]}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "K(Carbamyl)"},"value": "'$sec_react_carbamyl_k'"}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "10","value": "'$percentage_carbamyl_k'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Carbamyl (N-term)" ]]; then
           echo "Inserting .(Carbamyl)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": ".(Carbamyl)"},"value": "'$sec_react_carbamyl_n'"}]}'
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "11","value": "'$percentage_carbamyl_n_term'"}]}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": ".(Carbamyl)"},"value": "'$sec_react_carbamyl_n'"}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "11","value": "'$percentage_carbamyl_n_term'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Carbamyl (R)" ]]; then
           echo "Inserting R(Carbamyl)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "R(Carbamyl)"},"value": "'$sec_react_carbamyl_r'"}]}'  
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "12","value": "'$percentage_carbamyl_r'"}]}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "R(Carbamyl)"},"value": "'$sec_react_carbamyl_r'"}]}'  
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "12","value": "'$percentage_carbamyl_r'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Deamidated (N)" ]]; then
           echo "Inserting N(Deamidated)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "N(Deamidated)"},"value": "'$sec_react_deamidated_n'"}]}'
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "13","value": "'$percentage_deamidated_n'"}]}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "N(Deamidated)"},"value": "'$sec_react_deamidated_n'"}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "13","value": "'$percentage_deamidated_n'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Formyl (K)" ]]; then
           echo "Inserting  K(Formyl)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "K(Formyl)"},"value": "'$sec_react_formyl_k'"}]}'
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "14","value": "'$percentage_formyl_k'"}]}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "K(Formyl)"},"value": "'$sec_react_formyl_k'"}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "14","value": "'$percentage_formyl_k'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Formyl (N-term)" ]]; then
           echo "Inserting  .(Formyl)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": ".(Formyl)"},"value": "'$sec_react_formyl_n'"}]}'
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "15","value": "'$percentage_formyl_n_term'"}]}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": ".(Formyl)"},"value": "'$sec_react_formyl_n'"}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "15","value": "'$percentage_formyl_n_term'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Formyl (S)" ]]; then
           echo "Inserting  S(Formyl)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "S(Formyl)"},"value": "'$sec_react_formyl_s'"}]}'
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "16","value": "'$percentage_formyl_s'"}]}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "S(Formyl)"},"value": "'$sec_react_formyl_s'"}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "16","value": "'$percentage_formyl_s'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Formyl (T)" ]]; then
           echo "Inserting  T(Formyl)"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "T(Formyl)"},"value": "'$sec_react_formyl_t'"}]}'
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "17","value": "'$percentage_formyl_t'"}]}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "T(Formyl)"},"value": "'$sec_react_formyl_t'"}]}'
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "17","value": "'$percentage_formyl_t'"}]}]}'
         fi
         if [[ !{sec_react_modif} == "Gln->pyro-Glu (N-term Q)" ]]; then
          echo "Inserting pyro-Glu"
-         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "pyro-Glu"},"value": "'$sec_react_pyro_glu'"}]}' 
-         curl -v -X POST -H "Authorization: Bearer $access_token" !{qcloud2_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "18","value": "'$percentage_pyro_glu'"}]}]}'
+         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "pyro-Glu"},"value": "'$sec_react_pyro_glu'"}]}' 
+         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "18","value": "'$percentage_pyro_glu'"}]}]}'
         fi
         echo "Sec. react. inserted!"
         '''
