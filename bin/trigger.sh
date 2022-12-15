@@ -27,7 +27,7 @@ WF_ROOT_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f3)
 ATLAS_RUNS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f4)
 LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f5)
 NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f6)
-SEC_REACT_WF=$WF_ROOT_FOLDER"/workflows/secreact.nf"
+SEC_REACT_WF=$WF_ROOT_FOLDER"/secreact.nf"
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
 METHODS_CSV=$3/$METHODS_CSV
 
@@ -127,7 +127,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 
 	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d',' -f1 | tail -n +2)
 
-	FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+	FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
 
 	if [ -n "$FILE_TO_PROCESS" ]; then
 
@@ -146,9 +146,11 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 	    CURRENT_UUID=$(uuidgen)
 	    CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
 
-            mkdir -p $CURRENT_UUID_FOLDER
-            cd $CURRENT_UUID_FOLDER
-            mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
+            if [ "$PROD_MODE" = "true" ] ; then
+                mkdir -p $CURRENT_UUID_FOLDER
+                cd $CURRENT_UUID_FOLDER
+                mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
+            fi
 
 	    WF=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f2)
 	    NAME=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f3)

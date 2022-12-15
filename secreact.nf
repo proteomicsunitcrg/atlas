@@ -2,10 +2,10 @@
 
 nextflow.enable.dsl=2
 
-include { ThermoRawFileParser as trfp_pr } from '../subworkflows/conversion/conversion'
-include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter as comet_adapter_pr } from '../subworkflows/search_engine/search_engine'
-include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from '../subworkflows/identification/identification'
-include { insertFileToQSample as insertFileToQSample_pr; insertSecReactDataToQSample as insertSecReactDataToQSample_pr} from '../subworkflows/report/report_qsample_sec_react'
+include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
+include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter as comet_adapter_pr } from './subworkflows/search_engine/search_engine'
+include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './subworkflows/identification/identification'
+include { insertFileToQSample as insertFileToQSample_pr; insertSecReactDataToQSample as insertSecReactDataToQSample_pr} from './subworkflows/report/report_qsample_sec_react'
 
 Channel
   .fromPath(params.rawfile)
