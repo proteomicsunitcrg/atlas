@@ -31,6 +31,13 @@ SEC_REACT_WF=$WF_ROOT_FOLDER"/secreact.nf"
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
 METHODS_CSV=$3/$METHODS_CSV
 
+## SECRETS FILE CHECK: 
+SECRETS_FILE=$(ls $WF_ROOT_FOLDER"/conf" | grep "secret")
+if [ ! -f "$SECRETS_FILE" ]; then
+   echo "[ERROR] There's no SECRETS file in /config folder. Please check."
+   exit
+fi 
+   
 ## MANAGE TEST DATA
 if [ "$TEST_MODE" = true ] ; then
 
