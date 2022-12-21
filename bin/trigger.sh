@@ -27,6 +27,9 @@ WF_ROOT_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f3)
 ATLAS_RUNS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f4)
 LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f5)
 NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f6)
+ENABLE_NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f7)
+ENABLE_NF_TOWER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f8)
+if [[ $ENABLE_NF_TOWER = "true" ]]; then WITH_TOWER="-with-tower"; fi
 SEC_REACT_WF=$WF_ROOT_FOLDER"/secreact.nf"
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
 METHODS_CSV=$3/$METHODS_CSV
@@ -83,7 +86,7 @@ launch_nf_run () {
         INSTRUMENT_FOLDER=''
       fi
       ####### LAUNCH TO NEXTFLOW ####### 
-      nextflow run $2 -with-tower -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --fragment_mass_tolerance "$4" --fragment_error_units "$5" --precursor_mass_tolerance "$6" --precursor_error_units "$7" --missed_cleavages "$8" --output_folder "$9" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${11}" -profile $LAB,"${12}" --rawfile ${13} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER > ${14}
+      nextflow run $2 $WITH_TOWER -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --fragment_mass_tolerance "$4" --fragment_error_units "$5" --precursor_mass_tolerance "$6" --precursor_error_units "$7" --missed_cleavages "$8" --output_folder "$9" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${11}" -profile $LAB,"${12}" --rawfile ${13} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER > ${14}
  
       # Reporting log:
       echo "[INFO] ################################################################"
@@ -105,7 +108,9 @@ launch_nf_run () {
       echo "[INFO] Working folder: $ATLAS_RUNS_FOLDER/$CURRENT_UUID"
       echo "[INFO] ###############################################################"
       echo "[INFO] ###############################################################"
-      echo "[INFO] This file was sent to the QSample pipeline..." | mail -s ${FILE_BASENAME} "$NOTIF_EMAIL"
+      if [ "$ENABLE_NOTIF_EMAIL" = true ] ; then
+        echo "[INFO] This file was sent to the QSample pipeline..." | mail -s ${FILE_BASENAME} "$NOTIF_EMAIL"
+      fi     
 
 }
 
