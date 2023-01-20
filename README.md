@@ -67,6 +67,4 @@ Eduard Sabidó (@edunivers), Cristina Chiva, Eva Borràs, Guadalupe Espadas, Olg
 
 ## Citations
 
-<!-- TODO : Add bibliography of tools and data used in your pipeline -->
-
 An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
