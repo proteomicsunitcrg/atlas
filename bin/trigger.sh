@@ -55,14 +55,17 @@ if [ "$TEST_MODE" = true ] ; then
    TEST_NUM_PEPTD_REF=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d',' -f6)
    TEST_FILE_REMOTE=$TEST_FILE_REMOTE"/"$TEST_FILENAME
 
-   # Download files and data, if needed
+   # Create data folder, if applies
    mkdir -p $ORIGIN_FOLDER
-	 
-   # Files
+
+   # Clean data folder
+   echo "rm $ORIGIN_FOLDER/*"
+
+   # Download files and data, if needed
    if [ -f "$ORIGIN_FOLDER/$TEST_FILENAME" ] ; then
       echo "[INFO] Test file $ORIGIN_FOLDER/$TEST_FILENAME already downloaded."
-   else 
-      wget $TEST_FILE_REMOTE -P $ORIGIN_FOLDER
+   else
+      wget $TEST_FILE_REMOTE -O $ORIGIN_FOLDER"/"$TEST_FILENAME
    fi
 
 fi
@@ -140,7 +143,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 
 	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d',' -f1 | tail -n +2)
 
-	FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+	FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" -o -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
 
 	if [ -n "$FILE_TO_PROCESS" ]; then
 

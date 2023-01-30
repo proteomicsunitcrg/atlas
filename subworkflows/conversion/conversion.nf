@@ -6,11 +6,21 @@ process ThermoRawFileParser {
     tuple val(filename), val(basename), val(path)
 
     output:
-    tuple val(filename), val(basename), val(path), file("${basename}.mzML")
+    tuple val(filename), val(basename), val(path), file("*.mzML")
 
-    """
-    ThermoRawFileParser.sh -i=${path}/${filename} -f=2 -o ./
-    """
+    shell:
+    '''
+    if [[ !{filename} == *"mzML"* ]]; then
+        path_sh=!{path}
+        filename_sh=!{filename}
+        organism_sh=$(echo ${filename_sh##*.})
+        basename_sh=!{basename}
+        basename_wo_ext=${basename_sh%.*}
+        cp $path_sh/$filename_sh $basename_wo_ext".mzML"    
+    else
+        ThermoRawFileParser.sh -i=!{path}/!{filename} -f=2 -o ./
+    fi
+    '''
 }
 
 process ThermoRawFileParserDiann {
