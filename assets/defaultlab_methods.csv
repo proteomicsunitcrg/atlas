@@ -5,4 +5,4 @@ QCDL,main,InSolution,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',come
 QCGL,main,InGel,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',comet,small,false
 QCFL,main,FASP,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',comet,small,false
 QCRL,main,OfflineFract,'Oxidation (M)' 'Acetyl (N-term)',0.5,Da,7,ppm,3,'','',comet,small,false
-QCPL,main,PhosphoTIO,'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)',0.5,Da,7,ppm,3,/users/pr/qsample/qcpl-output,'',comet,big,false
+QCPL,main,PhosphoTIO,'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)',0.5,Da,7,ppm,3,'','',comet,big,false
