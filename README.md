@@ -15,7 +15,7 @@ Schematically,
 1. Convert RAW to mzML ([`ThermoRawFileParser`](https://github.com/compomics/ThermoRawFileParser)).
 2. Search for PSM ([`Comet`](https://uwpr.github.io/Comet/) or [`Mascot`](http://www.matrixscience.com/)).
 3. Protein and peptide identification ([`OpenMS`](https://github.com/OpenMS/OpenMS), [`DIA-NN`](https://github.com/vdemichev/DiaNN) or [`DIA Umpire`](https://diaumpire.nesvilab.org/)).
-4. Protein and peptide quantification ([`OpenMS`](https://github.com/OpenMS/OpenMS) or [`DIA-NN`](https://github.com/vdemichev/DiaNN) or [`DIA Umpire`](https://diaumpire.nesvilab.org/)).
+4. Protein and peptide quantification ([`OpenMS`](https://github.com/OpenMS/OpenMS), [`DIA-NN`](https://github.com/vdemichev/DiaNN) or [`DIA Umpire`](https://diaumpire.nesvilab.org/)).
 5. Report to a database.
 
 More detailed, 
