@@ -56,6 +56,7 @@ git clone https://github.com/proteomicsunitcrg/atlas.git
    path_to/bin/trigger.sh crg test path_to/assets BSA
    ```
 
+6. More detailed documentation con be found [here](https://github.com/proteomicsunitcrg/atlas/wiki).
 
 ## Credits
 
