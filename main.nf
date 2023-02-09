@@ -94,7 +94,7 @@ workflow.onError {
         .stripIndent()
 
     if(params.enable_notif_email){
-      sendMail(to: params.notif_email, subject: ':( QSample pipeline error', body: msg)
+      sendMail(to: params.notif_email, subject: ':( atlas pipeline error', body: msg)
     }
 
 }
