@@ -80,3 +80,21 @@ workflow {
    insertSilacToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
    insertTmtToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
 }
+
+
+workflow.onError {
+
+    def msg = """\
+        Pipeline execution summary
+        --------------------------
+        Run name      : ${workflow.runName}
+        Working dir   : ${workflow.workDir}
+        Command line  : ${workflow.commandLine}
+        """
+        .stripIndent()
+
+    if(params.enable_notif_email){
+      sendMail(to: params.notif_email, subject: ':( QSample pipeline error', body: msg)
+    }
+
+}

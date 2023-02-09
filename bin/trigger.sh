@@ -89,7 +89,7 @@ launch_nf_run () {
         INSTRUMENT_FOLDER=''
       fi
       ####### LAUNCH TO NEXTFLOW ####### 
-      nextflow run $2 $WITH_TOWER -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --fragment_mass_tolerance "$4" --fragment_error_units "$5" --precursor_mass_tolerance "$6" --precursor_error_units "$7" --missed_cleavages "$8" --output_folder "$9" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${11}" -profile $LAB,"${12}" --rawfile ${13} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER > ${14}
+      nextflow run $2 $WITH_TOWER -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --fragment_mass_tolerance "$4" --fragment_error_units "$5" --precursor_mass_tolerance "$6" --precursor_error_units "$7" --missed_cleavages "$8" --output_folder "$9" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${11}" -profile $LAB,"${12}" --rawfile ${13} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${14}
  
       # Reporting log:
       echo "[INFO] ################################################################"
