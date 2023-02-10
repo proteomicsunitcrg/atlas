@@ -112,7 +112,7 @@ launch_nf_run () {
       echo "[INFO] ###############################################################"
       echo "[INFO] ###############################################################"
       if [ "$ENABLE_NOTIF_EMAIL" = true ] ; then
-        echo "[INFO] This file was sent to the QSample pipeline..." | mail -s ${FILE_BASENAME} "$NOTIF_EMAIL"
+        echo "[INFO] This file was sent to the atlas pipeline..." | mail -s ${FILE_BASENAME} "$NOTIF_EMAIL"
       fi     
 
 }
