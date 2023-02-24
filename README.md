@@ -53,7 +53,7 @@ git clone https://github.com/proteomicsunitcrg/atlas.git
 5. Test it on a minimal dataset with a single command:
 
    ```bash
-   path_to/bin/trigger.sh crg test path_to/assets BSA
+   path_to/bin/trigger.sh defaultlab test path_to/assets BSA
    ```
 
 6. More detailed documentation can be found [here](https://github.com/proteomicsunitcrg/atlas/wiki).

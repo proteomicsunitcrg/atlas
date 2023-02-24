@@ -143,7 +143,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 
 	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d',' -f1 | tail -n +2)
 
-	FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" -o -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+	FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
 
 	if [ -n "$FILE_TO_PROCESS" ]; then
 
