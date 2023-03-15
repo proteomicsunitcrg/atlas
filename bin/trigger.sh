@@ -35,7 +35,6 @@ METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")
 METHODS_CSV=$3/$METHODS_CSV
 
 ## SECRETS FILE CHECK: 
-echo $WF_ROOT_FOLDER
 SECRETS_FILE=$(ls $WF_ROOT_FOLDER"/conf" | grep "secret")
 if [ ! -f "$WF_ROOT_FOLDER/conf/$SECRETS_FILE" ]; then
    echo "[ERROR] There's no SECRETS file in /config folder. Please check."
