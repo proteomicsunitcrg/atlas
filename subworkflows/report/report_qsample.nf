@@ -42,7 +42,7 @@ process insertFileToQSample {
         echo $checksum > !{filename}.checksum
         mzml_file=$(ls -l *.mzML | awk '{print $11}')
         echo $mzml_file > mzml_file
-        creation_date=$(source /users/pr/qsample/test/atlas-last/bin/utils.sh; get_mzml_date $mzml_file)
+        creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
         data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
         echo $data_string > data_string
         access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
@@ -79,7 +79,7 @@ process insertWetlabFileToQSample {
         echo $checksum > !{filename}.checksum
         mzml_file=$(ls -l *.mzML | awk '{print $11}')
         echo $mzml_file > mzml_file
-        creation_date=$(source /users/pr/qsample/test/atlas-last/bin/utils.sh; get_mzml_date $mzml_file)
+        creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
         data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'$basename_sh'"}'
         echo $data_string > data_string
         replicate=$(echo !{filename} | cut -d"_" -f4 | cut -c2-3)
@@ -111,7 +111,7 @@ process insertDIANNFileToQSample {
         echo $checksum > !{filename}.checksum
         mzml_file=$(ls -l *.mzML.* | awk '{print $11}')
         echo $mzml_file > mzml_file
-        creation_date=$(source /users/pr/qsample/test/atlas-last/bin/utils.sh; get_mzml_date $mzml_file)
+        creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
         data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
         echo $data_string > data_string
         access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
@@ -434,10 +434,6 @@ process insertWetlabInSolutionDataToQSample {
         num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
         num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
         
-        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.wetlab_insolution
-        echo $num_prots > num_prots
-        echo $num_peptd > num_peptd
-
 access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'!{api_key_qcdl}'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
@@ -461,10 +457,6 @@ process insertWetlabInGelDataToQSample {
         num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
         num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
         
-        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.wetlab_ingel
-        echo $num_prots > num_prots
-        echo $num_peptd > num_peptd
-
 access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'!{api_key_qcgl}'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
@@ -488,10 +480,6 @@ process insertWetlabFaspDataToQSample {
         num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
         num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
         
-        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.wetlab_fasp
-        echo $num_prots > num_prots
-        echo $num_peptd > num_peptd
-
 access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'!{api_key_qcfl}'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
@@ -546,11 +534,6 @@ process insertWetlabAgilentDataToQSample {
         checksum=$(cat !{checksum})
         num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
         num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
-        
-        #Check: 
-        #echo $num_peptd > /users/pr/qsample/test/atlas-peptide/output/!{protinf_file}.num_peptd.wetlab_agilent  
-        echo $num_prots > num_prots
-        echo $num_peptd > num_peptd
 
 access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token

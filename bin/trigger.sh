@@ -37,7 +37,7 @@ METHODS_CSV=$3/$METHODS_CSV
 ## SECRETS FILE CHECK: 
 SECRETS_FILE=$(ls $WF_ROOT_FOLDER"/conf" | grep "secret")
 if [ ! -f "$WF_ROOT_FOLDER/conf/$SECRETS_FILE" ]; then
-   echo "[ERROR] There's no SECRETS file in /config folder. Please check."
+   echo "[ERROR] There's no SECRETS file in /conf folder. Please check."
    exit
 fi 
    
