@@ -1,4 +1,4 @@
-//QCloud2 API:
+//API:
 url_api_signin             = params.url_api_signin
 url_api_user               = params.url_api_user
 url_api_pass               = params.url_api_pass
@@ -45,7 +45,7 @@ process insertFileToQSample {
         creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
         data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
         echo $data_string > data_string
-        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
+        access_token=$(source !{binfolder}/api.sh; get_api_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_file}/$request_code -H "Content-Type: application/json" --data @data_string 
         '''
@@ -114,7 +114,7 @@ process insertDIANNFileToQSample {
         creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
         data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
         echo $data_string > data_string
-        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
+        access_token=$(source !{binfolder}/api.sh; get_api_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_file}/$request_code -H "Content-Type: application/json" --data @data_string 
         '''
@@ -162,9 +162,9 @@ process insertDataToQSample {
         echo $charge_3 > charge_3 
         echo $charge_4 > charge_4
 
-        # QCloud2 API posts:
+        # API posts:
         checksum=$(cat !{checksum})
-        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
+        access_token=$(source !{binfolder}/api.sh; get_api_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "3","value": "'$charge_2'"},{"contextSource": "4","value": "'$charge_3'"},{"contextSource": "5","value": "'$charge_4'"}]}]}'
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "7","value": "'$total_base_peak_intenisty'"}]}]}'
@@ -212,9 +212,9 @@ process insertDIANNDataToQSample {
         echo $charge_3 > charge_3
         echo $charge_4 > charge_4
 
-        # QCloud2 API posts:
+        # API posts:
         checksum=$(cat !{checksum})
-        access_token=$(source !{binfolder}/api.sh; get_api_qcloud2_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
+        access_token=$(source !{binfolder}/api.sh; get_api_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "3","value": "'$charge_2'"},{"contextSource": "4","value": "'$charge_3'"},{"contextSource": "5","value": "'$charge_4'"}]}]}'
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "7","value": "'$total_base_peak_intenisty'"}]}]}'
