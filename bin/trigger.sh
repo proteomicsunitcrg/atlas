@@ -22,13 +22,13 @@ CSV_FILENAME_RUN_MODES=$3/$CSV_FILENAME_RUN_MODES
 
 ## PARSE RUN MODES VARIABLES
 if [[ $2 = "prod" ]]; then PROD_MODE="true"; elif [[ $2 = "test" ]]; then TEST_MODE="true"; fi
-ORIGIN_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f2)
-WF_ROOT_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f3)
-ATLAS_RUNS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f4)
-LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f5)
-NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f6)
-ENABLE_NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f7)
-ENABLE_NF_TOWER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d',' -f8)
+ORIGIN_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f2)
+WF_ROOT_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f3)
+ATLAS_RUNS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f4)
+LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f5)
+NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f6)
+ENABLE_NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f7)
+ENABLE_NF_TOWER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f8)
 if [[ $ENABLE_NF_TOWER = "true" ]]; then WITH_TOWER="-with-tower"; fi
 SEC_REACT_WF=$WF_ROOT_FOLDER"/secreact.nf"
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
@@ -48,10 +48,10 @@ if [ "$TEST_MODE" = true ] ; then
    CSV_FILENAME_TEST_PARAMS=$3/$CSV_FILENAME_TEST_PARAMS
 
    ## Parse test parameters
-   TEST_FILE_REMOTE=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d',' -f2)
-   TEST_FILENAME=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d',' -f3)
-   TEST_NUM_PROTS_REF=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d',' -f5)
-   TEST_NUM_PEPTD_REF=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d',' -f6)
+   TEST_FILE_REMOTE=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d';' -f2)
+   TEST_FILENAME=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d';' -f3)
+   TEST_NUM_PROTS_REF=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d';' -f5)
+   TEST_NUM_PEPTD_REF=$(cat $CSV_FILENAME_TEST_PARAMS | grep $DATA | cut -d';' -f6)
    TEST_FILE_REMOTE=$TEST_FILE_REMOTE"/"$TEST_FILENAME
 
    # Create data folder, if applies
@@ -87,6 +87,7 @@ launch_nf_run () {
       else 
         INSTRUMENT_FOLDER=''
       fi
+
       ####### LAUNCH TO NEXTFLOW ####### 
       nextflow run $2 $WITH_TOWER -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --fragment_mass_tolerance "$4" --fragment_error_units "$5" --precursor_mass_tolerance "$6" --precursor_error_units "$7" --missed_cleavages "$8" --output_folder "$9" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${11}" -profile $LAB,"${12}" --rawfile ${13} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${14}
  
@@ -140,7 +141,7 @@ DATE_LOG=`date '+%Y-%m-%d %H:%M:%S'`
 echo "[INFO] -----------------START---[${DATE_LOG}]"
 
 
-	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d',' -f1 | tail -n +2)
+	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d';' -f1 | tail -n +2)
 
 	FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
 
@@ -167,19 +168,19 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
                 mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
             fi
 
-	    WF=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f2)
-	    NAME=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f3)
-	    VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f4)
-	    FMT=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f5)
-	    FEU=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f6)
-	    PMT=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f7)
-	    PEU=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f8)
-	    MC=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f9)
-	    OF=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f10)
-	    IF=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f11)
-	    ENGINE=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f12)
-            NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f13)
-            COMPUTE_SEC_REACT=$(cat ${METHODS_CSV} | grep "^$j," | cut -d',' -f14)
+	    WF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f2)
+	    NAME=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f3)
+	    VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f4)
+	    FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f5)
+	    FEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
+	    PMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f7)
+	    PEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f8)
+	    MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f9)
+	    OF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
+	    IF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f11)
+	    ENGINE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f12)
+            NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f13)
+            COMPUTE_SEC_REACT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
 
 	    ##############LAUNCH NEXTFLOW PROCESSES
             # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
@@ -191,7 +192,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
                TEST_MODE="false"
             fi
             if [ -f "$RAWFILE_TO_PROCESS" ]; then
-             launch_nf_run $NAME $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $NF_PROFILE $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
+             launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $NF_PROFILE $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
              if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
             else 
              echo "[ERROR] File ${RAWFILE_TO_PROCESS} not found."

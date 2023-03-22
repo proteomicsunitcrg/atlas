@@ -1,5 +1,5 @@
-pattern,test_remote_repo_folder,test_filename,num_prots_ref,num_peptd_ref
-BSA,https://www.dropbox.com/s/z1xh8wkyltjqkne,2022MQ999_DDA_BSA_test.raw.SP_Bovine,72,130
-HELA,https://www.dropbox.com/s/xodjur6dryiw34h,2022MQ999_DDA_HELA_test.raw.SP_Human,4667,21255
-DIANN,https://www.dropbox.com/s/1bgxllnp15xxz22,2022MK999_DIA_test.raw.SP_Human,391,2617
-QCDL,https://www.dropbox.com/s/0dubt7zk9ztwrwb,20221010_QCDL_INSOLUTION_test.raw.SP_Ecoli_Digestif,1587,8033
+pattern;test_remote_repo_folder;test_filename;num_prots_ref;num_peptd_ref
+BSA;https://www.dropbox.com/s/z1xh8wkyltjqkne;2022MQ999_DDA_BSA_test.raw.SP_Bovine;72;130
+HELA;https://www.dropbox.com/s/xodjur6dryiw34h;2022MQ999_DDA_HELA_test.raw.SP_Human;4667;21255
+DIANN;https://www.dropbox.com/s/1bgxllnp15xxz22;2022MK999_DIA_test.raw.SP_Human;391;2617
+QCDL;https://www.dropbox.com/s/0dubt7zk9ztwrwb;20221010_QCDL_INSOLUTION_test.raw.SP_Ecoli_Digestif;1587;8033
