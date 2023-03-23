@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 include { ThermoRawFileParserDiann as trfp_diann_pr } from './subworkflows/conversion/conversion'
 include { diann as diann_pr } from './subworkflows/dia/dia'
-include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr} from './subworkflows/report/report_qsample'
+include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr} from './subworkflows/report/report_qsample_diann'
 include { output_folder_diann_test as output_folder_diann_test_pr; output_folder_diannqc as output_folder_diannqc_pr} from './subworkflows/report/report_output_folder'
 
 Channel

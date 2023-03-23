@@ -64,14 +64,14 @@ if [ "$TEST_MODE" = true ] ; then
    # Create data folder, if applies
    mkdir -p $ORIGIN_FOLDER
 
-   # Clean data folder
-   echo "rm $ORIGIN_FOLDER/*"
-
-   # Download files and data, if needed
+   # Clean test data folder, if applies
+   rm $ORIGIN_FOLDER/* 2>/dev/null && echo "[INFO] Test files cleaned at $ORIGIN_FOLDER" || echo "[INFO] No files to clean at "$ORIGIN_FOLDER
+   
+   # Download files and data, if applies
    if [ -f "$ORIGIN_FOLDER/$TEST_FILENAME" ] ; then
       echo "[INFO] Test file $ORIGIN_FOLDER/$TEST_FILENAME already downloaded."
    else
-      wget $TEST_FILE_REMOTE -O $ORIGIN_FOLDER"/"$TEST_FILENAME
+      curl -o $ORIGIN_FOLDER"/"$TEST_FILENAME $TEST_FILE_REMOTE -L
    fi
 
 fi

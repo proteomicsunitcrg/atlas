@@ -7,20 +7,10 @@ url_api_insert_data        = params.url_api_insert_data
 url_api_insert_quant       = params.url_api_insert_quant
 url_api_fileinfo           = params.url_api_fileinfo
 url_api_insert_modif       = params.url_api_insert_modif
-url_api_insert_wetlab_file = params.url_api_insert_wetlab_file
-url_api_insert_wetlab_data = params.url_api_insert_wetlab_data
-num_max_prots                  = params.num_max_prots
+num_max_prots              = params.num_max_prots
 
 //Bash scripts folder:
 binfolder                      = "$baseDir/bin"
-
-//wetlab api-keys:
-api_key_qcgl                    = params.api_key_qcgl
-api_key_qcdl                    = params.api_key_qcdl
-api_key_qcfl                    = params.api_key_qcfl
-api_key_qcpl                    = params.api_key_qcpl
-api_key_qcrl                    = params.api_key_qcrl
-api_key_qchl                    = params.api_key_qchl
 
 process insertFileToQSample {
         tag { "${mzml_file}" }
@@ -50,76 +40,6 @@ process insertFileToQSample {
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_file}/$request_code -H "Content-Type: application/json" --data @data_string 
         '''
 }
-
-
-process insertWetlabFileToQSample {
-        tag { "${mzml_file}" }
-
-        input:
-        tuple val(filename), val(basename), val(path)
-        tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
-
-        output:
-        file("${filename}.checksum")
-
-        when:
-        filename =~ /QCGL|QCDL|QCFL|QCPL|QCRL|QCHL/
-
-        shell:
-        '''
-        api_key=""
-        basename_sh=!{basename}
-        if [[ $basename_sh == *"QCGL"* ]]; then api_key=!{api_key_qcgl}; fi
-        if [[ $basename_sh == *"QCDL"* ]]; then api_key=!{api_key_qcdl}; fi
-        if [[ $basename_sh == *"QCFL"* ]]; then api_key=!{api_key_qcfl}; fi
-        if [[ $basename_sh == *"QCPL"* ]]; then api_key=!{api_key_qcpl}; fi
-        if [[ $basename_sh == *"QCRL"* ]]; then api_key=!{api_key_qcrl}; fi
-        if [[ $basename_sh == *"QCHL"* ]]; then api_key=!{api_key_qchl}; fi
-        checksum=$(md5sum !{path}/!{filename} | awk '{print $1}')
-        echo $checksum > !{filename}.checksum
-        mzml_file=$(ls -l *.mzML | awk '{print $11}')
-        echo $mzml_file > mzml_file
-        creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
-        data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'$basename_sh'"}'
-        echo $data_string > data_string
-        replicate=$(echo !{filename} | cut -d"_" -f4 | cut -c2-3)
-        year=$(echo !{filename} | cut -d"_" -f1 | cut -c1-4)
-        week=$(echo !{filename} | cut -d"_" -f3 | cut -c2-3 | bc)
-        access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-        echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_file}/$api_key -H "Content-Type: application/json" --data @data_string
-        '''
-}
-
-process insertDIANNFileToQSample {
-        tag { "${mzml_file}" }
-
-        input:
-        tuple val(filename), val(basename), val(path)
-        tuple file(mzml_file)
-
-        output:
-        file("${filename}.checksum")
-
-        when:
-        filename =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL|QCHL).)*$/
-
-        shell:
-        '''
-        request_code=$(echo !{filename} | awk -F'[_.]' '{print $1}')
-        checksum=$(source !{binfolder}/utils.sh; get_checksum !{path} !{filename})
-        echo $checksum > !{filename}.checksum
-        mzml_file=$(ls -l *.mzML.* | awk '{print $11}')
-        echo $mzml_file > mzml_file
-        creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
-        data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'
-        echo $data_string > data_string
-        access_token=$(source !{binfolder}/api.sh; get_api_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
-        echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_file}/$request_code -H "Content-Type: application/json" --data @data_string 
-        '''
-}
-
 
 process insertDataToQSample {
 
@@ -177,56 +97,6 @@ process insertDataToQSample {
         '''
 }
 
-process insertDIANNDataToQSample {
-
-        tag { "${tsv_file}" }
-        label 'clitools'
-
-        input:
-        file(checksum)
-        file(tsv_file)
-        file(mzml_file)
-
-        shell:
-        '''
-        # Parsings:
-        num_prots=$(source !{binfolder}/parsing_diann.sh; get_num_prot_groups_diann !{tsv_file})
-        num_peptd=$(source !{binfolder}/parsing_diann.sh; get_num_peptidoforms_diann !{tsv_file})
-
-        source !{binfolder}/parsing_diann.sh; get_peptidoform_miscleavages_counts_diann !{tsv_file}
-        miscleavages_0=$(cat *.miscleavages.0)
-        miscleavages_1=$(cat *.miscleavages.1)
-        miscleavages_2=$(cat *.miscleavages.2)
-        miscleavages_3=$(cat *.miscleavages.3)
-        charge_2=$(source !{binfolder}/parsing_diann.sh; get_num_charges_diann !{tsv_file} 2)
-        charge_3=$(source !{binfolder}/parsing_diann.sh; get_num_charges_diann !{tsv_file} 3)
-        charge_4=$(source !{binfolder}/parsing_diann.sh; get_num_charges_diann !{tsv_file} 4)
-        total_base_peak_intenisty=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000505)
-        total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
-
-        # Checks:
-        echo $total_base_peak_intenisty > total_base_peak_intenisty
-        echo $total_tic > total_tic
-        echo $num_prots > num_prots
-        echo $charge_2 > charge_2
-        echo $charge_3 > charge_3
-        echo $charge_4 > charge_4
-
-        # API posts:
-        checksum=$(cat !{checksum})
-        access_token=$(source !{binfolder}/api.sh; get_api_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "3","value": "'$charge_2'"},{"contextSource": "4","value": "'$charge_3'"},{"contextSource": "5","value": "'$charge_4'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "7","value": "'$total_base_peak_intenisty'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "19","value": "'$total_tic'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "20","value": "'$miscleavages_0'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "21","value": "'$miscleavages_1'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "22","value": "'$miscleavages_2'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "6170694b-6579-3100-0000-000000000000","id": "1"},"values": [{"contextSource": "23","value": "'$miscleavages_3'"}]}]}'
-
-        '''
-}
-
 process insertQuantToQSample {
     tag { "${csvfile}" }
 
@@ -246,25 +116,6 @@ process insertQuantToQSample {
     '''
 }
 
-
-process insertDIANNQuantToQSample {
-    tag { "${csvfile}" }
-
-    input:
-    file(checksum)
-    file(tsvfile)
-
-    when:
-    csvfile =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL).)*$/
-
-    shell:
-    '''
-    checksum=$(cat !{checksum})
-    !{binfolder}/quant2json.sh !{tsvfile} $checksum output.json !{num_max_prots} true
-    access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-    curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_quant} -H "Content-Type: application/json" --data '@output.json'
-    '''
-}
 
 process insertPhosphoModifToQSample {
     tag { "${fileinfo_file}" }
@@ -414,129 +265,5 @@ process insertTmtToQSample {
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "TMT6plex (K)"},"value": "'$num_mod_tmt_K'"},{"modification": {"name": "TMT6plex (N-term)"},"value": "'$num_mod_tmt_N'"}]}'
-        '''
-}
-
-process insertWetlabInSolutionDataToQSample {
-        tag { "${fileinfo_file}" }
-
-        input:
-        file(checksum)
-        file(fileinfo_file)
-        file(protinf_file)
-
-        when:
-        fileinfo_file.name =~ /QCDL/
-
-        shell:
-        '''
-        checksum=$(cat !{checksum})
-        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
-        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
-        
-access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-        echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'!{api_key_qcdl}'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
-        '''
-}
-
-process insertWetlabInGelDataToQSample {
-        tag { "${fileinfo_file}" }
-
-        input:
-        file(checksum)
-        file(fileinfo_file)
-        file(protinf_file)
-
-        when:
-        fileinfo_file.name =~ /QCGL/
-
-        shell:
-        '''
-        checksum=$(cat !{checksum})
-        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
-        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
-        
-access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-        echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'!{api_key_qcgl}'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
-        '''
-}
-
-process insertWetlabFaspDataToQSample {
-        tag { "${fileinfo_file}" }
-
-        input:
-        file(checksum)
-        file(fileinfo_file)
-        file(protinf_file)
-
-        when:
-        fileinfo_file.name =~ /QCFL/
-
-        shell:
-        '''
-        checksum=$(cat !{checksum})
-        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
-        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
-        
-access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-        echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'!{api_key_qcfl}'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
-        '''
-}
-
-process insertWetlabPhosphoDataToQSample {
-        tag { "${fileinfo_file}" }
-
-        input:
-        file(checksum)
-        file(fileinfo_file)
-        file(protinf_file)
-
-        when:
-        fileinfo_file.name =~ /QCPL/
-
-        shell:
-        '''
-        checksum=$(cat !{checksum})
-        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})        
-        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
-        num_mod_phospho_s=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "S(Phospho)")
-        num_mod_phospho_t=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "T(Phospho)")
-        num_mod_phospho_y=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "Y(Phospho)")
-        num_peptides_modif=$(echo "$num_mod_phospho_s+$num_mod_phospho_t+$num_mod_phospho_y" | bc -l)
-
-
-        #Check: 
-        echo $num_prots > num_prots
-
-access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-        echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'!{api_key_qcpl}'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'!{api_key_qcpl}'","id": "1"},"values": [{"contextSource": "24","value": "'$num_peptides_modif'"}]}]}'
-        '''
-}
-
-process insertWetlabAgilentDataToQSample {
-        tag { "${fileinfo_file}" }
-
-        input:
-        file(checksum)
-        file(fileinfo_file)
-        file(protinf_file)
-
-        when:
-        fileinfo_file.name =~ /QCRL/
-
-        shell:
-        '''
-        checksum=$(cat !{checksum})
-        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
-        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
-
-access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-        echo $access_token > acces_token
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'!{api_key_qcrl}'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
         '''
 }
