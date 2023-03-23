@@ -16,6 +16,13 @@ MODE=$2
 ASSETS_FOLDER=$3
 DATA=$4
 
+[ "$#" -eq 4 ] || die "[ERROR] 4 argument required, $# provided"
+
+if [ ! -d "$ASSETS_FOLDER" ]; then
+  echo "[ERROR]"$ASSETS_FOLDER" does not exist."
+  exit 1
+fi
+
 ## PARSE CSV FILENAMES
 CSV_FILENAME_RUN_MODES=$(ls $3 | grep $LAB | grep "run_modes")
 CSV_FILENAME_RUN_MODES=$3/$CSV_FILENAME_RUN_MODES
@@ -38,7 +45,7 @@ METHODS_CSV=$3/$METHODS_CSV
 SECRETS_FILE=$(ls $WF_ROOT_FOLDER"/conf" | grep "secret")
 if [ ! -f "$WF_ROOT_FOLDER/conf/$SECRETS_FILE" ]; then
    echo "[ERROR] There's no SECRETS file in /conf folder. Please check."
-   exit
+   exit 1
 fi 
    
 ## MANAGE TEST DATA
