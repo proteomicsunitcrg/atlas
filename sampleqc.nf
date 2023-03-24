@@ -6,9 +6,8 @@ include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conve
 include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter as comet_adapter_pr } from './subworkflows/search_engine/search_engine'
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './subworkflows/identification/identification'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
-include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr; insertPhosphoModifToQSample as insertPhosphoModifToQSample_pr; insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr; insertSilacToQSample as insertSilacToQSample_pr; insertTmtToQSample as insertTmtToQSample_pr } from './subworkflows/report/report_qsample_applications'
-include { output_folder_test as output_folder_test_pr} from './subworkflows/report/report_output_folder'
-
+include { insertSampleQCFileToQSample as insertSampleQCFileToQSample_pr; insertSampleQCInGelDataToQSample as insertSampleQCInGelDataToQSample_pr; insertSampleQCFaspDataToQSample as insertSampleQCFaspDataToQSample_pr; insertSampleQCInSolutionDataToQSample as insertSampleQCInSolutionDataToQSample_pr; insertSampleQCPhosphoDataToQSample as insertSampleQCPhosphoDataToQSample_pr; insertSampleQCOfflineFractionationDataToQSample as insertSampleQCOfflineFractionationDataToQSample_pr; insertSampleQCHistonesToQSample as insertSampleQCHistonesToQSample_pr } from './subworkflows/report/report_qsample_sampleqc'
+include { output_folder_sampleqc_phospho as output_folder_sampleqc_phospho_pr; output_folder_qchl as output_folder_qchl_pr } from './subworkflows/report/report_output_folder'
 
 Channel
   .fromPath(params.rawfile)
@@ -56,19 +55,19 @@ workflow {
    idmapper_pr(ffm_pr.out,idfilter_score_pr.out)
    protquant_pr(idmapper_pr.out)
 
-   //Report to QSample database:
-   insertFileToQSample_pr(rawfile_ch,trfp_pr.out)
-   insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,qccalc_pr.out,trfp_pr.out)
-   insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
-   
-   //Report to output folder fo testing purposes:
-   output_folder_test_pr(protinf_pr.out)
+   // Report SampleQC to QSample:
+   insertSampleQCFileToQSample_pr(rawfile_ch,trfp_pr.out) 
+   insertSampleQCInSolutionDataToQSample_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
+   insertSampleQCInGelDataToQSample_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
+   insertSampleQCFaspDataToQSample_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
+   insertSampleQCPhosphoDataToQSample_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
+   insertSampleQCOfflineFractionationDataToQSample_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
+   insertSampleQCHistonesToQSample_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,idmapper_pr.out,protinf_pr.out)   
 
-   // Report additional applications to QSample:
-   insertPhosphoModifToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
-   insertSilacToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
-   insertTmtToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out)
-   insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,idmapper_pr.out,protinf_pr.out)
+   //Report to output folder:
+   output_folder_sampleqc_phospho_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out) 
+   output_folder_qchl_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idmapper_pr.out)
+
 }
 
 

@@ -16,8 +16,6 @@ MODE=$2
 ASSETS_FOLDER=$3
 DATA=$4
 
-[ "$#" -eq 4 ] || die "[ERROR] 4 argument required, $# provided"
-
 if [ ! -d "$ASSETS_FOLDER" ]; then
   echo "[ERROR]"$ASSETS_FOLDER" does not exist."
   exit 1

@@ -131,7 +131,7 @@ process output_folder_diannqc {
         '''
 }
 
-process output_folder_wetlab_phospho {
+process output_folder_sampleqc_phospho {
         tag { "${fileinfo_file}" }
 
         input:

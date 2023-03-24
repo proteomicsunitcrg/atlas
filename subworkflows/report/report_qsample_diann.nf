@@ -22,9 +22,6 @@ process insertDIANNFileToQSample {
         output:
         file("${filename}.checksum")
 
-        when:
-        filename =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL|QCHL).)*$/
-
         shell:
         '''
         request_code=$(echo !{filename} | awk -F'[_.]' '{print $1}')
@@ -97,9 +94,6 @@ process insertDIANNQuantToQSample {
     input:
     file(checksum)
     file(tsvfile)
-
-    when:
-    csvfile =~ /^((?!QCGL|QCDL|QCFL|QCPL|QCRL).)*$/
 
     shell:
     '''
