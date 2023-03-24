@@ -42,7 +42,7 @@ process insertSampleQCFileToQSample {
         mzml_file=$(ls -l *.mzML | awk '{print $11}')
         echo $mzml_file > mzml_file
         creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
-        data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'$basename_sh'"}'
+        data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'$basename_sh'","replicate": '$replicate',"year": '$year',"week": '$week'}'
         echo $data_string > data_string
         replicate=$(echo !{filename} | cut -d"_" -f4 | cut -c2-3)
         year=$(echo !{filename} | cut -d"_" -f1 | cut -c1-4)
