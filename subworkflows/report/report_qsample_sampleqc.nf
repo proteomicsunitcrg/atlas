@@ -42,11 +42,11 @@ process insertSampleQCFileToQSample {
         mzml_file=$(ls -l *.mzML | awk '{print $11}')
         echo $mzml_file > mzml_file
         creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
-        echo $data_string > data_string
         replicate=$(echo !{filename} | cut -d"_" -f4 | cut -c2-3)
         year=$(echo !{filename} | cut -d"_" -f1 | cut -c1-4)
         week=$(echo !{filename} | cut -d"_" -f3 | cut -c2-3 | bc)
         data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'$basename_sh'","replicate": '$replicate',"year": '$year',"week": '$week'}'
+        echo $data_string > data_string
         access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
         echo $access_token > acces_token
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_file}/$api_key -H "Content-Type: application/json" --data @data_string
