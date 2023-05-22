@@ -80,7 +80,7 @@ process diann {
     echo "Output TSV report: "$output_file
 
     echo "Running DIA-NN command line..."
-    /usr/diann/1.8/./diann-1.8  --f "$diann_filename"  --lib "" --threads 5 --verbose 10 --out "$output_file" --qvalue !{qvalue} --gen-spec-lib --predictor --fasta ${fastafile} --fasta-search --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz} --max-pr-mz !{max_pr_mz} --min-pr-charge !{min_pr_charge} --max-pr-charge !{max_pr_charge} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
+    /usr/diann/1.8.1/./diann-1.8.1 --f "$diann_filename"  --lib "" --threads 5 --verbose 10 --out "$output_file" --qvalue !{qvalue} --gen-spec-lib --predictor --fasta ${fastafile} --fasta-search --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz} --max-pr-mz !{max_pr_mz} --min-pr-charge !{min_pr_charge} --max-pr-charge !{max_pr_charge} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
 
     '''
 }
