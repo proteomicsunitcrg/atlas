@@ -64,7 +64,7 @@ if [ "$TEST_MODE" = true ] ; then
 
    # Clean test data folder, if applies
    rm $ORIGIN_FOLDER/* 2>/dev/null && echo "[INFO] Test files cleaned at $ORIGIN_FOLDER" || echo "[INFO] No files to clean at "$ORIGIN_FOLDER
-   
+
    # Download files and data, if applies
    if [ -f "$ORIGIN_FOLDER/$TEST_FILENAME" ] ; then
       echo "[INFO] Test file $ORIGIN_FOLDER/$TEST_FILENAME already downloaded."
@@ -94,7 +94,7 @@ launch_nf_run () {
       fi
 
       ####### LAUNCH TO NEXTFLOW ####### 
-      nextflow run $2 $WITH_TOWER -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --fragment_mass_tolerance "$4" --fragment_error_units "$5" --precursor_mass_tolerance "$6" --precursor_error_units "$7" --missed_cleavages "$8" --output_folder "$9" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${11}" -profile $LAB,"${12}" --rawfile ${13} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${14}
+      nextflow run $2 $WITH_TOWER -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --sites_modif "$4" --fragment_mass_tolerance "$5" --fragment_error_units "$6" --precursor_mass_tolerance "$7" --precursor_error_units "$8" --missed_cleavages "$9" --output_folder "${10}" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${12}" -profile $LAB,"${13}" --sampleqc_api_key ${14} --rawfile ${15} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${16}
  
       # Reporting log:
       echo "[INFO] ################################################################"
@@ -102,17 +102,19 @@ launch_nf_run () {
       echo "[INFO] Application name: $1"
       echo "[INFO] Workflow: $2"
       echo "[INFO] Variable modifications: $3"
-      echo "[INFO] Fragment mass tolerance: $4"
-      echo "[INFO] Fragment error units: $5"
-      echo "[INFO] Precursor mass tolerance: $6"
-      echo "[INFO] Precursor mass units: $7"
-      echo "[INFO] Missed cleavages: $8"
-      echo "[INFO] Ouptut folder: $9"
+      echo "[INFO] Site modifications: $4"
+      echo "[INFO] Fragment mass tolerance: $5"
+      echo "[INFO] Fragment error units: $6"
+      echo "[INFO] Precursor mass tolerance: $7"
+      echo "[INFO] Precursor mass units: $8"
+      echo "[INFO] Missed cleavages: $9"
+      echo "[INFO] Ouptut folder: ${10}"
       echo "[INFO] Instrument subfolder: $INSTRUMENT_FOLDER"
-      echo "[INFO] Search engine: ${11}"
-      echo "[INFO] NF Profile: $LAB,${12}"
-      echo "[INFO] Raw file: ${13}"
-      echo "[INFO] Log file: ${14}"
+      echo "[INFO] Search engine: ${12}"
+      echo "[INFO] NF Profile: $LAB,${13}"
+      echo "[INFO] SampleQC api key: ${14}"
+      echo "[INFO] Raw file: ${15}"
+      echo "[INFO] Log file: ${16}"
       echo "[INFO] Working folder: $ATLAS_RUNS_FOLDER/$CURRENT_UUID"
       echo "[INFO] ###############################################################"
       echo "[INFO] ###############################################################"
@@ -122,6 +124,7 @@ launch_nf_run () {
 
 }
 
+# Experimental function: 
 launch_all_secondary_reactions () {
       secondary_reaction "'Formyl (N-term)'" ${1} ${2}_formyl_n.log
       secondary_reaction "'Carbamyl (N-term)'" ${1} ${2}_carbamyl_n.log
@@ -148,7 +151,15 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 
 	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d';' -f1 | tail -n +2)
 
-	FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+        FILE_TO_PROCESS=""
+        NUM_MAX_PROC=20
+        NUM_CONCURRENT_PROC=$(ps -ef | grep qsample | grep nextflow | wc -l);
+        if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
+          echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
+          FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+        else
+          echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
+        fi
 
 	if [ -n "$FILE_TO_PROCESS" ]; then
 
@@ -176,16 +187,18 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 	    WF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f2)
 	    NAME=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f3)
 	    VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f4)
-	    FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f5)
-	    FEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
-	    PMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f7)
-	    PEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f8)
-	    MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f9)
-	    OF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
-	    IF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f11)
-	    ENGINE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f12)
-            NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f13)
-            COMPUTE_SEC_REACT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
+	    SITES_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f5)
+            FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
+	    FEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f7)
+	    PMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f8)
+	    PEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f9)
+	    MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
+	    OF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f11)
+	    IF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f12)
+	    ENGINE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f13)
+            NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
+            COMPUTE_SEC_REACT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
+            SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f16)
 
 	    ##############LAUNCH NEXTFLOW PROCESSES
             # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
@@ -197,7 +210,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
                TEST_MODE="false"
             fi
             if [ -f "$RAWFILE_TO_PROCESS" ]; then
-             launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" $FMT $FEU $PMT $PEU $MC $OF $IF $ENGINE $NF_PROFILE $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
+             launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
              if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
             else 
              echo "[ERROR] File ${RAWFILE_TO_PROCESS} not found."

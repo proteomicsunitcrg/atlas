@@ -1,33 +1,33 @@
-pattern;workflow;name;var_modif;fragment_mass_tolerance;fragment_error_units;precursor_mass_tolerance;precursor_error_units;missed_cleavages;output_folder;is_instrument_folder_in_filename;search_engine;nf_profile;compute_sec_react
-MQ;main;Proteome label-free quantification;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-LA;main;Characterization of protein-protein interactions (AP-MS) - A. Pilot experiment;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-LB;main;Characterization of protein-protein interactions (AP-MS) - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-LD;main;Chromatin-bound proteome;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-MG;main;Identification of a protein in a gel band;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-MC;main;Identification of an overexpressed protein;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-ME;main;Proteome label-free quantification in exosomes;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-MM;main;Proteome label-free quantification in mycoplasma;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-MS;main;Proteome label-free quantification in secretome;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-LZ;main;User tailored request (Proteomics);'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-ZZ;main;Internal Test;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;true
-MP;main;Phosphoproteome label-free quantification;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';0.5;Da;7;ppm;3;'';'';comet;big;true
-MA;main;PTM (acetyl, methyl, phospho, ubiquitin) quantification of a purified protein - A. Pilot experiment;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';0.5;Da;7;ppm;3;'';'';comet;big;true
-MB;main;PTM (acetyl, methyl, phospho, ubiquitin) quantification of a purified protein - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';0.5;Da;7;ppm;3;'';'';comet;big;true
-LC;main;SILAC: Checking incorporation;'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)';0.5;Da;7;ppm;3;'';'';comet;big;true
-LP;main;SILAC: Phosphoproteome quantification;'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)';0.5;Da;7;ppm;3;'';'';comet;big;true
-LQ;main;SILAC: Proteome quantification;'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)';0.5;Da;7;ppm;3;'';'';comet;big;true
-LU;main;SILAC: Ultra deep proteome quantification (fractionation);'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)';0.5;Da;7;ppm;3;'';'';comet;big;true
-MH;main;PTM quantification of histones - A. Pilot experiment;'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)';0.02;Da;7;ppm;3;'';'';mascot;medium;true
-MZ;main;PTM quantification of histones - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)';0.02;Da;7;ppm;3;'';'';mascot;medium;true
-MW;main;Targeted protein quantification (PRM) - A. Method development;'Oxidation (M)' 'Acetyl (N-term)';0.02;Da;7;ppm;3;'';'';comet;small;true
-MT;main;Targeted protein quantification (PRM) - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)';0.02;Da;7;ppm;3;'';'';comet;small;true
-LT;main;TMT: Proteome quantification;'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)';0.5;Da;7;ppm;3;'';'';comet;big;true
-LF;main;TMT: Ultra deep proteome quantification (fractionation);'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)';0.5;Da;7;ppm;3;'';'';comet;big;true
-MK;diann;Quantification using data independent acquisition (DIA);'Oxidation (M)' 'Acetyl (N-term)';0.02;Da;10;ppm;1;'';'';comet;medium;false
-QCDI;diann;DIA QC;'Oxidation (M)' 'Acetyl (N-term)';0.02;Da;10;ppm;1;/users/pr/qsample/diaqc-output;true;comet;medium;false
-QCHL;sampleqc;Histones QC;'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)';0.5;Da;10;ppm;1;/users/pr/qsample/qchl-output;'';comet;medium;false
-QCGL;sampleqc;In-gel QC;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;false
-QCDL;sampleqc;In-solution digestion QC;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;false
-QCFL;sampleqc;Filter-aided digestion (FASP) QC;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;false
-QCRL;sampleqc;Offline Fractionation QC;'Oxidation (M)' 'Acetyl (N-term)';0.5;Da;7;ppm;3;'';'';comet;small;false
-QCPL;sampleqc;Phosphoenrichment QC;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';0.5;Da;7;ppm;3;/users/pr/qsample/qcpl-output;'';comet;big;false
+pattern;workflow;name;var_modif;sites_modif;fragment_mass_tolerance;fragment_error_units;precursor_mass_tolerance;precursor_error_units;missed_cleavages;output_folder;is_instrument_folder_in_filename;search_engine;nf_profile;compute_sec_react;sampleqc_api_key
+MQ;main;Proteome label-free quantification;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+LA;main;Characterization of protein-protein interactions (AP-MS) - A. Pilot experiment;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+LB;main;Characterization of protein-protein interactions (AP-MS) - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+LD;main;Chromatin-bound proteome;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+MG;main;Identification of a protein in a gel band;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+MC;main;Identification of an overexpressed protein;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+ME;main;Proteome label-free quantification in exosomes;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+MM;main;Proteome label-free quantification in mycoplasma;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+MS;main;Proteome label-free quantification in secretome;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+LZ;main;User tailored request (Proteomics);'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+ZZ;main;Internal Test;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;
+MP;main;Phosphoproteome label-free quantification;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';S(Phospho),T(Phospho),Y(Phospho);0.5;Da;7;ppm;3;;;comet;big;true;
+MA;main;PTM (acetyl, methyl, phospho, ubiquitin) quantification of a purified protein - A. Pilot experiment;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';S(Phospho),T(Phospho),Y(Phospho);0.5;Da;7;ppm;3;;;comet;big;true;
+MB;main;PTM (acetyl, methyl, phospho, ubiquitin) quantification of a purified protein - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';S(Phospho),T(Phospho),Y(Phospho);0.5;Da;7;ppm;3;;;comet;big;true;
+LC;main;SILAC: Checking incorporation;'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)';R(Label:13C(6)15N(4)),K(Label:13C(6)15N(2));0.5;Da;7;ppm;3;;;comet;big;true;
+LP;main;SILAC: Phosphoproteome quantification;'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)';'R(Label:13C(6)15N(4)),K(Label:13C(6)15N(2))';0.5;Da;7;ppm;3;;;comet;big;true;
+LQ;main;SILAC: Proteome quantification;'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)';R(Label:13C(6)15N(4)),K(Label:13C(6)15N(2));0.5;Da;7;ppm;3;;;comet;big;true;
+LU;main;SILAC: Ultra deep proteome quantification (fractionation);'Oxidation (M)' 'Acetyl (N-term)' 'Label:13C(6)15N(4) (R)' 'Label:13C(6)15N(2) (K)';R(Label:13C(6)15N(4)),K(Label:13C(6)15N(2));0.5;Da;7;ppm;3;;;comet;big;true;
+MH;main;PTM quantification of histones - A. Pilot experiment;'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)';.(Phenylisocyanate),K(Propionyl),.(Propionyl),K(Dimethyl),K(Trimethyl),K(Acetyl),K(Crotonaldehyde);0.02;Da;7;ppm;3;;;mascot;medium;true;
+MZ;main;PTM quantification of histones - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)';.(Phenylisocyanate),K(Propionyl),.(Propionyl),K(Dimethyl),K(Trimethyl),K(Acetyl),K(Crotonaldehyde);0.02;Da;7;ppm;3;;;mascot;medium;true;
+MW;main;Targeted protein quantification (PRM) - A. Method development;'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;7;ppm;3;;;comet;small;true;
+MT;main;Targeted protein quantification (PRM) - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;7;ppm;3;;;comet;small;true;
+LT;main;TMT: Proteome quantification;'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)';K(TMT6plex),.(TMT6plex);0.5;Da;7;ppm;3;;;comet;big;true;
+LF;main;TMT: Ultra deep proteome quantification (fractionation);'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)';K(TMT6plex),.(TMT6plex);0.5;Da;7;ppm;3;;;comet;big;true;
+MK;diann;Quantification using data independent acquisition (DIA);'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;10;ppm;1;;;comet;medium;false;
+QCDI;diann;DIA QC;'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;10;ppm;1;/users/pr/qsample/diaqc-output;true;comet;medium;false;
+QCHL;sampleqc;Histones QC;'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)';.(Phenylisocyanate),K(Propionyl),.(Propionyl),K(Dimethyl),K(Trimethyl),K(Acetyl),K(Crotonaldehyde);0.5;Da;10;ppm;1;/users/pr/qsample/qchl-output;;comet;medium;false;7765746c-6162-3600-0000-000000000000
+QCGL;sampleqc;In-gel QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;7765746c-6162-3300-0000-000000000000
+QCDL;sampleqc;In-solution digestion QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;6170694b-6579-3100-0000-000000000000
+QCFL;sampleqc;Filter-aided digestion (FASP) QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;7765746c-6162-3500-0000-000000000000
+QCRL;sampleqc;Offline Fractionation QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;7765746c-6162-3200-0000-000000000000
+QCPL;sampleqc;Phosphoenrichment QC;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';S(Phospho),T(Phospho),Y(Phospho);0.5;Da;7;ppm;3;/users/pr/qsample/qcpl-output;;comet;big;false;7765746c-6162-3400-0000-000000000000
