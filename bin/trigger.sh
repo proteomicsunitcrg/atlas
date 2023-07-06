@@ -94,7 +94,7 @@ launch_nf_run () {
       fi
 
       ####### LAUNCH TO NEXTFLOW ####### 
-      nextflow run $2 $WITH_TOWER -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --sites_modif "$4" --fragment_mass_tolerance "$5" --fragment_error_units "$6" --precursor_mass_tolerance "$7" --precursor_error_units "$8" --missed_cleavages "$9" --output_folder "${10}" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${12}" -profile $LAB,"${13}" --sampleqc_api_key ${14} --rawfile ${15} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${16}
+      nextflow run $2 $WITH_TOWER -bg -with-report -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --sites_modif "$4" --fragment_mass_tolerance "$5" --fragment_error_units "$6" --precursor_mass_tolerance "$7" --precursor_error_units "$8" --missed_cleavages "$9" --output_folder "${10}" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${12}" -profile $LAB,"${13}" --sampleqc_api_key ${14} --rawfile ${15} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${16}
  
       # Reporting log:
       echo "[INFO] ################################################################"
@@ -215,11 +215,10 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
             else 
              echo "[ERROR] File ${RAWFILE_TO_PROCESS} not found."
             fi
-
 	  fi
-
 	 done
-
+        else
+         echo "[INFO] No files to process!"
 	fi
 
 echo "[INFO] -----------------EOF"

@@ -8,7 +8,7 @@ include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aa
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
 include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr; insertModificationsToQsample as insertModificationsToQsample_pr } from './subworkflows/report/report_qsample_applications'
 include { insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr } from './subworkflows/lab/report_qsample_applications_lab'
-include { output_folder_test as output_folder_test_pr} from './subworkflows/report/report_output_folder'
+include { output_folder_test as output_folder_test_pr; output_folder as output_folder_pr;} from './subworkflows/report/report_output_folder'
 
 
 Channel
@@ -35,6 +35,10 @@ Channel
 Channel
   .from(params.fragment_error_units)
   .set { fragment_error_units_ch }
+
+Channel
+  .from(params.output_folder)
+  .set { output_folder_ch }
 
 workflow {
   
@@ -64,8 +68,11 @@ workflow {
    insertFileToQSample_pr(rawfile_ch,trfp_pr.out)
    insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,qccalc_pr.out,trfp_pr.out)
    insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
+
+   //Report to output folder (if the field output_folder was informed at methods CSV file):
+   output_folder_pr(protinf_pr.out,output_folder_ch)  
    
-   //Report to output folder fo testing purposes:
+   //Report to output folder for testing purposes (if the pipeline was triggered through test mode):
    output_folder_test_pr(protinf_pr.out)
 
    //Report additional applications to QSample:
