@@ -28,6 +28,7 @@ CSV_FILENAME_RUN_MODES=$3/$CSV_FILENAME_RUN_MODES
 ## PARSE RUN MODES VARIABLES
 if [[ $2 = "prod" ]]; then PROD_MODE="true"; elif [[ $2 = "test" ]]; then TEST_MODE="true"; fi
 ORIGIN_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f2)
+echo "[INFO] Origin folder is "$ORIGIN_FOLDER
 WF_ROOT_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f3)
 ATLAS_RUNS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f4)
 LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f5)
@@ -39,7 +40,7 @@ SEC_REACT_WF=$WF_ROOT_FOLDER"/secreact.nf"
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
 METHODS_CSV=$3/$METHODS_CSV
 
-## SECRETS FILE CHECK: 
+## SECRETS FILE CHECK:
 SECRETS_FILE=$(ls $WF_ROOT_FOLDER"/conf" | grep "secret")
 if [ ! -f "$WF_ROOT_FOLDER/conf/$SECRETS_FILE" ]; then
    echo "[ERROR] There's no SECRETS file in /conf folder. Please check."

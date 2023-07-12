@@ -25,10 +25,6 @@ Channel
   .set { var_modif_ch }
 
 Channel
-  .from(params.sites_modif)
-  .set { sites_modif_ch }
-
-Channel
   .from(params.fragment_mass_tolerance)
   .set { fragment_mass_tolerance_ch }
 

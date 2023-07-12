@@ -2,7 +2,6 @@
 url_api_signin             = params.url_api_signin
 url_api_user               = params.url_api_user
 url_api_pass               = params.url_api_pass
-url_api_fileinfo           = params.url_api_fileinfo
 url_api_insert_wetlab_file = params.url_api_insert_wetlab_file
 url_api_insert_wetlab_data = params.url_api_insert_wetlab_data
 
@@ -41,6 +40,7 @@ process insertSampleQCFileToQSample {
 }
 
 process insertSampleQCDataToQSample {
+
         tag { "${fileinfo_file}" }
 
         input:
@@ -56,30 +56,31 @@ process insertSampleQCDataToQSample {
         basename_sh=!{basename}
         checksum=$(cat !{checksum})
         api_key_sh=!{sampleqc_api_key}
+        modif=$(echo "!{sites_modif}")    
   
+        echo "[INFO] Get access token..."
         access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
-
+        echo "[INFO] Access token: "$access_token 
+        
         num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
         num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        echo "[INFO] num_prots"$num_prots
+        echo "[INFO] num_peptd"$num_peptd
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
 
-        # Number of modification sites:
-        modif=$(echo "!{sites_modif}") 
         if [[ ${modif} != "true" ]]; then
+         echo "[INFO] Sample QC with modifications..."
          IFS=',' read -r -a modif_array <<< "$modif"
          num_peptides_modif=0
          for modif in "${modif_array[@]}"
          do
-          echo "[INFO] Counting peptide sequences with this modification: $modif"
+          echo "[INFO] Counting sites with this modification: "$modif
           num_mod=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "$modif")
-          echo "[INFO] Number of modifications sites for $modif: $num_mod"
-          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "'$modif'"},"value": "'$num_mod'"}]}'
+          echo "[INFO] Number of sites modified with "$modif":"$num_mod
           num_peptides_modif=$(echo "$num_peptides_modif+$num_mod" | bc -l)
          done
-         echo "[INFO] Number of total modifications sites: $num_peptides_modif"
-         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptd'", "peptideModified": "'$num_peptides_modif'"}}'
-        else 
-         echo "[INFO] Sample QC without modifications."
+         echo "[INFO] Number of total modifications sites: "$num_peptides_modif
+         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "24","value": "'$num_peptides_modif'"}]}]}'
         fi
         '''
 }
