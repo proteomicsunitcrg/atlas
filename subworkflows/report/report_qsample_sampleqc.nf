@@ -42,6 +42,7 @@ process insertSampleQCFileToQSample {
 process insertSampleQCDataToQSample {
 
         tag { "${fileinfo_file}" }
+        label 'clitools'
 
         input:
         tuple val(filename), val(basename), val(path)
