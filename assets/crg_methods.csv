@@ -26,8 +26,8 @@ LF;main;TMT: Ultra deep proteome quantification (fractionation);'Oxidation (M)' 
 MK;diann;Quantification using data independent acquisition (DIA);'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;10;ppm;1;;;comet;medium;false;
 QCDI;diann;DIA QC;'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;10;ppm;1;/users/pr/qsample/diaqc-output;true;comet;medium;false;
 QCHL;sampleqc;Histones QC;'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)';.(Phenylisocyanate),K(Propionyl),.(Propionyl),K(Dimethyl),K(Trimethyl),K(Acetyl),K(Crotonaldehyde);0.5;Da;10;ppm;1;/users/pr/qsample/qchl-output;;comet;medium;false;7765746c-6162-3600-0000-000000000000
-QCGL;sampleqc;In-gel QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;7765746c-6162-3300-0000-000000000000
-QCDL;sampleqc;In-solution digestion QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;6170694b-6579-3100-0000-000000000000
-QCFL;sampleqc;Filter-aided digestion (FASP) QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;7765746c-6162-3500-0000-000000000000
-QCRL;sampleqc;Offline Fractionation QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;7765746c-6162-3200-0000-000000000000
-QCPL;sampleqc;Phosphoenrichment QC;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';S(Phospho),T(Phospho),Y(Phospho);0.5;Da;7;ppm;3;/users/pr/qsample/qcpl-output;;comet;big;false;7765746c-6162-3400-0000-000000000000
+QCGL;sampleqc;In-gel QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;d7bca60f-a79e-4cb9-9333-9227410629bf
+QCDL;sampleqc;In-solution digestion QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;5008da3a-dbcd-49c3-a008-db34c4b0bb39
+QCFL;sampleqc;Filter-aided digestion (FASP) QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;0c5165d8-05eb-47e0-86e4-22a77beb86ab
+QCRL;sampleqc;Offline Fractionation QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;5e0f0077-2ae2-4984-88cd-20bcd62067ff
+QCPL;sampleqc;Phosphoenrichment QC;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';S(Phospho),T(Phospho),Y(Phospho);0.5;Da;7;ppm;3;/home/proteomics/mygit/atlas-output;;comet;big;false;0237d9fe-9013-4746-a2d7-6e5fcf007a18
