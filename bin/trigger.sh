@@ -154,7 +154,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 
         FILE_TO_PROCESS=""
         NUM_MAX_PROC=20
-        NUM_CONCURRENT_PROC=$(ps -ef | grep qsample | grep nextflow | wc -l);
+        NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
         if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
           echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
           FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
