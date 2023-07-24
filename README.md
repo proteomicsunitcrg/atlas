@@ -27,7 +27,7 @@ More detailed,
 
 1. Install [`Nextflow`](https://www.nextflow.io/docs/latest/getstarted.html#installation) (`>=22.04.4.5706`)
 
-2. Install [`Singularity`](https://www.sylabs.io/guides/3.0/user-guide/) (you can follow [this tutorial](https://singularity-tutorial.github.io/01-installation/)).
+2. Install [`Singularity`](https://www.sylabs.io/guides/3.0/user-guide/) (you can follow [this tutorial](https://github.com/apptainer/apptainer/blob/main/INSTALL.md)).
 
 3. Clone the pipeline: 
 
