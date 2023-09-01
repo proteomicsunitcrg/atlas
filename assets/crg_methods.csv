@@ -23,7 +23,7 @@ MW;main;Targeted protein quantification (PRM) - A. Method development;'Oxidation
 MT;main;Targeted protein quantification (PRM) - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;7;ppm;3;;;comet;small;true;
 LT;main;TMT: Proteome quantification;'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)';K(TMT6plex),.(TMT6plex);0.5;Da;7;ppm;3;;;comet;big;true;
 LF;main;TMT: Ultra deep proteome quantification (fractionation);'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)';K(TMT6plex),.(TMT6plex);0.5;Da;7;ppm;3;;;comet;big;true;
-MK;diann;Quantification using data independent acquisition (DIA);'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;10;ppm;1;/users/pr/proteomics/mygit/atlas-output;;comet;medium;false;
+MK;diann;Quantification using data independent acquisition (DIA) - Proteome;'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;10;ppm;1;/users/pr/proteomics/mygit/atlas-output;;comet;medium;false;
 QCDI;diann;DIA QC;'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;10;ppm;1;/users/pr/qsample/diaqc-output;true;comet;medium;false;
 QCHL;sampleqc;Histones QC;'Oxidation (M)' 'Acetyl (N-term)' 'Phenylisocyanate (N-term)' 'Propionyl (K)' 'Propionyl (Protein N-term)' 'Dimethyl (K)' 'Trimethyl (K)' 'Acetyl (K)' 'Crotonaldehyde (K)';.(Phenylisocyanate),K(Propionyl),.(Propionyl),K(Dimethyl),K(Trimethyl),K(Acetyl),K(Crotonaldehyde);0.5;Da;10;ppm;1;/users/pr/qsample/qchl-output;;comet;medium;false;fc639add-dd20-451b-abac-af58234d98aa
 QCGL;sampleqc;In-gel QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;d7bca60f-a79e-4cb9-9333-9227410629bf
