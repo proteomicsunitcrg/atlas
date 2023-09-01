@@ -7,6 +7,7 @@ include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './subworkflows/identification/identification'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
 include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/report/report_qcloud'
+include { output_folder_qcloud as output_folder_qcloud_pr } from './subworkflows/report/report_output_folder'
 
 Channel
   .fromPath(params.rawfile)
@@ -33,6 +34,10 @@ Channel
   .from(params.fragment_error_units)
   .set { fragment_error_units_ch }
 
+Channel
+  .from(params.output_folder)
+  .set { output_folder_ch }
+
 workflow {
   
    //Conversion: 
@@ -54,6 +59,9 @@ workflow {
 
    //Report to QCloud database:
    insertDataToQCloud_pr(protinf_pr.out,trfp_pr.out)
+ 
+   //Report to output folder (if the field output_folder was informed at methods CSV file):
+   output_folder_qcloud_pr(protinf_pr.out,output_folder_ch,trfp_pr.out)
 
 }
 
