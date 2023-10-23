@@ -8,7 +8,7 @@ get_num_prot_groups_diann(){
 }
 
 get_num_peptidoforms_diann(){
- cat $1 | awk -F'\t' '{print $15}' | sort -u | wc -l
+ cat $1 | awk -F'\t' '{print $14}' | sort -u | wc -l
 }
 
 get_num_charges_diann(){
