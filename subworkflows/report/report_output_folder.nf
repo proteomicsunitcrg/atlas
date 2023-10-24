@@ -30,40 +30,6 @@ process output_folder_test {
         ''' 
 }
 
-process output_folder_qcloud {
-
-        tag { "qcloud" }
-        label 'clitools'
-
-        publishDir params.test_folder, mode: 'copy', overwrite: true
-
-        input:
-        file(protinf_file)
-        val output_folder
-        tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
-
-        output:
-        path '*num*'
-
-        when:
-        output_folder != true
-
-        shell:
-        '''
-        # Parsings:
-        num_prots=$(source !{binfolder}/parsing.sh; get_num_prot_groups !{protinf_file})
-        num_peptd=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
-        total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
-        mit_ms1=$(source !{binfolder}/parsing_qcloud.sh; get_mit !{mzml_file} MS:1000511 1 MS:1000927)
-        mit_ms2=$(source !{binfolder}/parsing_qcloud.sh; get_mit !{mzml_file} MS:1000511 2 MS:1000927)
-        request_code=$(echo !{protinf_file} | awk -F'[_.]' '{print $1}')
-        basename_sh=$(basename !{protinf_file} | cut -f 1 -d '.')
-
-        echo "$basename_sh\t$num_prots\t$num_peptd\t$total_tic\t$mit_ms1\t$mit_ms2" >> !{output_folder}/$request_code.tsv
-
-        '''
-}
-
 process output_folder_diann_test {
 
         tag { "test" }

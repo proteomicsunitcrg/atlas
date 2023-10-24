@@ -13,6 +13,11 @@ mz_tolerance             = params.mz_tolerance
 //ProteinQuantifier: 
 average                  = params.average
 
+//EICExtractor:
+qcloud_monitored_peptides = params.qcloud_monitored_peptides
+eic_rt_tol                = params.eic_rt_tol
+eic_mz_tol                = params.eic_mz_tol
+
 process FeatureFinderMultiplex {
     label 'ffm'
     tag { "${mzML_ffm_file}" }
@@ -59,5 +64,20 @@ process ProteinQuantifier {
 
     """
     ProteinQuantifier -include_all -average $average -in $idmapper_to_proteinquantifier -out ${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv
+    """
+}
+
+process EICExtractor {
+    label 'openms'
+    tag { "${mzML_eic_file}" }
+
+    input:
+    tuple val(filename), val(basename), val(path), file(mzML_eic_file)
+
+    output:
+    file("${basename}_eic.csv")
+
+    """
+    EICExtractor -debug 1 -in ${mzML_eic_file} -pos $qcloud_monitored_peptides -out ${basename}_eic.csv -rt_tol $eic_rt_tol -mz_tol $eic_mz_tol
     """
 }

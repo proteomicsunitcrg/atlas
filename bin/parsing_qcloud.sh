@@ -16,3 +16,14 @@ get_mit(){
   datamash median 1 < $curr_dir/$basename.it.num
 
 }
+
+get_param_eic(){
+  # Input params: 
+  csv_file=$1
+  mz_ref=$2 
+  curr_dir=$(pwd)
+  basename=$(basename $curr_dir/$csv_file | cut -f 1 -d '.')
+  
+  
+  
+}

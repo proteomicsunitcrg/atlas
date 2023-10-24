@@ -4,10 +4,10 @@ nextflow.enable.dsl=2
 
 include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
 include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter as comet_adapter_pr } from './subworkflows/search_engine/search_engine'
-include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './subworkflows/identification/identification'
-include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
+include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; ProteinInference as protinf_pr } from './subworkflows/identification/identification'
+include { EICExtractor as eicextr_pr } from './subworkflows/quantification/quantification'
 include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/report/report_qcloud'
-include { output_folder_qcloud as output_folder_qcloud_pr } from './subworkflows/report/report_output_folder'
+include { output_folder_qcloud as output_folder_qcloud_pr } from './subworkflows/report/report_qcloud_output_folder'
 
 Channel
   .fromPath(params.rawfile)
@@ -38,6 +38,10 @@ Channel
   .from(params.output_folder)
   .set { output_folder_ch }
 
+Channel 
+  .from(params.qcloud_monitored_peptides)
+  .set { qcloud_monitored_peptides_ch }
+
 workflow {
   
    //Conversion: 
@@ -53,15 +57,14 @@ workflow {
    pepidx_pr(idfilter_aaa_pr.out,cdecoy_pr.out)
    fdr_pr(pepidx_pr.out)
    idfilter_score_pr(fdr_pr.out)
-   fileinfo_pr(idfilter_score_pr.out)
    protinf_pr(idfilter_score_pr.out)
-   qccalc_pr(protinf_pr.out,trfp_pr.out)
-
+   eicextr_pr(trfp_pr.out)
+   
    //Report to QCloud database:
-   insertDataToQCloud_pr(protinf_pr.out,trfp_pr.out)
+   //insertDataToQCloud_pr(protinf_pr.out,trfp_pr.out,eicextr_pr.out)
  
    //Report to output folder (if the field output_folder was informed at methods CSV file):
-   output_folder_qcloud_pr(protinf_pr.out,output_folder_ch,trfp_pr.out)
+   output_folder_qcloud_pr(rawfile_ch,protinf_pr.out,output_folder_ch,trfp_pr.out,eicextr_pr.out)
 
 }
 
