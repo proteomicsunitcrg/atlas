@@ -14,9 +14,10 @@ mz_tolerance             = params.mz_tolerance
 average                  = params.average
 
 //EICExtractor:
-qcloud_monitored_peptides = params.qcloud_monitored_peptides
-eic_rt_tol                = params.eic_rt_tol
-eic_mz_tol                = params.eic_mz_tol
+eic_rt_tol               = params.eic_rt_tol
+eic_mz_tol               = params.eic_mz_tol
+extra_assets_file        = params.extra_assets_file
+assets_folder            = params.assets_folder 
 
 process FeatureFinderMultiplex {
     label 'ffm'
@@ -68,16 +69,21 @@ process ProteinQuantifier {
 }
 
 process EICExtractor {
-    label 'openms'
-    tag { "${mzML_eic_file}" }
+    label 'eic'
+    tag { "${mzML_ff_file}" }
 
     input:
-    tuple val(filename), val(basename), val(path), file(mzML_eic_file)
+    tuple val(filename), val(basename), val(path), file(mzML_ff_file)
 
     output:
     file("${basename}_eic.csv")
 
-    """
-    EICExtractor -debug 1 -in ${mzML_eic_file} -pos $qcloud_monitored_peptides -out ${basename}_eic.csv -rt_tol $eic_rt_tol -mz_tol $eic_mz_tol
-    """
+    shell:
+    '''
+    assets_folder_sh=!{assets_folder}
+    extra_assets_file_sh=!{extra_assets_file} 
+    edta_file=$assets_folder_sh"/"$extra_assets_file_sh
+    EICExtractor --helphelp
+    EICExtractor -debug 1 -in !{mzML_ff_file} -pos $edta_file -out !{basename}_eic.csv -rt_tol !{eic_rt_tol} -mz_tol !{eic_mz_tol}
+    '''
 }

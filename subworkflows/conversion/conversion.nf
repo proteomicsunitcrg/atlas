@@ -13,7 +13,7 @@ process ThermoRawFileParser {
     if [[ !{filename} == *"mzML"* ]]; then
         path_sh=!{path}
         filename_sh=!{filename}
-        organism_sh=$(echo ${filename_sh##*.})
+        #organism_sh=$(echo ${filename_sh##*.})
         basename_sh=!{basename}
         basename_wo_ext=${basename_sh%.*}
         cp $path_sh/$filename_sh $basename_wo_ext".mzML"    

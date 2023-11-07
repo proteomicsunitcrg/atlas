@@ -101,7 +101,7 @@ launch_nf_run () {
       fi
 
       ####### LAUNCH TO NEXTFLOW ####### 
-      nextflow run $2 $WITH_TOWER -bg -with-report -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --sites_modif "$4" --fragment_mass_tolerance "$5" --fragment_error_units "$6" --precursor_mass_tolerance "$7" --precursor_error_units "$8" --missed_cleavages "$9" --output_folder "${10}" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${12}" -profile $LAB,"${13}" --sampleqc_api_key ${14} --rawfile ${15} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${16}
+      nextflow run $2 $WITH_TOWER -bg -with-report -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --sites_modif "$4" --fragment_mass_tolerance "$5" --fragment_error_units "$6" --precursor_mass_tolerance "$7" --precursor_error_units "$8" --missed_cleavages "$9" --output_folder "${10}" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${12}" -profile $LAB,"${13}" --sampleqc_api_key ${14} --extra_assets_file ${15} --rawfile ${16} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${17}
 
       # Reporting log:
       echo "[INFO] ################################################################"
@@ -120,8 +120,9 @@ launch_nf_run () {
       echo "[INFO] Search engine: ${12}"
       echo "[INFO] NF Profile: $LAB,${13}"
       echo "[INFO] SampleQC api key: ${14}"
-      echo "[INFO] Raw file: ${15}"
-      echo "[INFO] Log file: ${16}"
+      echo "[INFO] Extra assets file: ${15}"
+      echo "[INFO] Raw file: ${16}"
+      echo "[INFO] Log file: ${17}"
       echo "[INFO] Working folder: $ATLAS_RUNS_FOLDER/$CURRENT_UUID"
       echo "[INFO] ###############################################################"
       echo "[INFO] ###############################################################"
@@ -163,7 +164,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
         NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
         if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
           echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-          FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+          FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
         else
           echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
         fi
@@ -206,6 +207,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
             NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
             COMPUTE_SEC_REACT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
             SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f16)
+            EXTRA_ASSETS_FILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f17)
 
 	    ##############LAUNCH NEXTFLOW PROCESSES
             # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
@@ -217,7 +219,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
                TEST_MODE="false"
             fi
             if [ -f "$RAWFILE_TO_PROCESS" ]; then
-             launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
+             launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" "$EXTRA_ASSETS_FILE" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
              if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
             else 
              echo "[ERROR] File ${RAWFILE_TO_PROCESS} not found."
