@@ -148,26 +148,24 @@ launch_all_secondary_reactions () {
 
 ################FUNCTIONS END
 
-
 ###########################
 ################KERNEL#####
 ###########################
 
-DATE_LOG=`date '+%Y-%m-%d %H:%M:%S'`
-echo "[INFO] -----------------START---[${DATE_LOG}]"
-
+    DATE_LOG=`date '+%Y-%m-%d %H:%M:%S'`
+    echo "[INFO] -----------------START---[${DATE_LOG}]"
 
 	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d';' -f1 | tail -n +2)
 
-        FILE_TO_PROCESS=""
-        NUM_MAX_PROC=20
-        NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
-        if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
-          echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-          FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
-        else
-          echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
-        fi
+    FILE_TO_PROCESS=""
+    NUM_MAX_PROC=4
+    NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
+    if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
+     echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
+     FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%T@ %Tc %p\n" | sort -n | awk '{print $7}' | head -n1)
+    else
+     echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
+    fi
 
 	if [ -n "$FILE_TO_PROCESS" ]; then
 
@@ -179,24 +177,25 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 	 for j in ${LIST_PATTERNS}
 	 do
 
-	  if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
+	  #if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
+      if [ "$(echo $FILE_BASENAME | grep $j)" ]; then
 
 	    echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
  
 	    CURRENT_UUID=$(uuidgen)
 	    CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
 
-            if [ "$PROD_MODE" = "true" ] ; then
-                mkdir -p $CURRENT_UUID_FOLDER
-                cd $CURRENT_UUID_FOLDER
-                mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
-            fi
+        if [ "$PROD_MODE" = "true" ] ; then
+          mkdir -p $CURRENT_UUID_FOLDER
+          cd $CURRENT_UUID_FOLDER
+          mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
+        fi
 
 	    WF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f2)
 	    NAME=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f3)
 	    VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f4)
 	    SITES_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f5)
-            FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
+        FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
 	    FEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f7)
 	    PMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f8)
 	    PEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f9)
@@ -204,31 +203,32 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 	    OF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f11)
 	    IF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f12)
 	    ENGINE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f13)
-            NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
-            COMPUTE_SEC_REACT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
-            SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f16)
-            EXTRA_ASSETS_FILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f17)
+        NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
+        COMPUTE_SEC_REACT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
+        SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f16)
+        EXTRA_ASSETS_FILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f17)
 
 	    ##############LAUNCH NEXTFLOW PROCESSES
-            # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
-            if [ "$TEST_MODE" = "true" ] ; then
-               RAWFILE_TO_PROCESS=$ORIGIN_FOLDER/$TEST_FILENAME
-               COMPUTE_SEC_REACT=false
-            elif [ "$PROD_MODE" = "true" ] ; then
-               RAWFILE_TO_PROCESS=$CURRENT_UUID_FOLDER/${FILE_BASENAME}
-               TEST_MODE="false"
-            fi
-            if [ -f "$RAWFILE_TO_PROCESS" ]; then
-             launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" "$EXTRA_ASSETS_FILE" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
-             if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
-            else 
-             echo "[ERROR] File ${RAWFILE_TO_PROCESS} not found."
-            fi
+        # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
+        if [ "$TEST_MODE" = "true" ] ; then
+          RAWFILE_TO_PROCESS=$ORIGIN_FOLDER/$TEST_FILENAME
+          COMPUTE_SEC_REACT=false
+        elif [ "$PROD_MODE" = "true" ] ; then
+          RAWFILE_TO_PROCESS=$CURRENT_UUID_FOLDER/${FILE_BASENAME}
+          TEST_MODE="false"
+        fi
+       if [ -f "$RAWFILE_TO_PROCESS" ]; then
+        launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" "$EXTRA_ASSETS_FILE" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
+        if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
+       else 
+        echo "[ERROR] File ${RAWFILE_TO_PROCESS} not found."
+       fi
+       break
 	  fi
 	 done
         else
          echo "[INFO] No files to process!"
-	fi
+    fi
 
 echo "[INFO] -----------------EOF"
 

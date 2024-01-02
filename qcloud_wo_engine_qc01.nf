@@ -34,7 +34,7 @@ workflow {
    eicextr_pr(trfp_pr.out)
    
    //Report to QCloud database:
-   //insertDataToQCloud_pr()
+   insertDataToQCloud_pr(rawfile_ch,trfp_pr.out,eicextr_pr.out)
  
    //Report to output folder (if the field output_folder was informed at methods CSV file):
    output_folder_qcloud_pr(rawfile_ch,output_folder_ch,trfp_pr.out,eicextr_pr.out)

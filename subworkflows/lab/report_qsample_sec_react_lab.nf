@@ -33,7 +33,7 @@ process insertFileToQSample {
         echo $checksum > !{filename}.checksum
         mzml_file=$(ls -l *.mzML | awk '{print $11}')
         echo $mzml_file > mzml_file
-        creation_date=$(source /users/pr/qsample/test/atlas-last/bin/utils.sh; get_mzml_date $mzml_file)
+        creation_date=$(source !{binfolder}/utils.sh; get_mzml_date $mzml_file)
         data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'!{basename}'"}'       
         access_token=$(source !{binfolder}/api.sh; get_api_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
         echo $access_token > acces_token

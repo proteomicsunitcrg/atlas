@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
 include { EICExtractor as eicextr_pr } from './subworkflows/quantification/quantification'
-include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/report/report_qcloud'
+include { insertDataNucleosidesToQCloud as insertDataNucleosidesToQCloud_pr } from './subworkflows/report/report_qcloud'
 include { FileFilter as filefilter_pr } from './subworkflows/filtering/filtering'
 include { output_folder_qcloud_qcn1 as output_folder_qcloud_qcn1_pr } from './subworkflows/report/report_qcloud_output_folder'
 
@@ -34,10 +34,10 @@ workflow {
    eicextr_pr(filefilter_pr.out)
    
    //Report to QCloud database:
-   //insertDataToQCloud_pr()
+   insertDataNucleosidesToQCloud_pr(rawfile_ch,trfp_pr.out,eicextr_pr.out)
  
    //Report to output folder (if the field output_folder was informed at methods CSV file):
-   output_folder_qcloud_qcn1_pr(rawfile_ch,output_folder_ch,trfp_pr.out,eicextr_pr.out)
+   //output_folder_qcloud_qcn1_pr(rawfile_ch,output_folder_ch,trfp_pr.out,eicextr_pr.out)
 
 }
 

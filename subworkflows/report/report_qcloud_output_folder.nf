@@ -45,8 +45,8 @@ process output_folder_qcloud {
 
         # QCloud JSON files creation: 
         # TOTAL TIC: 
-        $(source /users/pr/proteomics/mygit/atlas-qcloud/bin/parsing_qcloud.sh; create_qcloud_json $checksum "QC:0000048" "QC:0000048")
-        $(source /users/pr/proteomics/mygit/atlas-qcloud/bin/parsing_qcloud.sh; set_value_to_qcloud_json $checksum $total_tic "QC:0000048" "QC:0000048")
+        $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json $checksum "QC:0000048" "QC:0000048")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json $checksum $total_tic "QC:0000048" "QC:0000048")
         # MIT MS1: 
         $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json $checksum "QC:9000002" "QC:1000927")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json $checksum $mit_ms1 "QC:9000002" "QC:1000927") 
