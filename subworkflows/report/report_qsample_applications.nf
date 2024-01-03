@@ -15,6 +15,7 @@ binfolder                      = "$baseDir/bin"
 
 process insertFileToQSample {
         tag { "${mzml_file}" }
+        label 'insertQSampleWithoutClitools' 
 
         input:
         tuple val(filename), val(basename), val(path)
@@ -42,7 +43,7 @@ process insertFileToQSample {
 process insertDataToQSample {
 
         tag { "${protinf_file}" }
-        label 'clitools'
+        label 'insertQSampleClitools'
 
         input:
         file(checksum)
