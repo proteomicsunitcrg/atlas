@@ -7,7 +7,7 @@ include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './subworkflows/identification/identification'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
 include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr; insertModificationsToQsample as insertModificationsToQsample_pr } from './subworkflows/report/report_qsample_applications'
-include { insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr } from './subworkflows/lab/report_qsample_applications_lab'
+include { insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr; insertPolymerContToQSample as insertPolymerContToQSample_pr } from './subworkflows/lab/report_qsample_applications_lab'
 include { output_folder_test as output_folder_test_pr; output_folder as output_folder_pr;} from './subworkflows/report/report_output_folder'
 
 
@@ -80,6 +80,7 @@ workflow {
    
    //Lab
    insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,idmapper_pr.out,protinf_pr.out)
+   insertPolymerContToQSample_pr(insertFileToQSample_pr.out,trfp_pr.out) 
 }
 
 

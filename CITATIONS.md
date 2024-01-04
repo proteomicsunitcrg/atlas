@@ -1,9 +1,7 @@
 - [ThermoRawFileParser](https://github.com/compomics/ThermoRawFileParser#thermorawfileparser)
-
   > Hulstaert N, Shofstahl J, Sachsenberg T, Walzer M, Barsnes H, Martens L, Perez-Riverol Y: ThermoRawFileParser: Modular, Scalable, and Cross-Platform RAW File Conversion [PMID 31755270].
 
 - [OpenMS](https://github.com/OpenMS/OpenMS)
-
   > Rost HL, Sachsenberg T, Aiche S, Bielow C et al. OpenMS: a flexible open-source software platform for mass spectrometry data analysis. Nat Meth. 2016; 13, 9: 741-748. doi:10.1038/nmeth.3959.
 
 - [Comet](https://uwpr.github.io/Comet/)
@@ -17,3 +15,5 @@
 
 - [Mascot](http://www.matrixscience.com/)
   > Perkins, David N., et al. "Probability‐based protein identification by searching sequence databases using mass spectrometry data." ELECTROPHORESIS: An International Journal 20.18 (1999): 3551-3567.
+
+- [mzsniffer](https://github.com/wfondrie/mzsniffer)
