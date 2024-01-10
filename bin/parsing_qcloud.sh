@@ -101,3 +101,10 @@ set_value_to_qcloud_json_monitored_peptides(){
  jq '.data[].values += [{"value":"'$value'","contextSource":"'$contextsource'"}]' $json_basename".json" | sponge $json_basename".json"
 
 }
+
+convert_scientific_notation(){
+
+ value=$1
+ echo $value | sed 's/[eE]+*/\*10\^/'
+
+}
