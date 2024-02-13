@@ -31,4 +31,3 @@ QCDL;sampleqc;In-solution digestion QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da
 QCFL;sampleqc;Filter-aided digestion (FASP) QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;0c5165d8-05eb-47e0-86e4-22a77beb86ab
 QCRL;sampleqc;Offline Fractionation QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;5e0f0077-2ae2-4984-88cd-20bcd62067ff
 QCPL;sampleqc;Phosphoenrichment QC;'Oxidation (M)' 'Acetyl (N-term)' 'Phospho (S)' 'Phospho (T)' 'Phospho (Y)';S(Phospho),T(Phospho),Y(Phospho);0.5;Da;7;ppm;3;/users/pr/proteomics/mygit/atlas-output;;comet;big;false;0237d9fe-9013-4746-a2d7-6e5fcf007a18
-MV;main;Proteome label-free quantification;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;/users/pr/proteomics/mygit/atlas-output;;comet;small;true;
