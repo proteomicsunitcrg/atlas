@@ -20,7 +20,7 @@ MW;atlas_local;Targeted protein quantification (PRM) - A. Method development;'Ox
 MT;atlas_local;Targeted protein quantification (PRM) - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)';;0.02;Da;7;ppm;3;;;comet;small;true;
 LT;atlas_local;TMT: Proteome quantification;'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)';K(TMT6plex),.(TMT6plex);0.5;Da;7;ppm;3;;;comet;big;true;
 LF;atlas_local;TMT: Ultra deep proteome quantification (fractionation);'Oxidation (M)' 'Acetyl (N-term)' 'TMT6plex (K)' 'TMT6plex (N-term)';K(TMT6plex),.(TMT6plex);0.5;Da;7;ppm;3;;;comet;big;true;
-MK;diann;Quantification using data independent acquisition (DIA);;;0.02;Da;10;ppm;1;;;comet;medium;false;
+MK;diann;Quantification using data independent acquisition (DIA);;;0.02;Da;10;ppm;1;;;;medium;false;
 QCGL;atlas_local_sampleqc;In-gel QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;7765746c-6162-3300-0000-000000000000
 QCDL;atlas_local_sampleqc;In-solution digestion QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;6170694b-6579-3100-0000-000000000000
 QCFL;atlas_local_sampleqc;Filter-aided digestion (FASP) QC;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;false;7765746c-6162-3500-0000-000000000000
