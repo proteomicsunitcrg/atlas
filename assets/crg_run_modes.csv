@@ -1,3 +1,0 @@
-mode;incoming_folder;main_nf_folder;runs_folder;logs_folder;notification_email;enable_notification_email;enable_nf_tower
-prod;/home/proteomics/mygit/atlas-qcloud-incoming;/home/proteomics/mygit/atlas-qcloud;/home/proteomics/mygit/atlas-runs;/home/proteomics/mygit/atlas-logs;roger.olivella@crg.eu;true;false
-test;/home/proteomics/mygit/atlas-incoming;/home/proteomics/mygit/atlas-qcloud;/home/proteomics/mygit/atlas-runs;/home/proteomics/mygit/atlas-logs;roger.olivella@crg.eu;true;false
