@@ -1,3 +1,0 @@
-mode;incoming_folder;main_nf_folder;runs_folder;logs_folder;notification_email;enable_notification_email;enable_nf_tower
-prod;/users/pr/backuppr/scratch;/users/pr/proteomics/mygit/atlas;/users/pr/proteomics/mygit/atlas-runs;/users/pr/proteomics/mygit/atlas-logs;roger.olivella@crg.eu;true;true
-test;/users/pr/proteomics/mygit/atlas-incoming;/users/pr/proteomics/mygit/atlas-test;/users/pr/proteomics/mygit/atlas-runs;/users/pr/proteomics/mygit/atlas-logs;roger.olivella@crg.eu;true;false
