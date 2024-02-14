@@ -1,7 +1,7 @@
 pattern;workflow;name;var_modif;sites_modif;fragment_mass_tolerance;fragment_error_units;precursor_mass_tolerance;precursor_error_units;missed_cleavages;output_folder;is_instrument_folder_in_filename;search_engine;nf_profile;compute_sec_react;sampleqc_api_key;extra_assets_file
-QC01;qcloud_wo_engine_qc01;QC01 BSA;;;;;;;;/home/proteomics/mygit/atlas-qcloud-output;;;small;false;;qcloud_monitored_peptides.edta
+QC01;qcloud_wo_engine_qc01;QC01 BSA;;;;;;;;/home/proteomics/mygit/atlas-qcloud-output;;;small;false;;qcloud_monitored_peptides_3_isotopes.edta
 QCN1;qcloud_wo_engine_qcn1;QCN1 nucleosides;;;;;;;;/home/proteomics/mygit/atlas-qcloud-output;;;small;false;;qcloud_qcn1.edta
-MQ;main;Proteome label-free quantification;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;/home/proteomics/mygit/atlas-output;;comet;small;true;;
+MQ;main;Proteome label-free quantification;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;/home/proteomics/mygit/atlas-output;;comet;small;false;;
 LA;main;Characterization of protein-protein interactions (AP-MS) - A. Pilot experiment;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;;
 LB;main;Characterization of protein-protein interactions (AP-MS) - B. Measurement;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;;
 LD;main;Chromatin-bound proteome;'Oxidation (M)' 'Acetyl (N-term)';;0.5;Da;7;ppm;3;;;comet;small;true;;
