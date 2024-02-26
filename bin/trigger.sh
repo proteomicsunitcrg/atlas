@@ -162,7 +162,7 @@ launch_all_secondary_reactions () {
     NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
     if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
      echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-     FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%T@ %Tc %p\n" | sort -n | awk '{print $7}' | head -n1)
+     FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -70 -printf "%T@ %Tc %p\n" | sort -n | awk '{print $7}' | head -n1)
     else
      echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
     fi

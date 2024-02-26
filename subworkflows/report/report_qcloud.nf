@@ -256,7 +256,16 @@ process insertDataNucleosidesToQCloud {
         METHYL50_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json '259.0' $basename_sh) 
         METHYL50_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json '259.0' $basename_sh)
         METHYL50_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json '259.0' $basename_sh)
- 
+
+        CYTIDINE50_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json '244.0' $basename_sh)
+        CYTIDINE50_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json '244.0' $basename_sh)
+        CYTIDINE50_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json '244.0' $basename_sh)
+
+        URIDINE25_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json '245.0' $basename_sh)
+        URIDINE25_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json '245.0' $basename_sh)
+        URIDINE25_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json '245.0' $basename_sh)
+
+
         # QCN1 JSON files:
         # TOTAL TIC:
         $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json $checksum "QC:9000005" "QC:0000048")
@@ -273,18 +282,27 @@ process insertDataNucleosidesToQCloud {
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $INOSINE_area "QC:1001844" "INOSINE")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYILADENO25_area "QC:1001844" "METHYILADENOSINE")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYL50_area "QC:1001844" "METHYLURIDINE")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $CYTIDINE50_area "QC:1001844" "CYTIDINE")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $URIDINE25_area "QC:1001844" "URIDINE")
+
         # RT:
         $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json_monitored_peptides $checksum "QC:1000894")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $GUANO_rt "QC:1000894" "GUANOSINE")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $INOSINE_rt "QC:1000894" "INOSINE")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYILADENO25_rt "QC:1000894" "METHYILADENOSINE")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYL50_rt "QC:1000894" "METHYLURIDINE")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $CYTIDINE50_rt "QC:1000894" "CYTIDINE")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $URIDINE25_rt "QC:1000894" "URIDINE")
+
         # MASS ACCURACY:
         $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json_monitored_peptides $checksum "QC:1000014")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $GUANO_dppm "QC:1000014" "GUANOSINE")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $INOSINE_dppm "QC:1000014" "INOSINE")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYILADENO25_dppm "QC:1000014" "METHYILADENOSINE")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYL50_dppm "QC:1000014" "METHYLURIDINE")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $CYTIDINE50_dppm "QC:1000014" "CYTIDINE")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $URIDINE25_dppm "QC:1000014" "URIDINE")
+
         # Insert to QCloud database: 
         echo "[INFO] Get acces token......"
         access_token=$(source !{binfolder}/api.sh; get_api_access_token_qcloud !{url_api_qcloud_signin} !{url_api_qcloud_user} !{url_api_qcloud_pass})
