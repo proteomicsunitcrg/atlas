@@ -64,7 +64,7 @@ process ProteinQuantifier {
     file("${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv")
 
     """
-    ProteinQuantifier -include_all -average $average -in $idmapper_to_proteinquantifier -out ${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv
+    ProteinQuantifier -top:include_all -top:aggregate $average -in $idmapper_to_proteinquantifier -out ${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv
     """
 }
 
