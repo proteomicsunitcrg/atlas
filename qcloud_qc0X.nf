@@ -22,6 +22,10 @@ Channel
   .from(params.output_folder)
   .set { output_folder_ch }
 
+Channel
+  .from(params.eic_rt_tol_all)
+  .set { eic_rt_tol_all_ch }
+
 workflow {
   
    //Conversion: 
@@ -31,7 +35,7 @@ workflow {
    //filefilter_pr(trfp_pr.out)
 
    //Quantification: 
-   eicextr_pr(trfp_pr.out)
+   eicextr_pr(trfp_pr.out,eic_rt_tol_all_ch)
    
    //Report to QCloud database:
    insertDataToQCloud_pr(rawfile_ch,trfp_pr.out,eicextr_pr.out)
