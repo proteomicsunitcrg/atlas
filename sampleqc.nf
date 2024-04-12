@@ -73,7 +73,7 @@ workflow {
 
    //Report to output folder:
    output_folder_sampleqc_phospho_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out) 
-   output_folder_qchl_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idmapper_pr.out)
+   //output_folder_qchl_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idmapper_pr.out)
 
 }
 
