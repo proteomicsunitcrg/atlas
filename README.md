@@ -8,6 +8,8 @@
 
 **atlas** is a new [Nextflow-based](https://www.nextflow.io) pipeline for processing and analysis of mass spectrometry data. Specifically, atlas is designed to support proteomics laboratories in the daily quality assessment of different proteomics applications. It can work for many kinds of workflows, including the analysis of regular proteomes, phosphoproteomes, quantification of histones and it can process data on independent acquisition mode, among others. For this plethora of workflows, **atlas** is capable of extracting several key quality control parameters that substantially simplify the assessment of the experiments performed on mass spectrometers. **atlas** is based on [OpenMS](https://github.com/OpenMS/OpenMS) modules, an open source processing software for mass spectrometry data which is containerized using [Singularity](https://sylabs.io/docs), a software used to encapsulate all required dependencies. By using containers we are able to freeze the scripts and libraries of this analysis software so in this way we ensure a high reproducibility of our quality control analysis. The pipeline is implemented using the new [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) syntax and it is designed to work in HPC environments.
 
+### More detailed documentation can be found [here](https://github.com/proteomicsunitcrg/atlas/wiki).
+
 ## Credits
 
 **atlas** was originally written by @rolivella.
