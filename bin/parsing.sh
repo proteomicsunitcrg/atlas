@@ -17,6 +17,10 @@ get_num_peptidoform_sites(){
  xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | grep -o $2 | wc -l
 }
 
+get_num_all_modified_peptidoforms(){
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | grep '(' | wc -l
+}
+
 get_num_charges(){
  xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@charge,"'$2'")]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | wc -l
 }
