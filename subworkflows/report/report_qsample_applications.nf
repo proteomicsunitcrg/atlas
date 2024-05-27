@@ -126,6 +126,8 @@ process insertModificationsToQsample {
     '''
        checksum=$(cat !{checksum})
 
+       access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+
        # Count sites modifications: 
        sites_modif=$(echo "!{sites_modif}")
        IFS=',' read -r -a sites_modif_array <<< "$sites_modif"
@@ -140,8 +142,6 @@ process insertModificationsToQsample {
        # Total number of peptides:
        num_peptides_total=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
        echo "[INFO] num_peptides_total: $num_peptides_total"
-
-       access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
 
        # Number of modification sites:
        modif=$(echo "!{sites_modif}")
