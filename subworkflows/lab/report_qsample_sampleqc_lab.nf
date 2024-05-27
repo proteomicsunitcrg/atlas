@@ -5,6 +5,7 @@ url_api_pass               = params.url_api_pass
 url_api_fileinfo           = params.url_api_fileinfo
 url_api_insert_wetlab_file = params.url_api_insert_wetlab_file
 url_api_insert_wetlab_data = params.url_api_insert_wetlab_data
+url_api_insert_modif       = params.url_api_insert_modif
 
 //Bash scripts folder:
 binfolder                      = "$baseDir/bin"
