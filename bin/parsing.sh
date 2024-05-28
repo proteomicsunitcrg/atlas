@@ -18,7 +18,7 @@ get_num_peptidoform_sites(){
 }
 
 get_num_all_modified_peptidoforms(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | grep '(' | wc -l
+ xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | grep -E $2 | wc -l
 }
 
 get_num_charges(){
