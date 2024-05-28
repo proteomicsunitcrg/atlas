@@ -133,7 +133,6 @@ process insertModificationsToQsample {
        IFS=',' read -r -a sites_modif_array <<< "$sites_modif"
        for sites_modif in "${sites_modif_array[@]}"
        do
-         echo "[INFO] Counting peptide sequences with this modification: $sites_modif"
          num_mod=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "$sites_modif")
          echo "[INFO] Number of modifications sites for $sites_modif: $num_mod"
          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "'$sites_modif'"},"value": "'$num_mod'"}]}'
@@ -143,20 +142,11 @@ process insertModificationsToQsample {
        num_peptides_total=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
        echo "[INFO] num_peptides_total: $num_peptides_total"
 
-       # Number of modification sites:
-       modif=$(echo "!{sites_modif}")
-       IFS=',' read -r -a modif_array <<< "$modif"
-       num_peptides_modif=0
+       # Total number of modified peptides: 
+       pattern=$(echo "!{sites_modif}" | sed 's/(/\\\\(/g; s/)/\\\\)/g' | tr ',' '\\n' | paste -sd '|')
+       num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_all_modified_peptidoforms !{protinf_file} "$pattern")
+       echo "[INFO] num_peptides_modif: $num_peptides_modif"
 
-       for modif in "${modif_array[@]}"
-       do
-        echo "[INFO] Counting peptide sequences with this modification: $modif"
-        num_mod=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "$modif")
-        echo "[INFO] Number of modifications sites for $modif: $num_mod"
-        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "'$modif'"},"value": "'$num_mod'"}]}'
-        num_peptides_modif=$(echo "$num_peptides_modif+$num_mod" | bc -l)
-       done
-       echo "[INFO] Number of total modifications sites: $num_peptides_modif"
        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$num_peptides_total'", "peptideModified": "'$num_peptides_modif'"}}'
  
     '''
