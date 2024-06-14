@@ -27,7 +27,13 @@ fragment_error_units     = params.fragment_error_units
 charges                  = params.charges
 missed_cleavages         = params.missed_cleavages
 batch_size               = params.batch_size
-debug_code               = params.debug_code
+debug_code               = params.debug_codei
+
+//FragPipe engine: 
+fp_workflow              = params.fp_workflow
+fp_manifest              = params.fp_manifest
+fp_tools                 = params.fp_tools
+
 
 process create_decoy {
     label 'openms'
@@ -62,10 +68,6 @@ process MascotAdapterOnline {
     label 'mascot'
     tag { "${filename}" }
 
-
-    when: 
-    search_engine =~ /mascot/
-
     input:
     tuple val(filename), val(basename), val(path), file(mascot_mzml_file)
     file(organism)
@@ -90,7 +92,7 @@ process CometAdapter {
 
     when:
     search_engine =~ /comet/
-
+ 
     input:
     tuple val(filename), val(basename), val(path), file(comet_mzml_file)
     file(organism)
@@ -109,5 +111,55 @@ process CometAdapter {
     else 
        CometAdapter -threads !{task.cpus} -debug 10 -force -in !{comet_mzml_file} -out !{basename}_comet.idXML -database !{fastafile_decoy} -missed_cleavages !{missed_cleavages} -precursor_charge !{precursor_charge} -comet_executable !{comet_executable} -precursor_mass_tolerance !{precursor_mass_tolerance} -precursor_error_units !{precursor_error_units} -fragment_mass_tolerance !{frag_mass_tol} -fragment_error_units !{frag_err_uni} -fixed_modifications !{fixed_modifications} -variable_modifications !{var_modif} !{sec_react_modif} 
     fi
+    '''
+}
+
+process fragpipe_prep {
+    label 'fragpipe'
+    tag  { "${filename}" }
+
+    input:
+    tuple val(filename), val(basename), val(path)
+
+    output:
+    file("organism")
+    file("*.fas*)
+
+    shell:
+    '''
+    
+    # Generate FASTA file: 
+    filename_sh=!{filename}
+    echo $filename_sh > filename_sh
+    organism=$(echo ${filename_sh##*.})
+    echo $organism > organism
+    fastafile=$(basename !{databases_folder}/${organism}/current/*.fasta)
+    echo $fastafile > fastafile
+    fastafilename=$(echo ${fastafile%.*})
+    echo $fastafilename > fastafilename
+    fasta_orig_path=!{databases_folder}/${organism}/current/${fastafile}
+    cp $fasta_orig_path .
+    echo >> ${fastafile}
+    !{tools_folder}/fragpipe/philospher version
+    !{tools_folder}/fragpipe/philospher workspace --init 
+    !{tools_folder}/fragpipe/philospher--custom ${fastafile} --contam
+
+    # Modify workflow and manifest fragpipe files:
+    source !{binfolder}/parsingi_fragpipe.sh; modify_key_value "database.db-path" "${fasta_file}" !{fp_workflow}
+    sed -i 's/^[^\t]*/$filename_sh/' !{fp_manifest}
+
+    '''
+}
+
+process fragpipe_main {
+    label 'fragpipe'
+    tag { "${filename}" }
+
+    output:
+    file("*.tsv")
+
+    shell:
+    '''
+    /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir .
     '''
 }

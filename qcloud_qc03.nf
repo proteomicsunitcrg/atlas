@@ -40,24 +40,24 @@ workflow {
    trfp_pr(rawfile_ch)
 
    //Filtering
-   filefilter_pr(trfp_pr.out)
+   //filefilter_pr(trfp_pr.out)
 
    //Quantification: 
    eicextr_pr(trfp_pr.out,eic_rt_tol_qc03_ch)
 
    //Search engine: 
-   cdecoy_pr(rawfile_ch)
-   mao_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch,fragment_mass_tolerance_ch,fragment_error_units_ch)
-   comet_adapter_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch,fragment_mass_tolerance_ch,fragment_error_units_ch)
+   //cdecoy_pr(rawfile_ch)
+   //mao_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch,fragment_mass_tolerance_ch,fragment_error_units_ch)
+   //comet_adapter_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch,fragment_mass_tolerance_ch,fragment_error_units_ch)
 
    //Identification: 
-   idfilter_aaa_pr(mao_pr.out.mix(comet_adapter_pr.out))
-   pepidx_pr(idfilter_aaa_pr.out,cdecoy_pr.out)
-   fdr_pr(pepidx_pr.out)
-   idfilter_score_pr(fdr_pr.out)
-   fileinfo_pr(idfilter_score_pr.out)
-   protinf_pr(idfilter_score_pr.out)
-   qccalc_pr(protinf_pr.out,trfp_pr.out)
+   //idfilter_aaa_pr(mao_pr.out.mix(comet_adapter_pr.out))
+   //pepidx_pr(idfilter_aaa_pr.out,cdecoy_pr.out)
+   //fdr_pr(pepidx_pr.out)
+   //idfilter_score_pr(fdr_pr.out)
+   //fileinfo_pr(idfilter_score_pr.out)
+   //protinf_pr(idfilter_score_pr.out)
+   //qccalc_pr(protinf_pr.out,trfp_pr.out)
 
 }
 
