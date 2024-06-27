@@ -6,7 +6,7 @@ include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conve
 include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter as comet_adapter_pr } from './subworkflows/search_engine/search_engine'
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './subworkflows/identification/identification'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
-include { insertSampleQCFileToQSample as insertSampleQCFileToQSample_pr; insertSampleQCDataToQSample as insertSampleQCDataToQSample_pr } from './subworkflows/report/report_qsample_sampleqc'
+include { insertSampleQCFileToQSample as insertSampleQCFileToQSample_pr; insertSampleQCDataToQSample as insertSampleQCDataToQSample_pr; insertSampleQCModificationsToQsample as insertSampleQCModificationsToQsample_pr } from './subworkflows/report/report_qsample_sampleqc'
 include { insertSampleQCHistonesToQSample as insertSampleQCHistonesToQSample_pr } from './subworkflows/lab/report_qsample_sampleqc_lab'
 include { output_folder_sampleqc_phospho as output_folder_sampleqc_phospho_pr; output_folder_qchl as output_folder_qchl_pr } from './subworkflows/report/report_output_folder'
 
@@ -66,13 +66,14 @@ workflow {
 
    //Report SampleQC to QSample:
    insertSampleQCFileToQSample_pr(rawfile_ch,trfp_pr.out,sampleqc_api_key_ch) 
-   insertSampleQCDataToQSample_pr(rawfile_ch,insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,sites_modif_ch,sampleqc_api_key_ch)
-  
+   insertSampleQCDataToQSample_pr(rawfile_ch,insertSampleQCFileToQSample_pr.out,protinf_pr.out,sampleqc_api_key_ch)
+   insertSampleQCModificationsToQsample_pr(rawfile_ch,insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,sites_modif_ch,sampleqc_api_key_ch)
+
    //Lab: 
    insertSampleQCHistonesToQSample_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,idmapper_pr.out,protinf_pr.out)
 
    //Report to output folder:
-   output_folder_sampleqc_phospho_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out) 
+   //output_folder_sampleqc_phospho_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out) 
    //output_folder_qchl_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idmapper_pr.out)
 
 }
