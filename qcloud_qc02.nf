@@ -37,7 +37,7 @@ Channel
 workflow {
   
    //Conversion: 
-   trfp_pr(rawfile_ch)
+   //trfp_pr(rawfile_ch)
 
    //Filtering
    //filefilter_pr(trfp_pr.out)
@@ -47,14 +47,16 @@ workflow {
 
    //Search engine: 
    if (params.search_engine == "comet") {
+      trfp_pr(rawfile_ch)
       cdecoy_pr(rawfile_ch)
       comet_adapter_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch,fragment_mass_tolerance_ch,fragment_error_units_ch)
    } else if (params.search_engine == "mascot") {
+      trfp_pr(rawfile_ch)
       cdecoy_pr(rawfile_ch)
       mao_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch,fragment_mass_tolerance_ch,fragment_error_units_ch)
    } else if (params.search_engine == "fragpipe") {
       fragpipe_prep_pr(rawfile_ch)
-      fragpipe_main_pr(trfp_pr.out)
+      fragpipe_main_pr(rawfile_ch,fragpipe_prep_pr.out)
    }
 
    //Identification: 

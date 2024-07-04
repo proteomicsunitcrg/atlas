@@ -34,6 +34,8 @@ fp_workflow              = params.fp_workflow
 fp_manifest              = params.fp_manifest
 fp_tools                 = params.fp_tools
 
+//Bash scripts folder:                                                                  
+binfolder                = "$baseDir/bin"
 
 process create_decoy {
     label 'openms'
@@ -115,51 +117,76 @@ process CometAdapter {
 }
 
 process fragpipe_prep {
-    label 'fragpipe'
     tag  { "${filename}" }
 
     input:
     tuple val(filename), val(basename), val(path)
 
     output:
-    file("organism")
-    file("*.fas*)
+    file("*.workflow")
+    file("*.manifest")
+    file("*.fas")
 
     shell:
     '''
-    
     # Generate FASTA file: 
     filename_sh=!{filename}
-    echo $filename_sh > filename_sh
     organism=$(echo ${filename_sh##*.})
     echo $organism > organism
     fastafile=$(basename !{databases_folder}/${organism}/current/*.fasta)
-    echo $fastafile > fastafile
     fastafilename=$(echo ${fastafile%.*})
-    echo $fastafilename > fastafilename
     fasta_orig_path=!{databases_folder}/${organism}/current/${fastafile}
     cp $fasta_orig_path .
     echo >> ${fastafile}
-    !{tools_folder}/fragpipe/philospher version
-    !{tools_folder}/fragpipe/philospher workspace --init 
-    !{tools_folder}/fragpipe/philospher--custom ${fastafile} --contam
+    
+    # Run philosopher for generating new fasta file with decoys:
+    !{tools_folder}/fragpipe/philosopher version
+    !{tools_folder}/fragpipe/philosopher workspace --init 
+    !{tools_folder}/fragpipe/philosopher database --custom ${fastafile} --contam
+    fragpipe_fasta_file=$(ls *.fas)
 
     # Modify workflow and manifest fragpipe files:
-    source !{binfolder}/parsingi_fragpipe.sh; modify_key_value "database.db-path" "${fasta_file}" !{fp_workflow}
-    sed -i 's/^[^\t]*/$filename_sh/' !{fp_manifest}
-
-    '''
+    cp !{fp_workflow} .
+    fp_workflow_file=$(basename !{fp_workflow})
+    PWD=$(pwd)
+    echo "[INFO] Fragpipe fasta file: ${fragpipe_fasta_file}"
+    echo "[INFO] Working folder: ${PWD}"
+    echo "[INFO] FragPipe workflow file: ${PWD}/${fp_workflow_file}"
+    echo "[INFO] Modifying ${fp_workflow_file}..."
+    source !{binfolder}/parsing_fragpipe.sh; modify_key_value "database.db-path" ${fragpipe_fasta_file} ${PWD}/${fp_workflow_file}
+    new_fasta_file=$(cat ${PWD}/${fp_workflow_file} | grep "fas")
+    echo "[INFO] New Fasta file added to workflow: "$new_fasta_file
+    echo "[INFO] Creating manifest file..."
+    raw_filename=$(echo ${filename_sh%.*})
+    echo -e "/home/tmp/${raw_filename}\t1\t1\tDDA" > ${PWD}/fragpipe-220.manifest
+    echo "[INFO] New manifest file: (print delimiters mode)"
+    cat -A ${PWD}/fragpipe-220.manifest
+   '''
 }
 
 process fragpipe_main {
     label 'fragpipe'
     tag { "${filename}" }
 
-    output:
-    file("*.tsv")
+    input:
+    tuple val(filename), val(basename), val(path)
+    file(fp_workflow)
+    file(fp_manifest)
+    file(fp_fasta)
 
     shell:
     '''
+    filename_sh=!{filename}
+    raw_filename=$(echo ${filename_sh%.*})
+    echo "[INFO] Copying raw file..."
+    echo "[INFO] Path: "!{path}
+    echo "[INFO] Filename: "$filename_sh
+    echo "[INFO] Target filename: "$raw_filename
+    cp !{path}/$filename_sh ./$raw_filename
+    echo "[INFO] Running FragPipe..."
+    echo "[INFO] Tools folder: "!{fp_tools}
+    echo "[INFO] Workflow file: "!{fp_workflow}
+    echo "[INFO] Manifest file: "!{fp_manifest}
     /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir .
     '''
 }
