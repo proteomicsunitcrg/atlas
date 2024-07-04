@@ -168,6 +168,10 @@ process fragpipe_main {
     label 'fragpipe'
     tag { "${filename}" }
 
+    containerOptions { 
+        "--bind ${task.workDir}:/home/tmp" 
+    }
+
     input:
     tuple val(filename), val(basename), val(path)
     file(fp_workflow)
