@@ -1,5 +1,6 @@
-//Create decoy database: 
 databases_folder         = params.databases_folder
+contaminants_file        = params.contaminants_file
+contaminants_prefix      = params.contaminants_prefix
 tools_folder             = params.tools_folder
 
 search_engine            = params.search_engine
@@ -70,10 +71,6 @@ process MascotAdapterOnline {
     label 'mascot'
     tag { "${filename}" }
 
-
-    when: 
-    search_engine =~ /mascot/
-
     input:
     tuple val(filename), val(basename), val(path), file(mascot_mzml_file)
     file(organism)
@@ -95,9 +92,6 @@ process MascotAdapterOnline {
 process CometAdapter {
     label 'comet'
     tag { "${filename}" }
-
-    when:
-    search_engine =~ /comet/
 
     input:
     tuple val(filename), val(basename), val(path), file(comet_mzml_file)
@@ -125,31 +119,35 @@ process fragpipe_prep {
 
     input:
     tuple val(filename), val(basename), val(path)
+    file(organism)
+    file(fastafile_decoy)
 
     output:
     file("*.workflow")
     file("*.manifest")
-    file("*.fas")
+    file("*.fasta")
 
     shell:
     '''
-    # Generate FASTA file: 
+    # Append contaminants and rename fasta file:
     filename_sh=!{filename}
-    organism=$(echo ${filename_sh##*.})
-    echo $organism > organism
-    fastafile=$(basename !{databases_folder}/${organism}/current/*.fasta)
-    fastafilename=$(echo ${fastafile%.*})
-    fasta_orig_path=!{databases_folder}/${organism}/current/${fastafile}
-    cp $fasta_orig_path .
-    echo >> ${fastafile}
-    
+    organism_sh=$(echo ${filename_sh##*.})
+    rename_fasta_file=${organism_sh}"_decoy.fasta"
+    fastafile_decoy_sh=!{fastafile_decoy}
+    cp ${fastafile_decoy_sh} ${rename_fasta_file}
+    cat !{contaminants_file} >> ${rename_fasta_file}
+    cont_fasta=$(echo ${rename_fasta_file%.*})"_cont.fasta"
+    cont_fasta_file=$(echo ${cont_fasta,,})
+    mv $rename_fasta_file $cont_fasta_file
+    fragpipe_fasta_file=$(echo ${cont_fasta_file%.*})"_formatted.fasta"
+    sed 's/###REV###/DECOY_/' $cont_fasta_file > $fragpipe_fasta_file
+
     # Run philosopher for generating new fasta file with decoys:
     !{tools_folder}/fragpipe/philosopher version
     !{tools_folder}/fragpipe/philosopher workspace --init 
-    !{tools_folder}/fragpipe/philosopher database --custom ${fastafile} --contam
-    fragpipe_fasta_file=$(ls *.fas)
+    !{tools_folder}/fragpipe/philosopher database --annotate ${fragpipe_fasta_file} --prefix !{contaminants_prefix}
 
-    # Modify workflow and manifest fragpipe files:
+    # Modify workflow file:
     cp !{fp_workflow} .
     fp_workflow_file=$(basename !{fp_workflow})
     PWD=$(pwd)
@@ -158,8 +156,10 @@ process fragpipe_prep {
     echo "[INFO] FragPipe workflow file: ${PWD}/${fp_workflow_file}"
     echo "[INFO] Modifying ${fp_workflow_file}..."
     source !{binfolder}/parsing_fragpipe.sh; modify_key_value "database.db-path" ${fragpipe_fasta_file} ${PWD}/${fp_workflow_file}
-    new_fasta_file=$(cat ${PWD}/${fp_workflow_file} | grep "fas")
+    new_fasta_file=$(cat ${PWD}/${fp_workflow_file} | grep "fasta")
     echo "[INFO] New Fasta file added to workflow: "$new_fasta_file
+    
+    # Create manifest: 
     echo "[INFO] Creating manifest file..."
     raw_filename=$(echo ${filename_sh%.*})
     echo -e "/home/tmp/${raw_filename}\t1\t1\tDDA" > ${PWD}/fragpipe-220.manifest
@@ -182,8 +182,15 @@ process fragpipe_main {
     file(fp_manifest)
     file(fp_fasta)
 
+    output: 
+    file("peptide.tsv")
+    file("protein.tsv")
+    file("ion.tsv")
+    file("combined_protein.tsv")
+
     shell:
     '''
+    #Prepare Fragpipe input files: 
     filename_sh=!{filename}
     raw_filename=$(echo ${filename_sh%.*})
     echo "[INFO] Copying raw file..."
@@ -195,6 +202,15 @@ process fragpipe_main {
     echo "[INFO] Tools folder: "!{fp_tools}
     echo "[INFO] Workflow file: "!{fp_workflow}
     echo "[INFO] Manifest file: "!{fp_manifest}
-    /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir .
+    mkdir ./output
+
+    #Run Fragpipe: 
+    /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir ./output
+    
+    #Prepare Fragpipe output: 
+    find . -name "peptide.tsv" -exec cp {} . \\;
+    find . -name "protein.tsv" -exec cp {} . \\;
+    find . -name "ion.tsv" -exec cp {} . \\;
+    find . -name "combined_protein.tsv" -exec cp {} . \\;
     '''
 }
