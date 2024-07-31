@@ -10,7 +10,7 @@ include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as
 include { insertFragpipeFileToQSample as insertFragpipeFileToQSample_pr; insertFragpipeDataToQSample as insertFragpipeDataToQSample_pr } from './subworkflows/report/report_qsample_fragpipe'
 include { insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr; insertPolymerContToQSample as insertPolymerContToQSample_pr } from './subworkflows/lab/report_qsample_applications_lab'
 include { output_folder_test as output_folder_test_pr; output_folder as output_folder_pr;} from './subworkflows/report/report_output_folder'
-
+include { insertFragpipeSecReactDataToQSample as insertFragpipeSecReactDataToQSample_pr} from './subworkflows/lab/report_qsample_sec_react_lab'
 
 Channel
   .fromPath(params.rawfile)
@@ -64,6 +64,7 @@ workflow {
       insertFragpipeFileToQSample_pr(rawfile_ch,trfp_pr.out)
       insertFragpipeDataToQSample_pr(insertFragpipeFileToQSample_pr.out,trfp_pr.out,fragpipe_main_pr.out)
       insertPolymerContToQSample_pr(insertFragpipeFileToQSample_pr.out,trfp_pr.out)
+      insertFragpipeSecReactDataToQSample_pr(insertFragpipeFileToQSample_pr.out,fragpipe_main_pr.out)
    }
 
 

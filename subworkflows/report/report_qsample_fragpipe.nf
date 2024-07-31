@@ -52,6 +52,7 @@ process insertFragpipeDataToQSample {
         file('protein.tsv')
         file('ion.tsv')
         file('combined_protein.tsv')
+        file('global.summary.tsv')
 
         shell:
         '''

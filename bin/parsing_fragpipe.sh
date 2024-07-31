@@ -97,3 +97,12 @@ parse_combined_protein_tsv() {
         cat $curr_dir/foo.txt $curr_dir/extracted_quant_data.tsv > $curr_dir/extracted_quant_data_final.tsv
 
 }
+
+parse_global_modsummary() {
+    modification=$1
+    input_file=$2
+    value=$(awk -F'\t' -v mod="$modification" '$1 == mod {print $4}' "$input_file")
+    renamed_modification=$(echo "$modification" | sed 's/\//_/g')
+    trimmed_modif=$(echo "$renamed_modification" | tr -d ' ')
+    echo $value
+}

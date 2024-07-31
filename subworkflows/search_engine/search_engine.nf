@@ -187,6 +187,7 @@ process fragpipe_main {
     file("protein.tsv")
     file("ion.tsv")
     file("combined_protein.tsv")
+    file("global.modsummary.tsv")
 
     shell:
     '''
@@ -212,5 +213,6 @@ process fragpipe_main {
     find . -name "protein.tsv" -exec cp {} . \\;
     find . -name "ion.tsv" -exec cp {} . \\;
     find . -name "combined_protein.tsv" -exec cp {} . \\;
+    find . -name "global.modsummary.tsv" -exec cp {} . \\;
     '''
 }
