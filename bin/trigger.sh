@@ -35,6 +35,8 @@ LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f5)
 NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f6)
 ENABLE_NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f7)
 ENABLE_NF_TOWER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f8)
+MTIME_VAR=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f9)
+NUM_MAX_PROC=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f10)
 if [[ $ENABLE_NF_TOWER = "true" ]]; then WITH_TOWER="-with-tower"; fi
 SEC_REACT_WF=$WF_ROOT_FOLDER"/secreact.nf"
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
@@ -153,11 +155,10 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d';' -f1 | tail -n +2)
 
         FILE_TO_PROCESS=""
-        NUM_MAX_PROC=20
         NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
         if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
           echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-          FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+          FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime $MTIME_VAR -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
         else
           echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
         fi
