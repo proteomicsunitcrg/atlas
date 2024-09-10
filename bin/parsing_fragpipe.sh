@@ -30,15 +30,15 @@ remove_key_value() {
 }
 
 get_num_prot_groups_fragpipe(){
- cat $1 | wc -l
+ cat $1 | tail -n +2 | wc -l
 }
 
 get_num_peptidoforms_fragpipe(){
- cat $1 | wc -l
+ cat $1 | tail -n +2 | wc -l
 }
 
 get_num_charges_fragpipe(){
- cat $1 | awk -F'\t' '{print $9}' | grep $2 | wc -l
+ cat $1 | tail -n +2 | awk -F'\t' '{print $9}' | grep $2 | wc -l
 }
 
 get_peptidoform_miscleavages_counts_fragpipe(){

@@ -4,15 +4,15 @@
 # Created: 02/03/2022
 
 get_num_prot_groups_diann(){
- cat $1 | awk -F'\t' '{print $3}' | sed 's|;|\n|g' | sort -u | wc -l
+ cat $1 | tail -n +2 | awk -F'\t' '{print $3}' | sed 's|;|\n|g' | sort -u | wc -l
 }
 
 get_num_peptidoforms_diann(){
- cat $1 | awk -F'\t' '{print $14}' | sort -u | wc -l
+ cat $1 | tail -n +2 | awk -F'\t' '{print $14}' | sort -u | wc -l
 }
 
 get_num_charges_diann(){
- cat $1 | awk -F'\t' '{print $17}' | grep $2 | wc -l
+ cat $1 | tail -n +2 | awk -F'\t' '{print $17}' | grep $2 | wc -l
 }
 
 get_peptidoform_miscleavages_counts_diann(){
