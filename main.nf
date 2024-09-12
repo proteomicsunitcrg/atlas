@@ -9,7 +9,7 @@ include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuan
 include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr; insertModificationsToQsample as insertModificationsToQsample_pr } from './subworkflows/report/report_qsample_applications'
 include { insertFragpipeFileToQSample as insertFragpipeFileToQSample_pr; insertFragpipeDataToQSample as insertFragpipeDataToQSample_pr } from './subworkflows/report/report_qsample_fragpipe'
 include { insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr; insertPolymerContToQSample as insertPolymerContToQSample_pr } from './subworkflows/lab/report_qsample_applications_lab'
-include { output_folder_test as output_folder_test_pr; output_folder as output_folder_pr;} from './subworkflows/report/report_output_folder'
+include { output_folder as output_folder_pr; output_folder_fragpipe as output_folder_fragpipe_pr } from './subworkflows/report/report_output_folder'
 include { insertFragpipeSecReactDataToQSample as insertFragpipeSecReactDataToQSample_pr} from './subworkflows/lab/report_qsample_sec_react_lab'
 
 Channel
@@ -65,8 +65,9 @@ workflow {
       insertFragpipeDataToQSample_pr(insertFragpipeFileToQSample_pr.out,trfp_pr.out,fragpipe_main_pr.out)
       insertPolymerContToQSample_pr(insertFragpipeFileToQSample_pr.out,trfp_pr.out)
       insertFragpipeSecReactDataToQSample_pr(insertFragpipeFileToQSample_pr.out,fragpipe_main_pr.out)
+      //Report to output folder (if the field output_folder was informed at methods CSV file):
+      output_folder_fragpipe_pr(fragpipe_main_pr.out,insertFragpipeFileToQSample_pr.out,output_folder_ch)
    }
-
 
    if (params.search_engine == "comet" || params.search_engine == "mascot") {
       //Annotation: 
@@ -86,12 +87,10 @@ workflow {
       insertFileToQSample_pr(rawfile_ch,trfp_pr.out)
       insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,qccalc_pr.out,trfp_pr.out)
       insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
-      //Report to output folder (if the field output_folder was informed at methods CSV file):
-      output_folder_pr(protinf_pr.out,output_folder_ch)     
-      //Report to output folder for testing purposes (if the pipeline was triggered through test mode):
-      output_folder_test_pr(protinf_pr.out)
       //Report additional applications to QSample:
       insertModificationsToQsample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,sites_modif_ch) 
+      //Report to output folder (if the field output_folder was informed at methods CSV file):
+      output_folder_pr(protinf_pr.out,output_folder_ch)     
       //Lab
       insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,idmapper_pr.out,protinf_pr.out)
       insertPolymerContToQSample_pr(insertFileToQSample_pr.out,trfp_pr.out) 

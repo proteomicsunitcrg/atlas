@@ -32,7 +32,7 @@ debug_code               = params.debug_code
 
 //FragPipe engine: 
 fp_workflow              = params.fp_workflow
-fp_manifest              = params.fp_manifest
+//fp_manifest              = params.fp_manifest
 fp_tools                 = params.fp_tools
 
 //Bash scripts folder:                                                                  
