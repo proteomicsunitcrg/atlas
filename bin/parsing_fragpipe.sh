@@ -1,4 +1,4 @@
-
+#!/bin/bash
 
 # Function to insert a key-value pair into the file
 insert_key_value() {

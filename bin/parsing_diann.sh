@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Author : Roger Olivella
-# Created: 02/03/2022
-
 get_num_prot_groups_diann(){
  cat $1 | tail -n +2 | awk -F'\t' '{print $3}' | sed 's|;|\n|g' | sort -u | wc -l
 }
