@@ -1,11 +1,6 @@
-//DIA Umpire params:
-jar_file                = params.jar_file
-params_file             = params.params_file
-lib_folder              = params.lib_folder
-
 //DIA-NN params: 
 databases_folder        = params.databases_folder
-qvalue 			= params.qvalue                        
+qvalue 			        = params.qvalue                        
 min_fr_mz               = params.min_fr_mz       
 max_fr_mz               = params.max_fr_mz      
 cut                     = params.cut
@@ -19,22 +14,6 @@ max_pr_charge           = params.max_pr_charge
 var_mods                = params.var_mods        
 var_mod                 = params.var_mod       
 pg_level                = params.pg_level 
-
-process dia_umpire {
-    label 'diaumpire'
-    tag  { "${filename}" }
-
-    input:
-    tuple val(filename), val(basename), val(path), file(fileconverter_mzxml)
-
-    output: 
-    tuple val(filename), val(basename), val(path), file("*_Q1.mgf")
-
-    shell:
-    '''
-    java -Djava.library.path=!{lib_folder} -jar -Xmx8G !{jar_file} !{fileconverter_mzxml} !{params_file}
-    '''
-}
 
 process diann {
     label 'diann'

@@ -6,11 +6,10 @@ include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conve
 include { create_decoy as cdecoy_pr; MascotAdapterOnline as mao_pr; CometAdapter as comet_adapter_pr; fragpipe_prep as fragpipe_prep_pr; fragpipe_main as fragpipe_main_pr } from './subworkflows/search_engine/search_engine'
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './subworkflows/identification/identification'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
-include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr; insertModificationsToQsample as insertModificationsToQsample_pr } from './subworkflows/report/report_qsample_applications'
-include { insertFragpipeFileToQSample as insertFragpipeFileToQSample_pr; insertFragpipeDataToQSample as insertFragpipeDataToQSample_pr } from './subworkflows/report/report_qsample_fragpipe'
-include { insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr; insertPolymerContToQSample as insertPolymerContToQSample_pr } from './subworkflows/lab/report_qsample_applications_lab'
+include { insertFileToQSample as insertFileToQSample_pr; insertQuantToQSample as insertQuantToQSample_pr; insertDataToQSample as insertDataToQSample_pr; insertModificationsToQsample as insertModificationsToQsample_pr; insertPolymerContToQSample as insertPolymerContToQSample_pr } from './subworkflows/report/report_qsample_applications'
+include { insertFragpipeFileToQSample as insertFragpipeFileToQSample_pr; insertFragpipeDataToQSample as insertFragpipeDataToQSample_pr; insertFragpipeSecReactDataToQSample as insertFragpipeSecReactDataToQSample_pr } from './subworkflows/report/report_qsample_fragpipe'
+include { insertPTMhistonesToQSample as insertPTMhistonesToQSample_pr } from './subworkflows/lab/report_qsample_applications_lab'
 include { output_folder as output_folder_pr; output_folder_fragpipe as output_folder_fragpipe_pr } from './subworkflows/report/report_output_folder'
-include { insertFragpipeSecReactDataToQSample as insertFragpipeSecReactDataToQSample_pr} from './subworkflows/lab/report_qsample_sec_react_lab'
 
 Channel
   .fromPath(params.rawfile)
