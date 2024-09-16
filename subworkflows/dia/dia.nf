@@ -1,5 +1,6 @@
 //DIA-NN params: 
 databases_folder        = params.databases_folder
+diann_speclib_folder    = params.diann_speclib_folder
 qvalue 			        = params.qvalue                        
 min_fr_mz               = params.min_fr_mz       
 max_fr_mz               = params.max_fr_mz      
@@ -58,8 +59,15 @@ process diann {
     output_file=$basename_sh".report.tsv"
     echo "Output TSV report: "$output_file
 
-    echo "Running DIA-NN command line..."
-    /usr/diann/1.8.1/./diann-1.8.1 --f "$diann_filename"  --lib "" --threads 5 --verbose 10 --out "$output_file" --qvalue !{qvalue} --gen-spec-lib --predictor --fasta ${fastafile} --fasta-search --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz} --max-pr-mz !{max_pr_mz} --min-pr-charge !{min_pr_charge} --max-pr-charge !{max_pr_charge} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
-
+    # Check for existing predicted spec. libs. and send main process: 
+    diann_speclib_folder_sh=!{diann_speclib_folder}
+    if ls $diann_speclib_folder_sh | grep -i "$fastafilename"; then
+        cp $diann_speclib_folder_sh"/"$fastafilename".lib.predicted.speclib" .
+        echo "Running DIA-NN command line with already existing $diann_speclib_folder_sh"/"$fastafilename.lib.predicted.speclib..."
+        /usr/diann/1.8.1/./diann-1.8.1 --f "$diann_filename"  --lib $fastafilename".lib.predicted.speclib" --threads 5 --verbose 10 --out "$output_file" --qvalue 0.01 --min-fr-mz 350 --max-fr-mz 1850 --met-excision --cut K*,R* --missed-cleavages 1 --min-pep-len 7 --max-pep-len 30 --min-pr-mz 500 --max-pr-mz 900 --min-pr-charge 1 --max-pr-charge 4 --unimod4 --var-mods 1 --var-mod UniMod:35,15.994915,M --smart-profiling --pg-level 1 --peak-center --no-ifs-removal --relaxed-prot-inf
+    else
+        echo "Running DIA-NN command line with lib prediction..."
+        /usr/diann/1.8.1/./diann-1.8.1 --f "$diann_filename"  --lib "" --threads 5 --verbose 10 --out "$output_file" --qvalue 0.01 --gen-spec-lib --predictor --fasta ${fastafile} --fasta-search --min-fr-mz 350 --max-fr-mz 1850 --met-excision --cut K*,R* --missed-cleavages 1 --min-pep-len 7 --max-pep-len 30 --min-pr-mz 500 --max-pr-mz 900 --min-pr-charge 1 --max-pr-charge 4 --unimod4 --var-mods 1 --var-mod UniMod:35,15.994915,M --smart-profiling --pg-level 1 --peak-center --no-ifs-removal --relaxed-prot-inf
+    fi  
     '''
 }
