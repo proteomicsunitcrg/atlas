@@ -1,13 +1,8 @@
 #!/bin/bash
 
-# Author : Roger Olivella
-# Created: 02/03/2022
-
 get_num_prot_groups(){
  grep -Pio 'indistinguishable_proteins_' $1 | wc -l
 }
-
-# "peptidoform" as defined as https://arxiv.org/pdf/2109.11352.pdf
 
 get_num_peptidoforms(){
  xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | wc -l

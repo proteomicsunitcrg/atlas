@@ -17,3 +17,6 @@
   > Perkins, David N., et al. "Probability‐based protein identification by searching sequence databases using mass spectrometry data." ELECTROPHORESIS: An International Journal 20.18 (1999): 3551-3567.
 
 - [mzsniffer](https://github.com/wfondrie/mzsniffer)
+
+- [FragPipe](https://github.com/Nesvilab/FragPipe) 
+  > Yu, F., Haynes, S. E., & Nesvizhskii, A. I. (2021). IonQuant enables accurate and sensitive label-free quantification with FDR-controlled match-between-runs. Molecular & Cellular Proteomics, 20, 100077.
