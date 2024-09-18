@@ -206,7 +206,7 @@ process fragpipe_main {
     mkdir ./output
 
     #Run Fragpipe: 
-    /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir ./output
+    /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --ram 16 --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir ./output
     
     #Prepare Fragpipe output: 
     find . -name "peptide.tsv" -exec cp {} . \\;
