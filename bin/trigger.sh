@@ -38,7 +38,6 @@ ENABLE_NF_TOWER=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d'
 MTIME_VAR=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f9)
 NUM_MAX_PROC=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f10)
 if [[ $ENABLE_NF_TOWER = "true" ]]; then WITH_TOWER="-with-tower"; fi
-SEC_REACT_WF=$WF_ROOT_FOLDER"/secreact.nf"
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
 METHODS_CSV=$3/$METHODS_CSV
 
@@ -73,12 +72,6 @@ fi
 ##################################
 ################FUNCTIONS#########
 ##################################
-
-secondary_reaction () {
- echo "Sending secondary reaction workflow for modification $1 and file $2 ..."
- nextflow run ${SEC_REACT_WF} -bg -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "'Oxidation (M)' 'Acetyl (N-term)'" -profile $LAB,small --sec_react_modif "$1" --fragment_mass_tolerance '0.5' --fragment_error_units 'Da' --search_engine comet --rawfile $2 > $3
- sleep 60
-}
 
 launch_nf_run () {
 
@@ -120,20 +113,6 @@ launch_nf_run () {
 
 }
 
-# Experimental function: 
-launch_all_secondary_reactions () {
-      secondary_reaction "'Formyl (N-term)'" ${1} ${2}_formyl_n.log
-      secondary_reaction "'Carbamyl (N-term)'" ${1} ${2}_carbamyl_n.log
-      secondary_reaction "'Gln->pyro-Glu (N-term Q)'" ${1} ${2}_pyro_glu.log
-      secondary_reaction "'Carbamyl (K)'" ${1} ${2}_carbamyl_k.log
-      secondary_reaction "'Carbamyl (R)'" ${1} ${2}_carbamyl_r.log
-      secondary_reaction "'Formyl (K)'" ${1} ${2}_formyl_k.log
-      secondary_reaction "'Formyl (S)'" ${1} ${2}_formyl_s.log
-      secondary_reaction "'Formyl (T)'" ${1} ${2}_formyl_t.log
-      secondary_reaction "'Deamidated (N)'" ${1} ${2}_deamidated_n.log
-}
-
-
 ################FUNCTIONS END
 
 
@@ -147,14 +126,14 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 
 	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d';' -f1 | tail -n +2)
 
-        FILE_TO_PROCESS=""
-        NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
-        if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
-          echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-          FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime $MTIME_VAR -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
-        else
-          echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
-        fi
+    FILE_TO_PROCESS=""
+    NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
+    if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
+       echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
+       FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime $MTIME_VAR -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+    else
+       echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
+    fi
 
 	if [ -n "$FILE_TO_PROCESS" ]; then
 
@@ -183,30 +162,27 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 	    NAME=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f3)
 	    VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f4)
 	    SITES_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f5)
-            FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
+        FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
 	    FEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f7)
 	    PMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f8)
 	    PEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f9)
-	    MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
+º	    MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
 	    OF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f11)
 	    IF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f12)
 	    ENGINE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f13)
-            NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
-            COMPUTE_SEC_REACT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
-            SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f16)
+        NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
+        SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
 
 	    ##############LAUNCH NEXTFLOW PROCESSES
             # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
             if [ "$TEST_MODE" = "true" ] ; then
                RAWFILE_TO_PROCESS=$ORIGIN_FOLDER/$TEST_FILENAME
-               COMPUTE_SEC_REACT=false
             elif [ "$PROD_MODE" = "true" ] ; then
                RAWFILE_TO_PROCESS=$CURRENT_UUID_FOLDER/${FILE_BASENAME}
                TEST_MODE="false"
             fi
             if [ -f "$RAWFILE_TO_PROCESS" ]; then
              launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
-             if [ "$(echo $REQUEST | grep $j)" ] && [ "$COMPUTE_SEC_REACT" = true ]; then launch_all_secondary_reactions $CURRENT_UUID_FOLDER/${FILE_BASENAME} ${LOGS_FOLDER}/${FILE_BASENAME}.log; fi
             else 
              echo "[ERROR] File ${RAWFILE_TO_PROCESS} not found."
             fi
