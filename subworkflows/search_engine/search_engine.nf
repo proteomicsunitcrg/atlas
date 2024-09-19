@@ -4,7 +4,6 @@ contaminants_prefix      = params.contaminants_prefix
 tools_folder             = params.tools_folder
 
 search_engine            = params.search_engine
-sec_react_modif          = params.sec_react_modif
 
 //Comet engine: 
 precursor_charge         = params.precursor_charge
@@ -32,7 +31,6 @@ debug_code               = params.debug_code
 
 //FragPipe engine: 
 fp_workflow              = params.fp_workflow
-//fp_manifest              = params.fp_manifest
 fp_tools                 = params.fp_tools
 
 //Bash scripts folder:                                                                  
@@ -106,11 +104,7 @@ process CometAdapter {
 
     shell:
     '''
-    if [[ !{sec_react_modif} == "" ]]; then
-       CometAdapter -threads !{task.cpus} -debug 10 -force -in !{comet_mzml_file} -out !{basename}_comet.idXML -database !{fastafile_decoy} -missed_cleavages !{missed_cleavages} -precursor_charge !{precursor_charge} -comet_executable !{comet_executable} -precursor_mass_tolerance !{precursor_mass_tolerance} -precursor_error_units !{precursor_error_units} -fragment_mass_tolerance !{frag_mass_tol} -fragment_error_units !{frag_err_uni} -fixed_modifications !{fixed_modifications} -variable_modifications !{var_modif}
-    else 
-       CometAdapter -threads !{task.cpus} -debug 10 -force -in !{comet_mzml_file} -out !{basename}_comet.idXML -database !{fastafile_decoy} -missed_cleavages !{missed_cleavages} -precursor_charge !{precursor_charge} -comet_executable !{comet_executable} -precursor_mass_tolerance !{precursor_mass_tolerance} -precursor_error_units !{precursor_error_units} -fragment_mass_tolerance !{frag_mass_tol} -fragment_error_units !{frag_err_uni} -fixed_modifications !{fixed_modifications} -variable_modifications !{var_modif} !{sec_react_modif} 
-    fi
+    CometAdapter -threads !{task.cpus} -debug 10 -force -in !{comet_mzml_file} -out !{basename}_comet.idXML -database !{fastafile_decoy} -missed_cleavages !{missed_cleavages} -precursor_charge !{precursor_charge} -comet_executable !{comet_executable} -precursor_mass_tolerance !{precursor_mass_tolerance} -precursor_error_units !{precursor_error_units} -fragment_mass_tolerance !{frag_mass_tol} -fragment_error_units !{frag_err_uni} -fixed_modifications !{fixed_modifications} -variable_modifications !{var_modif}
     '''
 }
 

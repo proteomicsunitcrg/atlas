@@ -13,9 +13,6 @@ api_key_qc_params          = params.api_key_qc_params
 //Bash scripts folder:
 binfolder                      = "$baseDir/bin"
 
-//Secondary reactions: 
-sec_react_modif                = params.sec_react_modif 
-
 process insertFragpipeFileToQSample {
         tag { "${mzml_file}" }
         label 'insertQSampleWithoutClitools' 
