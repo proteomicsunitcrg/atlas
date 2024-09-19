@@ -124,17 +124,17 @@ process insertFragpipeSecReactDataToQSample {
         
         ### Secondary reactions:
         echo "[INFO] Computing secondary reactions..."
-        Formylation=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Formylation" global.summary.tsv) 
-        Carbamyl=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Carbamyl" global.summary.tsv)
-        Oxidation=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Oxidation" global.summary.tsv)
-        Ammonialoss=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Ammonia loss" global.summary.tsv)
-        Acetyl=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Acetyl" global.summary.tsv)
-        Deamidation=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Deamidation" global.summary.tsv)
-        Amidation=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Amidation" global.summary.tsv)
-        Isotopic_peak_error=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Isotopic peak error" global.summary.tsv)
-        Didehydrobutyrine_Water_loss=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Didehydrobutyrine/Water loss" global.summary.tsv)
-        Methyl=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Methyl" global.summary.tsv)
-        Carbamidomethyl_Addition_of_G=$(source /home/proteomics/mygit/atlas-test/bin/parsing_fragpipe.sh; parse_global_modsummary "Carbamidomethyl/Addition of G" global.summary.tsv)
+        Formylation=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Formylation" global.summary.tsv) 
+        Carbamyl=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Carbamyl" global.summary.tsv)
+        Oxidation=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Oxidation" global.summary.tsv)
+        Ammonialoss=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Ammonia loss" global.summary.tsv)
+        Acetyl=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Acetyl" global.summary.tsv)
+        Deamidation=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Deamidation" global.summary.tsv)
+        Amidation=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Amidation" global.summary.tsv)
+        Isotopic_peak_error=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Isotopic peak error" global.summary.tsv)
+        Didehydrobutyrine_Water_loss=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Didehydrobutyrine/Water loss" global.summary.tsv)
+        Methyl=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Methyl" global.summary.tsv)
+        Carbamidomethyl_Addition_of_G=$(source !{binfolder}/parsing_fragpipe.sh; parse_global_modsummary "Carbamidomethyl/Addition of G" global.summary.tsv)
 
         ### Inserts API:
         echo "[INFO] API inserts..."
