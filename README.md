@@ -2,9 +2,14 @@
 
 ## Introduction
 
-**atlas** is a Nextflow-based pipeline developed for the processing and analysis of mass spectrometry data, specifically tailored to assist proteomics laboratories with daily quality assessments across various proteomics applications. It supports multiple workflows, such as regular proteomes, phosphoproteomes and independent acquisition modes, among others. 
+**atlas** is a Nextflow-based pipeline developed for the processing and analysis of mass spectrometry data, specifically designed to assist proteomics laboratories with daily quality assessments across various proteomics applications. It supports multiple workflows, such as regular proteomes, phosphoproteomes, and independent acquisition modes, among others.
 
-With these diverse workflows, **atlas** extracts critical quality control parameters, greatly simplifying the evaluation of mass spectrometry experiments. The pipeline is built on **OpenMS** modules, a widely used open-source software for mass spectrometry data processing. These modules are encapsulated using **Singularity** containers, which ensure all dependencies are properly packaged. By leveraging containers, the pipeline achieves a high degree of reproducibility, allowing consistent quality control analyses over time.
+With these diverse workflows, **atlas** extracts critical quality control parameters, simplifying the evaluation of mass spectrometry experiments. The pipeline is built on **OpenMS** modules, a widely used open-source software for mass spectrometry data processing. These modules are encapsulated using **Singularity** containers, which ensure all dependencies are properly packaged. By leveraging containers, the pipeline achieves high reproducibility, ensuring consistent quality control analyses.
+
+Additionally, **atlas** can be configured to use various search engines, including:
+- **[Fragpipe](https://fragpipe.nesvilab.org/)** 
+- **[Mascot](https://www.matrixscience.com/mascot.html)** 
+- **[Comet](http://comet-ms.sourceforge.net/)**
 
 The pipeline is implemented using the latest **Nextflow DSL2 syntax** and is designed to operate efficiently in **HPC (High-Performance Computing) environments**.
 
