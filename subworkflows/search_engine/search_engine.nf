@@ -32,6 +32,7 @@ debug_code               = params.debug_code
 //FragPipe engine: 
 fp_workflow              = params.fp_workflow
 fp_tools                 = params.fp_tools
+fp_jvm_ram               = params.fp_jvm_ram
 
 //Bash scripts folder:                                                                  
 binfolder                = "$baseDir/bin"
@@ -200,7 +201,7 @@ process fragpipe_main {
     mkdir ./output
 
     #Run Fragpipe: 
-    /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --ram 16 --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir ./output
+    /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --ram !{fp_jvm_ram} --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir ./output
     
     #Prepare Fragpipe output: 
     find . -name "peptide.tsv" -exec cp {} . \\;
