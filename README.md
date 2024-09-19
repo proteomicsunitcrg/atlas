@@ -13,7 +13,7 @@ Additionally, **atlas** can be configured to use various search engines, includi
 
 The pipeline is implemented using the latest **Nextflow DSL2 syntax** and is designed to operate efficiently in **HPC (High-Performance Computing) environments**.
 
-For more detailed information, please refer to the [documentation](link).
+For more detailed information, please refer to the [documentation](https://github.com/proteomicsunitcrg/atlas/wiki).
 
 ---
 
