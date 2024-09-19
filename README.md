@@ -8,8 +8,8 @@ With these diverse workflows, **atlas** extracts critical quality control parame
 
 Additionally, **atlas** can be configured to use various search engines, including:
 - **[Fragpipe](https://fragpipe.nesvilab.org/)** 
-- **[Mascot](https://www.matrixscience.com/mascot.html)** 
 - **[Comet](http://comet-ms.sourceforge.net/)**
+- **[Mascot](https://www.matrixscience.com/mascot.html)** 
 
 The pipeline is implemented using the latest **Nextflow DSL2 syntax** and is designed to operate efficiently in **HPC (High-Performance Computing) environments**.
 
