@@ -10,9 +10,6 @@
 - [DIA-NN](https://github.com/vdemichev/DiaNN)
   > Demichev, Vadim, et al. "DIA-NN: neural networks and interference correction enable deep proteome coverage in high throughput." Nature methods 17.1 (2020): 41-44.
 
-- [DIA Umpire](https://diaumpire.nesvilab.org/)
-  > Tsou, Chih-Chiang, et al. "DIA-Umpire: comprehensive computational framework for data-independent acquisition proteomics." Nature methods 12.3 (2015): 258-264.
-
 - [Mascot](http://www.matrixscience.com/)
   > Perkins, David N., et al. "Probability‐based protein identification by searching sequence databases using mass spectrometry data." ELECTROPHORESIS: An International Journal 20.18 (1999): 3551-3567.
 
