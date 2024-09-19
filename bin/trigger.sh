@@ -162,16 +162,16 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
 	    NAME=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f3)
 	    VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f4)
 	    SITES_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f5)
-        FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
+            FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
 	    FEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f7)
 	    PMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f8)
 	    PEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f9)
-º	    MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
+	    MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
 	    OF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f11)
 	    IF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f12)
 	    ENGINE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f13)
-        NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
-        SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
+            NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
+            SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
 
 	    ##############LAUNCH NEXTFLOW PROCESSES
             # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
