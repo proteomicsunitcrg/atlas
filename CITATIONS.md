@@ -18,5 +18,5 @@
 
 - [mzsniffer](https://github.com/wfondrie/mzsniffer)
 
-- [FragPipe](https://github.com/Nesvilab/FragPipe) 
-  > Yu, F., Haynes, S. E., & Nesvizhskii, A. I. (2021). IonQuant enables accurate and sensitive label-free quantification with FDR-controlled match-between-runs. Molecular & Cellular Proteomics, 20, 100077.
+- [Philosopher](https://github.com/Nesvilab/philosopher)) 
+  > da Veiga Leprevost F, Haynes SE, Avtonomov DM, Chang HY, Shanmugam AK, Mellacheruvu D, Kong AT, Nesvizhskii AI.[ Philosopher: a versatile toolkit for shotgun proteomics data analysis](https://www.nature.com/articles/s41592-020-0912-y). Nat Methods. 2020 Sep;17(9):869-870. doi: 10.1038/s41592-020-0912-y. PMID: 32669682; PMCID: PMC7509848.
