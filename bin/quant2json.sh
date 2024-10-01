@@ -33,8 +33,10 @@ echo -n {\""file"\": {\""checksum"\": \""$checksum"\"},\""quant"\": [ >> $output
 #JSON body: 
 for i in "${!all_prots[@]}"; do
    if [[ ${all_prots[i]} == *"CON_"* ]]; then bcont="true"; (( count_cont++ )); else bcont="false"; (( count_prot++ )); fi
-   if [ "${count_cont}" -le $num_prots ] && [ "${bcont}" == "true" ]; then echo -n { \""accession"\": \""${all_prots[i]}"\", \""description"\": \""${all_descr[i]}"\", \""abundance"\": ${all_abund[i]}, \""contaminant"\": "true" }, >> $output; fi
-   if [ "${count_prot}" -le $num_prots ] && [ "${bcont}" == "false" ]; then echo -n { \""accession"\": \""${all_prots[i]}"\", \""description"\": \""${all_descr[i]}"\", \""abundance"\": ${all_abund[i]}, \""contaminant"\": "false" }, >> $output; fi
+   if (( $(echo "${all_abund[i]} != 0" | sed 's/[eE]+*/\*10^/' | bc -l) )); then
+      if [ "${count_cont}" -le $num_prots ] && [ "${bcont}" == "true" ]; then echo -n { \""accession"\": \""${all_prots[i]}"\", \""description"\": \""${all_descr[i]}"\", \""abundance"\": ${all_abund[i]}, \""contaminant"\": "true" }, >> $output; fi
+      if [ "${count_prot}" -le $num_prots ] && [ "${bcont}" == "false" ]; then echo -n { \""accession"\": \""${all_prots[i]}"\", \""description"\": \""${all_descr[i]}"\", \""abundance"\": ${all_abund[i]}, \""contaminant"\": "false" }, >> $output; fi
+   fi
 done
 
 #Remove last comma: 
