@@ -4,9 +4,8 @@
 
 **atlas** is a Nextflow-based pipeline developed for the processing and analysis of mass spectrometry data, specifically designed to assist proteomics laboratories with daily quality assessments across various proteomics applications. It supports multiple workflows, such as regular proteomes, phosphoproteomes, and independent acquisition modes, among others.
 
-With these diverse workflows, **atlas** extracts critical quality control parameters, simplifying the evaluation of mass spectrometry experiments. The pipeline is built on **OpenMS** modules, a widely used open-source software for mass spectrometry data processing. These modules are encapsulated using **Singularity** containers, which ensure all dependencies are properly packaged. By leveraging containers, the pipeline achieves high reproducibility, ensuring consistent quality control analyses.
+With these diverse workflows, **atlas** extracts critical quality control parameters, simplifying the evaluation of mass spectrometry experiments. **atlas** can be configured to use various search engines, including:
 
-Additionally, **atlas** can be configured to use various search engines, including:
 - **[Fragpipe](https://fragpipe.nesvilab.org/)** 
 - **[Comet](http://comet-ms.sourceforge.net/)**
 - **[Mascot](https://www.matrixscience.com)** 
