@@ -68,7 +68,7 @@ workflow {
    insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out,trfp_diann_pr.out)
    insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out)
    //Report to output folder (if the field output_folder was informed at methods CSV file):
-   output_folder_diann_pr(diann_pr.out,output_folder_ch)  
+   output_folder_diann_pr(diann_pr.out,trfp_diann_pr.out,output_folder_ch)  
    
    //lab
    insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out,trfp_diann_pr.out)

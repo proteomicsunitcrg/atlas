@@ -65,7 +65,7 @@ workflow {
       insertPolymerContToQSample_pr(insertFragpipeFileToQSample_pr.out,trfp_pr.out)
       insertFragpipeSecReactDataToQSample_pr(insertFragpipeFileToQSample_pr.out,fragpipe_main_pr.out)
       //Report to output folder (if the field output_folder was informed at methods CSV file):
-      output_folder_fragpipe_pr(fragpipe_main_pr.out,insertFragpipeFileToQSample_pr.out,output_folder_ch)
+      output_folder_fragpipe_pr(trfp_pr.out,fragpipe_main_pr.out,insertFragpipeFileToQSample_pr.out,output_folder_ch)
    }
 
    if (params.search_engine == "comet" || params.search_engine == "mascot") {
@@ -89,7 +89,7 @@ workflow {
       //Report additional applications to QSample:
       insertModificationsToQsample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,sites_modif_ch) 
       //Report to output folder (if the field output_folder was informed at methods CSV file):
-      output_folder_pr(protinf_pr.out,output_folder_ch)     
+      output_folder_pr(protinf_pr.out,trfp_pr.out,output_folder_ch)     
       //Lab
       insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,idmapper_pr.out,protinf_pr.out)
       insertPolymerContToQSample_pr(insertFileToQSample_pr.out,trfp_pr.out) 
