@@ -65,7 +65,7 @@ workflow {
       insertPolymerContToQSample_pr(insertFragpipeFileToQSample_pr.out,trfp_pr.out)
       insertFragpipeSecReactDataToQSample_pr(insertFragpipeFileToQSample_pr.out,fragpipe_main_pr.out)
       //Report to output folder (if the field output_folder was informed at methods CSV file):
-      output_folder_fragpipe_pr(fragpipe_main_pr.out,insertFragpipeFileToQSample_pr.out,output_folder_ch)
+      output_folder_fragpipe_pr(trfp_pr.out,fragpipe_main_pr.out,insertFragpipeFileToQSample_pr.out,output_folder_ch)
    }
 
    if (params.search_engine == "comet" || params.search_engine == "mascot") {
