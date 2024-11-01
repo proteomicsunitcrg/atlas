@@ -63,7 +63,8 @@ if [ "$TEST_MODE" = true ] ; then
    # Download files and data, if applies
    if [ -f "$ORIGIN_FOLDER/$TEST_FILENAME" ] ; then
       echo "[INFO] Test file $ORIGIN_FOLDER/$TEST_FILENAME already downloaded."
-   else
+   else 
+      #echo "curl -o ${ORIGIN_FOLDER}/${TEST_FILENAME} ${TEST_FILE_REMOTE} -L"
       curl -o $ORIGIN_FOLDER"/"$TEST_FILENAME $TEST_FILE_REMOTE -L
    fi
 
@@ -130,7 +131,7 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
     NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
     if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
        echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-       FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime $MTIME_VAR -printf "%h %f %s\n" | sort -r | awk '{print $1"/"$2}' | head -n1)
+       FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" -o -type d -iname "*.d" \) -mtime $MTIME_VAR -print | sort -r | awk '{print $1"/"$2}' | head -n1)
     else
        echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
     fi
@@ -181,10 +182,10 @@ echo "[INFO] -----------------START---[${DATE_LOG}]"
                RAWFILE_TO_PROCESS=$CURRENT_UUID_FOLDER/${FILE_BASENAME}
                TEST_MODE="false"
             fi
-            if [ -f "$RAWFILE_TO_PROCESS" ]; then
+            if [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
              launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
             else 
-             echo "[ERROR] File ${RAWFILE_TO_PROCESS} not found."
+             echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
             fi
 	  fi
 	 done

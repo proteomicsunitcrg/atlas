@@ -2,18 +2,22 @@
 
 nextflow.enable.dsl=2
 
-include { ThermoRawFileParserDiann as trfp_diann_pr } from './subworkflows/conversion/conversion'
-include { diann as diann_pr } from './subworkflows/dia/dia'
+include { diann_bruker as diann_bruker_pr } from './subworkflows/dia/dia'
 include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr; insertDiannPolymerContToQSample as insertDiannPolymerContToQSample_pr} from './subworkflows/report/report_qsample_diann'
 include { output_folder_diann as output_folder_diann_pr} from './subworkflows/report/report_output_folder'
 
+// Check if params.rawfile is defined
+if (!params.rawfile) {
+    error "Parameter 'rawfile' is required. Please provide it using --rawfile"
+}
+
 Channel
-  .fromPath(params.rawfile)
-  .map {
-      file = it.getName()
-      base = it.getBaseName()
-      path = it.getParent()
-      [file, base, path]
+  .fromPath(params.rawfile, type: 'dir')
+  .ifEmpty { error "No .d directories found in ${params.rawfile}" }
+  .map { file ->
+       def folder = file.name
+       def base = file.baseName
+       tuple(folder, base, file)
   }
   .set { rawfile_ch }
 
@@ -54,20 +58,17 @@ Channel
   .set { output_folder_ch }
 
 workflow {
- 
-   //Conversion:
-   trfp_diann_pr(rawfile_ch)
 
-   //DIA-NN: 
-   diann_pr(trfp_diann_pr.out)
+   // DIA-NN:
+   diann_bruker_pr(rawfile_ch) 
 
-   //Report to QSample database:
-   insertDIANNFileToQSample_pr(rawfile_ch,trfp_diann_pr.out)
-   insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out,trfp_diann_pr.out)
-   insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out)
-   //Report to output folder (if the field output_folder was informed at methods CSV file):
-   output_folder_diann_pr(diann_pr.out,trfp_diann_pr.out,output_folder_ch)  
-   
-   //lab
-   insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out,trfp_diann_pr.out)
+   // Report to QSample database:
+   //insertDIANNFileToQSample_pr(brukerfile_ch,trfp_diann_pr.out)
+   //insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out,trfp_diann_pr.out)
+   //insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out)
+   // Report to output folder (if the field output_folder was informed at methods CSV file):
+   //output_folder_diann_pr(diann_pr.out,trfp_diann_pr.out,output_folder_ch)
+
+   // Lab
+   //insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out,trfp_diann_pr.out)
 }
