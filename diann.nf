@@ -53,8 +53,6 @@ Channel
   .from(params.output_folder)
   .set { output_folder_ch }
 
-params.params_file
-
 workflow {
  
    //Conversion:

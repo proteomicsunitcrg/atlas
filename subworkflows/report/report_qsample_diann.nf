@@ -42,6 +42,58 @@ process insertDIANNFileToQSample {
         '''
 }
 
+process insertDIANNBrukerFileToQSample {
+    tag { "${report_file.baseName}" }
+
+    input:
+    path(report_file)
+    path(sqlite_file)
+
+    output:
+    path "*.checksum", emit: checksum
+    path "*.tsv", emit: tsv
+
+    shell:
+    '''
+    
+    # Extract the base name from the report file
+    base=$(basename !{report_file} .report.tsv)
+    echo "Base name: $base"
+    
+    # Dereference the symbolic link and copy the actual file content
+    cp -L "!{report_file}" "${base}.out.report.tsv"
+    
+    # Print the expected checksum output filename
+    expected_checksum_file="${base}.checksum"
+    echo "Expected checksum output filename: $expected_checksum_file"
+
+    # Extract the request code (assuming it's the first part before an underscore)
+    request_code=$(echo $base | awk -F'[_.]' '{print $1}')
+    echo "Request code: $request_code"
+
+    # Compute the checksum of the SQLite file
+    checksum=$(md5sum !{sqlite_file} | awk '{print $1}')
+    echo $checksum > "${expected_checksum_file}"
+    echo "Checksum calculated and saved to: ${expected_checksum_file}"
+
+    # Extract AbsoluteTime from SQLite database
+    timestamp=$(sqlite3 !{sqlite_file} "SELECT AbsoluteTime FROM TreatmentEvents LIMIT 1;")
+    timestamp_seconds=$(($timestamp / 10000000))
+    epoch_start=$(date -u -d "1601-01-01 00:00:00" +%s)
+    creation_date=$(date -u -d "@$(($epoch_start + $timestamp_seconds))" +"%Y-%m-%d %H:%M:%S")    
+    echo "Creation date: $creation_date"
+
+    data_string='{"checksum": "'$checksum'","creation_date": "'$creation_date'","filename": "'$base'"}'
+    echo $data_string > data_string
+
+    access_token=$(source !{binfolder}/api.sh; get_api_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
+    echo $access_token > access_token
+
+    curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_file}/$request_code -H "Content-Type: application/json" --data @data_string
+    '''
+}
+
+
 process insertDIANNDataToQSample {
 
         tag { "${tsv_file}" }
@@ -93,8 +145,53 @@ process insertDIANNDataToQSample {
         '''
 }
 
+process insertDIANNBrukerDataToQSample {
+
+        tag { "${tsv_file}" }
+        label 'clitools'
+
+        input:
+        file(checksum)
+        file(tsv_file)
+
+        shell:
+        '''
+        # Parsings:
+        num_prots=$(source !{binfolder}/parsing_diann.sh; get_num_prot_groups_diann !{tsv_file})
+        num_peptd=$(source !{binfolder}/parsing_diann.sh; get_num_peptidoforms_diann !{tsv_file})
+
+        source !{binfolder}/parsing_diann.sh; get_peptidoform_miscleavages_counts_diann !{tsv_file}
+        miscleavages_0=$(cat *.miscleavages.0)
+        miscleavages_1=$(cat *.miscleavages.1)
+        miscleavages_2=$(cat *.miscleavages.2)
+        miscleavages_3=$(cat *.miscleavages.3)
+        charge_2=$(source !{binfolder}/parsing_diann.sh; get_num_charges_diann !{tsv_file} 2)
+        charge_3=$(source !{binfolder}/parsing_diann.sh; get_num_charges_diann !{tsv_file} 3)
+        charge_4=$(source !{binfolder}/parsing_diann.sh; get_num_charges_diann !{tsv_file} 4)
+
+        # Checks:
+        echo $num_prots > num_prots
+        echo $charge_2 > charge_2
+        echo $charge_3 > charge_3
+        echo $charge_4 > charge_4
+
+        # API posts:
+        checksum=$(cat !{checksum})
+        api_key_sh=!{api_key_qc_params}
+        access_token=$(source !{binfolder}/api.sh; get_api_access_token !{url_api_signin} !{url_api_user} !{url_api_pass})
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "3","value": "'$charge_2'"},{"contextSource": "4","value": "'$charge_3'"},{"contextSource": "5","value": "'$charge_4'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "20","value": "'$miscleavages_0'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "21","value": "'$miscleavages_1'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "22","value": "'$miscleavages_2'"}]}]}'
+        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "23","value": "'$miscleavages_3'"}]}]}'
+
+        '''
+}
+
 process insertDIANNQuantToQSample {
-    tag { "${csvfile}" }
+    
+    tag { "${tsvfile}" }
 
     input:
     file(checksum)
@@ -108,6 +205,24 @@ process insertDIANNQuantToQSample {
     curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_quant} -H "Content-Type: application/json" --data '@output.json'
     '''
 }
+
+process insertDIANNBrukerQuantToQSample {
+    
+    tag { "${tsvfile}" }
+
+    input:
+    file(checksum)
+    file(tsvfile)
+    
+    shell:
+    '''
+    checksum=$(cat !{checksum})
+    !{binfolder}/quant2json.sh !{tsvfile} $checksum output.json !{num_max_prots} true
+    access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+    curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_quant} -H "Content-Type: application/json" --data '@output.json'
+    '''
+}
+
 
 process insertDiannPolymerContToQSample {
      tag { "${mzml_file}" }
