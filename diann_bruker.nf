@@ -3,8 +3,7 @@
 nextflow.enable.dsl=2
 
 include { diann_bruker as diann_bruker_pr } from './subworkflows/dia/dia'
-include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr; insertDiannPolymerContToQSample as insertDiannPolymerContToQSample_pr} from './subworkflows/report/report_qsample_diann'
-include { output_folder_diann as output_folder_diann_pr} from './subworkflows/report/report_output_folder'
+include { insertDIANNBrukerFileToQSample as insertDIANNBrukerFileToQSample_pr; insertDIANNBrukerDataToQSample as insertDIANNBrukerDataToQSample_pr; insertDIANNBrukerQuantToQSample as insertDIANNBrukerQuantToQSample_pr } from './subworkflows/report/report_qsample_diann'
 
 // Check if params.rawfile is defined
 if (!params.rawfile) {
@@ -59,16 +58,21 @@ Channel
 
 workflow {
 
-   // DIA-NN:
    diann_bruker_pr(rawfile_ch) 
 
-   // Report to QSample database:
-   //insertDIANNFileToQSample_pr(brukerfile_ch,trfp_diann_pr.out)
-   //insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out,trfp_diann_pr.out)
-   //insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out)
-   // Report to output folder (if the field output_folder was informed at methods CSV file):
-   //output_folder_diann_pr(diann_pr.out,trfp_diann_pr.out,output_folder_ch)
+   insertDIANNBrukerFileToQSample_pr(
+        diann_bruker_pr.out[0],
+        diann_bruker_pr.out.sqlite_file
+    )   
 
-   // Lab
-   //insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out,trfp_diann_pr.out)
+   insertDIANNBrukerDataToQSample_pr(
+        insertDIANNBrukerFileToQSample_pr.out.checksum,
+        insertDIANNBrukerFileToQSample_pr.out.tsv
+   )
+
+   insertDIANNBrukerQuantToQSample_pr(
+        insertDIANNBrukerFileToQSample_pr.out.checksum,
+        insertDIANNBrukerFileToQSample_pr.out.tsv
+   )
+
 }
