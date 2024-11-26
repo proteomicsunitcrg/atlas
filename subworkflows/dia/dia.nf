@@ -117,14 +117,16 @@ process diann_bruker {
     cp $bruker_folder_sh/chromatography-data.sqlite .
 
     # Check for existing predicted spec. libs. and send main process:
+    # /usr/diann/1.8.1/./diann-1.8.1
+    # /diann-1.9.2/diann-linux
     diann_speclib_folder_sh=!{diann_speclib_folder}
     if ls $diann_speclib_folder_sh | grep -i "$fastafilename"; then
         cp $diann_speclib_folder_sh"/"$fastafilename".lib.predicted.speclib" .
         echo "Running DIA-NN command line with already existing $diann_speclib_folder_sh"/"$fastafilename.lib.predicted.speclib..."
-        /diann-1.9.2/diann-linux --f "$bruker_folder_sh"  --lib $fastafilename".lib.predicted.speclib" --threads !{diann_threads_bruker} --verbose 10 --out "$output_file" --qvalue !{qvalue} --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz_bruker} --max-pr-mz !{max_pr_mz_bruker} --min-pr-charge !{min_pr_charge_bruker} --max-pr-charge !{max_pr_charge_bruker} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
+        /usr/diann/1.8.1/./diann-1.8.1 --f "$bruker_folder_sh"  --lib $fastafilename".lib.predicted.speclib" --threads !{diann_threads_bruker} --verbose 10 --out "$output_file" --qvalue !{qvalue} --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz_bruker} --max-pr-mz !{max_pr_mz_bruker} --min-pr-charge !{min_pr_charge_bruker} --max-pr-charge !{max_pr_charge_bruker} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
     else
         echo "Running DIA-NN command line with lib prediction..."
-        /diann-1.9.2/diann-linux --f "$bruker_folder_sh"  --lib "" --threads !{diann_threads_bruker} --verbose 10 --out "$output_file" --qvalue !{qvalue} --gen-spec-lib --predictor --fasta ${fastafile} --fasta-search --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz_bruker} --max-pr-mz !{max_pr_mz_bruker} --min-pr-charge !{min_pr_charge_bruker} --max-pr-charge !{max_pr_charge_bruker} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
+        /usr/diann/1.8.1/./diann-1.8.1 --f "$bruker_folder_sh"  --lib "" --threads !{diann_threads_bruker} --verbose 10 --out "$output_file" --qvalue !{qvalue} --gen-spec-lib --predictor --fasta ${fastafile} --fasta-search --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz_bruker} --max-pr-mz !{max_pr_mz_bruker} --min-pr-charge !{min_pr_charge_bruker} --max-pr-charge !{max_pr_charge_bruker} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
     fi
     '''
 }

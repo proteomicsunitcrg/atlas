@@ -43,7 +43,9 @@ process insertDIANNFileToQSample {
 }
 
 process insertDIANNBrukerFileToQSample {
+
     tag { "${report_file.baseName}" }
+    label 'clitools'
 
     input:
     path(report_file)
@@ -97,7 +99,6 @@ process insertDIANNBrukerFileToQSample {
 process insertDIANNDataToQSample {
 
         tag { "${tsv_file}" }
-        label 'clitools'
 
         input:
         file(checksum)
