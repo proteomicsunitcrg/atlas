@@ -38,9 +38,13 @@ process ThermoRawFileParserDiann {
     path_sh=!{path}
     filename_sh=!{filename}
     organism_sh=$(echo ${filename_sh##*.})
-    ThermoRawFileParser.sh -i=$path_sh/$filename_sh -f=2 -o ./
     basename_sh=!{basename}
-    mv $basename_sh.mzML $basename_sh.mzML.$organism_sh  
+    if [[ !{filename} == *"mzML"* ]]; then
+        mv $basename_sh.mzML $basename_sh.mzML.$organism_sh
+    else
+        ThermoRawFileParser.sh -i=$path_sh/$filename_sh -f=2 -o ./
+        mv $basename_sh.mzML $basename_sh.mzML.$organism_sh  
+    fi  
     '''
 }
 
