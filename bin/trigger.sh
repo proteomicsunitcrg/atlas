@@ -64,7 +64,6 @@ if [ "$TEST_MODE" = true ] ; then
    if [ -f "$ORIGIN_FOLDER/$TEST_FILENAME" ] ; then
       echo "[INFO] Test file $ORIGIN_FOLDER/$TEST_FILENAME already downloaded."
    else 
-      #echo "curl -o ${ORIGIN_FOLDER}/${TEST_FILENAME} ${TEST_FILE_REMOTE} -L"
       curl -o $ORIGIN_FOLDER"/"$TEST_FILENAME $TEST_FILE_REMOTE -L
    fi
 
