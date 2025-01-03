@@ -70,15 +70,29 @@ process diann {
     output_file=${basename_sh}".report.tsv"
     echo "Output TSV report: "$output_file
 
-    # Check for existing predicted spec. libs. and send main process: 
-    existing_spec_lib=$(ls "$diann_speclib_folder_sh"/*"$fastafilename"*"$diann_name_speclib_filter_sh"*)
+    # Check for existing predicted spectral libraries
+    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
+
     if [[ -n "$existing_spec_lib" ]]; then
-        echo "Running DIA-NN command line with already existing spectral library..."
-        $diann_exec_cmd_sh --cfg $diann_cfg_sh --f $diann_filename --out ${output_file} --lib $existing_spec_lib --fasta $fastafile --out-lib ${basename_sh}.parquet
+      echo "Running DIA-NN command line with already existing spectral library..."
+      "$diann_exec_cmd_sh" \
+        --cfg "$diann_cfg_sh" \
+        --f "$diann_filename" \
+        --out "$output_file" \
+        --lib "$existing_spec_lib" \
+        --fasta "$fastafile" \
+        --out-lib "${basename_sh}.parquet"
     else
-        echo "Running DIA-NN command line with lib prediction..."
-        !{diann_exec_cmd} --cfg $diann_cfg_sh --f $diann_filename --out ${output_file} --fasta $fastafile --fasta-search --gen-spec-lib --predictor
-    fi  
+      echo "Running DIA-NN command line with lib prediction..."
+      "$diann_exec_cmd_sh" \
+        --cfg "$diann_cfg_sh" \
+        --f "$diann_filename" \
+        --out "$output_file" \
+        --fasta "$fastafile" \
+        --fasta-search \
+        --gen-spec-lib \
+        --predictor
+    fi
     '''
 }
 
@@ -97,11 +111,10 @@ process diann_bruker {
     '''
     bruker_folder_sh="!{d_folder}"
     echo "Bruker folder: $bruker_folder_sh"
-
     diann_cfg_bruker_sh=!{diann_cfg_bruker}
+    diann_speclib_folder_sh=!{diann_speclib_folder}
     echo "CFG file: "$diann_cfg_bruker_sh
     diann_exec_cmd_bruker_sh=!{diann_exec_cmd_bruker}
-
     diann_name_speclib_filter_sh=!{diann_name_speclib_filter}
 
     # Extract filename info:
@@ -126,14 +139,28 @@ process diann_bruker {
     # Copy the SQLite file to the current working directory
     cp $bruker_folder_sh/chromatography-data.sqlite .
 
-    # Check for existing predicted spec. libs. and send main process:
-    existing_spec_lib=$(ls "$diann_speclib_folder_sh"/*"$fastafilename"*"$diann_name_speclib_filter_sh"*)
+    # Check for existing predicted spectral libraries
+    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
+
     if [[ -n "$existing_spec_lib" ]]; then
-        echo "Running DIA-NN command line with already existing $diann_speclib_folder_sh"/"$fastafilename.lib.predicted.speclib..."
-        $diann_exec_cmd_bruker_sh --cfg $diann_cfg_bruker_sh --f $bruker_folder_sh --out ${output_file} --lib $existing_spec_lib --fasta $fastafile --out-lib ${basename_sh}.parquet
-    else
-        echo "Running DIA-NN command line with lib prediction..."
-        $diann_exec_cmd_bruker_sh --cfg $diann_cfg_bruker_sh --f $bruker_folder_sh --out ${output_file} --fasta $fastafile --fasta-search --gen-spec-lib --predictor
+      echo "Running DIA-NN command line with already existing spectral library..."
+      "$diann_exec_cmd_bruker_sh" \
+        --cfg "$diann_cfg_bruker_sh" \
+        --f "$bruker_folder_sh" \
+        --out "$output_file" \
+        --lib "$existing_spec_lib" \
+        --fasta "$fastafile" \
+        --out-lib "${basename_sh}.parquet"
+     else
+      echo "Running DIA-NN command line with lib prediction..."
+      "$diann_exec_cmd_bruker_sh" \
+        --cfg "$diann_cfg_bruker_sh" \
+        --f "$bruker_folder_sh" \
+        --out "$output_file" \
+        --fasta "$fastafile" \
+        --fasta-search \
+        --gen-spec-lib \
+        --predictor
     fi
     '''
 }
