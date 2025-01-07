@@ -1,7 +1,6 @@
-//DIA-NN params: 
 databases_folder        = params.databases_folder
 diann_speclib_folder    = params.diann_speclib_folder
-qvalue    	        = params.qvalue                        
+qvalue                  = params.qvalue                        
 min_fr_mz               = params.min_fr_mz       
 max_fr_mz               = params.max_fr_mz      
 cut                     = params.cut
@@ -21,6 +20,11 @@ var_mod                 = params.var_mod
 pg_level                = params.pg_level 
 diann_threads           = params.diann_threads
 diann_threads_bruker    = params.diann_threads_bruker
+diann_exec_cmd          = params.diann_exec_cmd
+diann_exec_cmd_bruker   = params.diann_exec_cmd_bruker
+diann_cfg               = params.diann_cfg
+diann_cfg_bruker        = params.diann_cfg_bruker
+diann_name_speclib_filter = params.diann_name_speclib_filter
 
 process diann {
     label 'diann'
@@ -34,18 +38,19 @@ process diann {
 
     shell:
     '''
-
     # Copy spectra file: 
     filename_sh=!{mzml_file}
+    diann_cfg_sh=!{diann_cfg}
+    diann_speclib_folder_sh=!{diann_speclib_folder}
+    diann_name_speclib_filter_sh=!{diann_name_speclib_filter}
+    diann_exec_cmd_sh=!{diann_exec_cmd}
+
+    echo "CFG file: "$diann_cfg_sh
     echo "Spectra complete filename: "$filename_sh
 
     # Extract filename info:
     basename_sh=$(basename $filename_sh | cut -f 1 -d '.')
-    if [[ !{mzml_file} == *"QCDI"* ]]; then
-      extension_sh=$(basename $filename_sh | cut -f 4 -d '.')
-    else 
-      extension_sh=$(basename $filename_sh | cut -f 3 -d '.') 
-    fi       
+    extension_sh=$(basename $filename_sh | cut -f 2 -d '.') 
     organism_sh=$(echo ${filename_sh##*.})
 
     # Load fasta file:
@@ -62,19 +67,32 @@ process diann {
     echo "Spectra filename for DIA-NN: "$diann_filename
 
     # Output files:
-    output_file=$basename_sh".report.tsv"
+    output_file=${basename_sh}".report.tsv"
     echo "Output TSV report: "$output_file
 
-    # Check for existing predicted spec. libs. and send main process: 
-    diann_speclib_folder_sh=!{diann_speclib_folder}
-    if ls $diann_speclib_folder_sh | grep -i "$fastafilename"; then
-        cp $diann_speclib_folder_sh"/"$fastafilename".lib.predicted.speclib" .
-        echo "Running DIA-NN command line with already existing $diann_speclib_folder_sh"/"$fastafilename.lib.predicted.speclib..."
-        /usr/diann/1.8.1/./diann-1.8.1 --f "$diann_filename"  --lib $fastafilename".lib.predicted.speclib" --threads !{diann_threads} --verbose 10 --out "$output_file" --qvalue !{qvalue} --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz} --max-pr-mz !{max_pr_mz} --min-pr-charge !{min_pr_charge} --max-pr-charge !{max_pr_charge} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
+    # Check for existing predicted spectral libraries
+    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
+
+    if [[ -n "$existing_spec_lib" ]]; then
+      echo "Running DIA-NN command line with already existing spectral library..."
+      "$diann_exec_cmd_sh" \
+        --cfg "$diann_cfg_sh" \
+        --f "$diann_filename" \
+        --out "$output_file" \
+        --lib "$existing_spec_lib" \
+        --fasta "$fastafile" \
+        --out-lib "${basename_sh}.parquet"
     else
-        echo "Running DIA-NN command line with lib prediction..."
-        /usr/diann/1.8.1/./diann-1.8.1 --f "$diann_filename"  --lib "" --threads !{diann_threads} --verbose 10 --out "$output_file" --qvalue !{qvalue} --gen-spec-lib --predictor --fasta ${fastafile} --fasta-search --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz} --max-pr-mz !{max_pr_mz} --min-pr-charge !{min_pr_charge} --max-pr-charge !{max_pr_charge} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-in
-    fi  
+      echo "Running DIA-NN command line with lib prediction..."
+      "$diann_exec_cmd_sh" \
+        --cfg "$diann_cfg_sh" \
+        --f "$diann_filename" \
+        --out "$output_file" \
+        --fasta "$fastafile" \
+        --fasta-search \
+        --gen-spec-lib \
+        --predictor
+    fi
     '''
 }
 
@@ -93,6 +111,11 @@ process diann_bruker {
     '''
     bruker_folder_sh="!{d_folder}"
     echo "Bruker folder: $bruker_folder_sh"
+    diann_cfg_bruker_sh=!{diann_cfg_bruker}
+    diann_speclib_folder_sh=!{diann_speclib_folder}
+    echo "CFG file: "$diann_cfg_bruker_sh
+    diann_exec_cmd_bruker_sh=!{diann_exec_cmd_bruker}
+    diann_name_speclib_filter_sh=!{diann_name_speclib_filter}
 
     # Extract filename info:
     basename_sh=$(basename "$bruker_folder_sh" .d)
@@ -116,17 +139,28 @@ process diann_bruker {
     # Copy the SQLite file to the current working directory
     cp $bruker_folder_sh/chromatography-data.sqlite .
 
-    # Check for existing predicted spec. libs. and send main process:
-    # /usr/diann/1.8.1/./diann-1.8.1
-    # /diann-1.9.2/diann-linux
-    diann_speclib_folder_sh=!{diann_speclib_folder}
-    if ls $diann_speclib_folder_sh | grep -i "$fastafilename"; then
-        cp $diann_speclib_folder_sh"/"$fastafilename".lib.predicted.speclib" .
-        echo "Running DIA-NN command line with already existing $diann_speclib_folder_sh"/"$fastafilename.lib.predicted.speclib..."
-        /usr/diann/1.8.1/./diann-1.8.1 --f "$bruker_folder_sh"  --lib $fastafilename".lib.predicted.speclib" --threads !{diann_threads_bruker} --verbose 10 --out "$output_file" --qvalue !{qvalue} --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz_bruker} --max-pr-mz !{max_pr_mz_bruker} --min-pr-charge !{min_pr_charge_bruker} --max-pr-charge !{max_pr_charge_bruker} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
-    else
-        echo "Running DIA-NN command line with lib prediction..."
-        /usr/diann/1.8.1/./diann-1.8.1 --f "$bruker_folder_sh"  --lib "" --threads !{diann_threads_bruker} --verbose 10 --out "$output_file" --qvalue !{qvalue} --gen-spec-lib --predictor --fasta ${fastafile} --fasta-search --min-fr-mz !{min_fr_mz} --max-fr-mz !{max_fr_mz} --met-excision --cut !{cut} --missed-cleavages !{missed_cleavages} --min-pep-len !{min_pep_len} --max-pep-len !{max_pep_len} --min-pr-mz !{min_pr_mz_bruker} --max-pr-mz !{max_pr_mz_bruker} --min-pr-charge !{min_pr_charge_bruker} --max-pr-charge !{max_pr_charge_bruker} --unimod4 --var-mods !{var_mods} --var-mod !{var_mod} --smart-profiling --pg-level !{pg_level} --peak-center --no-ifs-removal --relaxed-prot-inf
+    # Check for existing predicted spectral libraries
+    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
+
+    if [[ -n "$existing_spec_lib" ]]; then
+      echo "Running DIA-NN command line with already existing spectral library..."
+      "$diann_exec_cmd_bruker_sh" \
+        --cfg "$diann_cfg_bruker_sh" \
+        --f "$bruker_folder_sh" \
+        --out "$output_file" \
+        --lib "$existing_spec_lib" \
+        --fasta "$fastafile" \
+        --out-lib "${basename_sh}.parquet"
+     else
+      echo "Running DIA-NN command line with lib prediction..."
+      "$diann_exec_cmd_bruker_sh" \
+        --cfg "$diann_cfg_bruker_sh" \
+        --f "$bruker_folder_sh" \
+        --out "$output_file" \
+        --fasta "$fastafile" \
+        --fasta-search \
+        --gen-spec-lib \
+        --predictor
     fi
     '''
 }
