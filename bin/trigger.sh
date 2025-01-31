@@ -73,6 +73,15 @@ fi
 ################FUNCTIONS#########
 ##################################
 
+# Slack notification: 
+notify_slack() {
+  local text="$1"
+  local hook="$2"
+  local payload=$(printf '{"text": "%s"}' "$(echo "$text" | sed ':a;N;$!ba;s/\n/\\n/g')")
+
+  curl -X POST -H 'Content-type: application/json' -d "$payload" "$hook"
+}
+
 launch_nf_run () {
 
       if [ "${10}" = true ]
@@ -109,6 +118,9 @@ launch_nf_run () {
       echo "[INFO] ###############################################################"
       if [ "$ENABLE_NOTIF_EMAIL" = true ] ; then
         echo "[INFO] This file was sent to the atlas pipeline..." | mail -s ${FILE_BASENAME} "$NOTIF_EMAIL"
+	HOOKURL=$(cat /users/pr/proteomics/.proteomics_pipelines_notifications_hook_url)
+	MESSAGE=":qsample: :white_check_mark: - Sent file to pipeline: $FILE_BASENAME"
+        notify_slack "$MESSAGE" "$HOOKURL"
       fi     
 
 }
