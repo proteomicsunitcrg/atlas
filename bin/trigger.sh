@@ -1,11 +1,6 @@
 #!/bin/bash -l
 
-# EXAMPLES: 
-#./bin/trigger.sh crg prod /users/pr/qsample/atlas/assets 
-#./bin/trigger.sh crg test /users/pr/qsample/test/atlas-last/assets BSA 
-
 ## INPUT PARAMS
-
 die () {
     echo >&2 "$@"
     exit 1
@@ -35,8 +30,10 @@ LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -
 NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f6)
 ENABLE_NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f7)
 ENABLE_NF_TOWER=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f8)
-MTIME_VAR=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f9)
-NUM_MAX_PROC=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f10)
+ENABLE_SLACK=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f9)
+SLACK_URL_HOOK=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f10)
+MTIME_VAR=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f11)
+NUM_MAX_PROC=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f12)
 if [[ $ENABLE_NF_TOWER = "true" ]]; then WITH_TOWER="-with-tower"; fi
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
 METHODS_CSV=$3/$METHODS_CSV
@@ -78,7 +75,6 @@ notify_slack() {
   local text="$1"
   local hook="$2"
   local payload=$(printf '{"text": "%s"}' "$(echo "$text" | sed ':a;N;$!ba;s/\n/\\n/g')")
-
   curl -X POST -H 'Content-type: application/json' -d "$payload" "$hook"
 }
 
@@ -116,13 +112,18 @@ launch_nf_run () {
       echo "[INFO] Working folder: $ATLAS_RUNS_FOLDER/$CURRENT_UUID"
       echo "[INFO] ###############################################################"
       echo "[INFO] ###############################################################"
+      
       if [ "$ENABLE_NOTIF_EMAIL" = true ] ; then
         echo "[INFO] This file was sent to the atlas pipeline..." | mail -s ${FILE_BASENAME} "$NOTIF_EMAIL"
-	HOOKURL=$(cat /users/pr/proteomics/.proteomics_pipelines_notifications_hook_url)
-	MESSAGE=":qsample: :white_check_mark: - Sent file to pipeline: $FILE_BASENAME"
+	      HOOKURL=$(cat /users/pr/proteomics/.proteomics_pipelines_notifications_hook_url)
+	      MESSAGE=":qsample: :white_check_mark: - Sent file to pipeline: $FILE_BASENAME"
         notify_slack "$MESSAGE" "$HOOKURL"
-      fi     
+      fi
 
+      if [ "$ENABLE_SLACK" = true ] ; then
+	      MESSAGE=":qsample: :white_check_mark: - Sent file to pipeline: $FILE_BASENAME"
+         notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+      fi
 }
 
 ################FUNCTIONS END
@@ -135,74 +136,74 @@ launch_nf_run () {
 DATE_LOG=`date '+%Y-%m-%d %H:%M:%S'`
 echo "[INFO] -----------------START---[${DATE_LOG}]"
 
+LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d';' -f1 | tail -n +2)
 
-	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d';' -f1 | tail -n +2)
+FILE_TO_PROCESS=""
+NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
+if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
+   echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
+   FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" -o -type d -iname "*.d" \) -mtime $MTIME_VAR -print | sort -r | head -n1)
+else
+   echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
+fi
 
-    FILE_TO_PROCESS=""
-    NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
-    if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
-       echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-       FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" -o -type d -iname "*.d" \) -mtime $MTIME_VAR -print | sort -r | head -n1)
-    else
-       echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
-    fi
+if [ -n "$FILE_TO_PROCESS" ]; then
 
-	if [ -n "$FILE_TO_PROCESS" ]; then
+   FILE_BASENAME=$(basename $FILE_TO_PROCESS)
+   FILE_ARR=($(echo $FILE_BASENAME | tr "_" "\n"))
+   REQUEST="${FILE_ARR[0]}"
+   QCCODE="${FILE_ARR[1]}"
 
-	 FILE_BASENAME=$(basename $FILE_TO_PROCESS)
-	 FILE_ARR=($(echo $FILE_BASENAME | tr "_" "\n"))
-	 REQUEST="${FILE_ARR[0]}"
-	 QCCODE="${FILE_ARR[1]}"
+   for j in ${LIST_PATTERNS}
+   do
 
-	 for j in ${LIST_PATTERNS}
-	 do
+   if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
 
-	  if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
+      echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
 
-	    echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
+      CURRENT_UUID=$(uuidgen)
+      CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
 
-	    CURRENT_UUID=$(uuidgen)
-	    CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
+         if [ "$PROD_MODE" = "true" ] ; then
+               mkdir -p $CURRENT_UUID_FOLDER
+               cd $CURRENT_UUID_FOLDER
+               mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
+      fi
 
-            if [ "$PROD_MODE" = "true" ] ; then
-                mkdir -p $CURRENT_UUID_FOLDER
-                cd $CURRENT_UUID_FOLDER
-                mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
-	    fi
+      WF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f2)
+      NAME=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f3)
+      VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f4)
+      SITES_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f5)
+      FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
+      FEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f7)
+      PMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f8)
+      PEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f9)
+      MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
+      OF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f11)
+      IF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f12)
+      ENGINE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f13)
+      NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
+      SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
 
-	    WF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f2)
-	    NAME=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f3)
-	    VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f4)
-	    SITES_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f5)
-            FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
-	    FEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f7)
-	    PMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f8)
-	    PEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f9)
-	    MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
-	    OF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f11)
-	    IF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f12)
-	    ENGINE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f13)
-            NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
-            SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
-
-	    ##############LAUNCH NEXTFLOW PROCESSES
-            # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
-            if [ "$TEST_MODE" = "true" ] ; then
-               RAWFILE_TO_PROCESS=$ORIGIN_FOLDER/$TEST_FILENAME
-            elif [ "$PROD_MODE" = "true" ] ; then
-               RAWFILE_TO_PROCESS=$CURRENT_UUID_FOLDER/${FILE_BASENAME}
-               TEST_MODE="false"
-            fi
-            if [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
-             launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
-            else 
-             echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
-            fi
-	  fi
-	 done
-        else
-         echo "[INFO] No files to process!"
-	fi
+      ##############LAUNCH NEXTFLOW PROCESSES
+      # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
+      if [ "$TEST_MODE" = "true" ] ; then
+         RAWFILE_TO_PROCESS=$ORIGIN_FOLDER/$TEST_FILENAME
+      elif [ "$PROD_MODE" = "true" ] ; then
+         RAWFILE_TO_PROCESS=$CURRENT_UUID_FOLDER/${FILE_BASENAME}
+         TEST_MODE="false"
+      fi
+      if [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
+         #### here the NF process is launched!
+         launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
+      else 
+         echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
+      fi
+   fi
+   done
+      else
+      echo "[INFO] No files to process!"
+fi
 
 echo "[INFO] -----------------EOF"
 
