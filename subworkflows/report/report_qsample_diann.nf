@@ -21,7 +21,7 @@ process insertDIANNFileToQSample {
 
         input:
         tuple val(filename), val(basename), val(path)
-        tuple file(mzml_file)
+        file(mzml_file)
 
         output:
         file("${filename}.checksum")
@@ -232,7 +232,7 @@ process insertDiannPolymerContToQSample {
 
      input:
      file(checksum)
-     tuple file(mzml_file)
+     file(mzml_file)
 
      shell:
      '''
