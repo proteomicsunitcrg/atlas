@@ -41,10 +41,6 @@ Channel
   .set { missed_cleavages }
 
 Channel
-  .from(params.params_file)
-  .set { params_file }
-
-Channel
   .from(params.instrument_folder)
   .set { instrument_folder }
 
