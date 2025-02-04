@@ -29,9 +29,9 @@ ATLAS_RUNS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -
 LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f5)
 NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f6)
 ENABLE_NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f7)
-ENABLE_NF_TOWER=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f8)
-ENABLE_SLACK=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f9)
-SLACK_URL_HOOK=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f10)
+ENABLE_SLACK=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f8)
+SLACK_URL_HOOK=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f9)
+ENABLE_NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f10)
 MTIME_VAR=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f11)
 NUM_MAX_PROC=$(cat $CSV_FILENAME_RUN_MODES | grep -E "^$MODE[^;]*;" | cut -d';' -f12)
 if [[ $ENABLE_NF_TOWER = "true" ]]; then WITH_TOWER="-with-tower"; fi
