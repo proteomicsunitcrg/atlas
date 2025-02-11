@@ -1,10 +1,10 @@
-# atlas
+# Atlas
 
 ## Introduction
 
-**atlas** is a Nextflow-based pipeline developed for the processing and analysis of mass spectrometry data, specifically designed to assist proteomics laboratories with daily quality assessments across various proteomics applications. It supports multiple workflows, such as regular proteomes, phosphoproteomes, and independent acquisition modes, among others.
+**Atlas** is a Nextflow-based pipeline developed for the processing and analysis of mass spectrometry data, specifically designed to assist proteomics laboratories with daily quality assessments across various proteomics applications. It supports multiple workflows, such as regular proteomes, phosphoproteomes, and independent acquisition modes, among others.
 
-With these diverse workflows, **atlas** extracts critical quality control parameters, simplifying the evaluation of mass spectrometry experiments. **atlas** can be configured to use various search engines, including:
+With these diverse workflows, **Atlas** extracts critical quality control parameters, simplifying the evaluation of mass spectrometry experiments. **atlas** can be configured to use various search engines, including:
 
 - **[Fragpipe](https://fragpipe.nesvilab.org/)** 
 - **[Comet](http://comet-ms.sourceforge.net/)**
@@ -19,7 +19,7 @@ For more detailed information, please refer to the [documentation](https://githu
 
 ## Credits
 
-The **atlas** pipeline was initially developed by **@rolivella**.
+The **Atlas** pipeline was initially developed by **@rolivella**.
 
 We would like to express our gratitude to the following individuals for their valuable contributions during the development:
 
