@@ -7,7 +7,7 @@ This project is distributed under the **MIT License**. However, it includes exte
 
 ## **Project License: MIT License**
 
-The core of this project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+The core of this project is licensed under the MIT License.
 
 ---
 
