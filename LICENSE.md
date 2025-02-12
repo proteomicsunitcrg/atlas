@@ -9,7 +9,7 @@ This project is distributed under the **MIT License**. However, it includes exte
 
 MIT License
 
-Copyright (c) [2025] [Roger Olivella]
+Copyright (c) 2025 Roger Olivella
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
