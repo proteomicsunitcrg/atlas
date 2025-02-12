@@ -45,7 +45,7 @@ See the [BSD License](https://github.com/OpenMS/OpenMS/blob/develop/LICENSE) for
 - **Key Conditions:**
   - Allows use, modification, and distribution of the source and binary code, provided that copyright notices and license conditions are maintained.
 
-See the [Comet License](https://uwpr.github.io/Comet/) for further details.
+See the Comet License for further details.
 
 ---
 
@@ -64,7 +64,7 @@ See the [DIA-NN License](https://github.com/vdemichev/DiaNN/blob/master/LICENSE)
 - **Key Conditions:**
   - Usage is restricted to specific conditions set by Matrix Science.
 
-For more details, refer to the [Mascot License](http://www.matrixscience.com/).
+For more details, refer to the Mascot License.
 
 ---
 
