@@ -55,7 +55,7 @@ See the Comet License for further details.
   - The software is allowed for non-commercial purposes only.
   - Redistribution is prohibited without explicit permission.
 
-See the [DIA-NN License](https://github.com/vdemichev/DiaNN/blob/master/LICENSE) for details.
+See the [DIA-NN License](https://github.com/vdemichev/DiaNN/blob/master/LICENSE.md) for details.
 
 ---
 
@@ -82,7 +82,7 @@ See the [MIT License](https://github.com/wfondrie/mzsniffer/blob/main/LICENSE) f
 - **Key Conditions:**
   - Allows use, modification, and distribution of the source and binary code, provided that copyright notices and license conditions are maintained.
 
-See the [Philosopher License](https://github.com/Nesvilab/philosopher/blob/master/LICENSE) for further details.
+See the [Philosopher License](https://github.com/Nesvilab/philosopher/blob/master/License) for further details.
 
 ---
 
