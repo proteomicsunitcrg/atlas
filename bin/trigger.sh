@@ -16,6 +16,18 @@ if [ ! -d "$ASSETS_FOLDER" ]; then
   exit 1
 fi
 
+## DETECT WHETHER WE ARE IN SLURM OR SGE
+if command -v sinfo &> /dev/null; then
+    SYSTEM="SLURM"
+elif command -v qstat &> /dev/null; then
+    SYSTEM="SGE"
+else
+    echo "[ERROR] Neither SLURM nor SGE detected. Exiting..."
+    exit 1
+fi
+
+echo "[INFO] Detected system: $SYSTEM"
+
 ## PARSE CSV FILENAMES
 CSV_FILENAME_RUN_MODES=$(ls $3 | grep $LAB | grep "run_modes")
 CSV_FILENAME_RUN_MODES=$3/$CSV_FILENAME_RUN_MODES
@@ -87,9 +99,15 @@ launch_nf_run () {
         INSTRUMENT_FOLDER=''
       fi
 
-      ####### LAUNCH TO NEXTFLOW ####### 
-      nextflow run $2 $WITH_TOWER -bg -with-report -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --sites_modif "$4" --fragment_mass_tolerance "$5" --fragment_error_units "$6" --precursor_mass_tolerance "$7" --precursor_error_units "$8" --missed_cleavages "$9" --output_folder "${10}" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${12}" -profile $LAB,"${13}" --sampleqc_api_key ${14} --rawfile ${15} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${16}
- 
+      ## EXECUTE NEXTFLOW IN SLURM OR SGE
+      if [[ $SYSTEM == "SLURM" ]]; then
+         echo "[INFO] Launching Nextflow with SLURM via submit_slurm.sh..."
+         sbatch submit_slurm.sh "$workflow_script" "$CONFIG_FILE" "$LAB" "$params" "$log_file"
+      elif [[ $SYSTEM == "SGE" ]]; then
+         echo "[INFO] Launching Nextflow directly in SGE..."
+         nextflow run $2 $WITH_TOWER -bg -with-report -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --sites_modif "$4" --fragment_mass_tolerance "$5" --fragment_error_units "$6" --precursor_mass_tolerance "$7" --precursor_error_units "$8" --missed_cleavages "$9" --output_folder "${10}" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${12}" -profile $LAB,"${13}" --sampleqc_api_key ${14} --rawfile ${15} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${16}
+      fi
+
       # Reporting log:
       echo "[INFO] ################################################################"
       echo "[INFO] ~~~~~~~~~~~~~~~~PROCESSING FILE ${FILE_BASENAME}~~~~~~~~~~~~~~~~"
