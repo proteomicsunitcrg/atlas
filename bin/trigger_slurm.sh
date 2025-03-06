@@ -10,31 +10,59 @@ set -e          # Exit immediately on error
 set -u          # Exit immediately if using undefined variables
 set -o pipefail # Ensure pipelines return non-zero status if any command fails
 
+# Store all parameters into an array
+params=("$@")
+
 # Input parameters: 
-WORKFLOW_SCRIPT=$1
-WITH_TOWER=$2
-BACKGROUND=$3
-WITH_REPORT=$4
-WORK_DIR=$5
-VAR_MODIF=$6
-SITES_MODIF=$7
-FRAGMENT_MASS_TOLERANCE=$8
-FRAGMENT_ERROR_UNITS=$9
-PRECURSOR_MASS_TOLERANCE=${10}
-PRECURSOR_ERROR_UNITS=${11}
-MISSED_CLEAVAGES=${12}
-OUTPUT_FOLDER=${13}
-INSTRUMENT_FOLDER=${14}
-SEARCH_ENGINE=${15}
-PROFILE=${16}
-SAMPLEQC_API_KEY=${17}
-EXECUTOR=${18}
-RAWFILE=${19}
-TEST_MODE=${20}
-TEST_FOLDER=${21}
-NOTIF_EMAIL=${22}
-ENABLE_NOTIF_EMAIL=${23}
-LAB=${24}
+WORK_DIR="${params[0]:-""}"
+WORKFLOW_SCRIPT="${params[2]:-""}"
+WITH_TOWER=""
+VAR_MODIF="${params[3]:-""}"
+SITES_MODIF="${params[4]:-""}"
+FRAGMENT_MASS_TOLERANCE="${params[5]:-""}"
+FRAGMENT_ERROR_UNITS="${params[6]:-""}"
+PRECURSOR_MASS_TOLERANCE="${params[7]:-""}"
+PRECURSOR_ERROR_UNITS="${params[8]:-""}"
+MISSED_CLEAVAGES="${params[9]:-""}"
+OUTPUT_FOLDER="${params[10]:-""}"
+INSTRUMENT_FOLDER="${params[11]:-""}"
+SEARCH_ENGINE="${params[12]:-""}"
+PROFILE="${params[13]:-""}"
+SAMPLEQC_API_KEY="${params[14]:-""}"
+EXECUTOR="${params[15]:-""}"
+RAWFILE="${params[16]:-""}"
+TEST_MODE="${params[18]:-""}"
+TEST_FOLDER="${params[19]:-""}"
+NOTIF_EMAIL="${params[20]:-""}"
+ENABLE_NOTIF_EMAIL="${params[21]:-""}"
+LAB="${params[22]:-""}"
+
+# Print all assigned values
+echo "Assigned Variables:"
+echo "-----------------------------------"
+echo "WORK_DIR: '$WORK_DIR'"
+echo "WORKFLOW_SCRIPT: '$WORKFLOW_SCRIPT'"
+echo "WITH_TOWER: '$WITH_TOWER'"
+echo "VAR_MODIF: '$VAR_MODIF'"
+echo "SITES_MODIF: '$SITES_MODIF'"
+echo "FRAGMENT_MASS_TOLERANCE: '$FRAGMENT_MASS_TOLERANCE'"
+echo "FRAGMENT_ERROR_UNITS: '$FRAGMENT_ERROR_UNITS'"
+echo "PRECURSOR_MASS_TOLERANCE: '$PRECURSOR_MASS_TOLERANCE'"
+echo "PRECURSOR_ERROR_UNITS: '$PRECURSOR_ERROR_UNITS'"
+echo "MISSED_CLEAVAGES: '$MISSED_CLEAVAGES'"
+echo "OUTPUT_FOLDER: '$OUTPUT_FOLDER'"
+echo "INSTRUMENT_FOLDER: '$INSTRUMENT_FOLDER'"
+echo "SEARCH_ENGINE: '$SEARCH_ENGINE'"
+echo "SAMPLEQC_API_KEY: '$SAMPLEQC_API_KEY'"
+echo "EXECUTOR: '$EXECUTOR'"
+echo "PROFILE: '$PROFILE'"
+echo "RAWFILE: '$RAWFILE'"
+echo "TEST_MODE: '$TEST_MODE'"
+echo "TEST_FOLDER: '$TEST_FOLDER'"
+echo "NOTIF_EMAIL: '$NOTIF_EMAIL'"
+echo "ENABLE_NOTIF_EMAIL: '$ENABLE_NOTIF_EMAIL'"
+echo "LAB: '$LAB'"
+echo "-----------------------------------"
 
 # Define the log file
 LOG_FILE="/users/pr/proteomics/mygit/atlas-logs/atlas_submit_slurm.log"
@@ -71,34 +99,7 @@ export PATH="/users/pr/proteomics/mysoftware/java/jdk-18.0.1.1/bin:$PATH"
 export LD_LIBRARY_PATH="/users/pr/proteomics/mysoftware/java/jdk-18.0.1.1/lib:${LD_LIBRARY_PATH:-}"
 log "Java environment configured."
 
-echo "-------------> WORK_DIR: $WORK_DIR"
-echo "-------------> WORKFLOW_SCRIPT: $WORKFLOW_SCRIPT"
-echo "-------------> WITH_TOWER: $WITH_TOWER"
-echo "-------------> BACKGROUND: $BACKGROUND"
-echo "-------------> WITH_REPORT: $WITH_REPORT"
-echo "-------------> VAR_MODIF: $VAR_MODIF"
-echo "-------------> SITES_MODIF: $SITES_MODIF"
-echo "-------------> FRAGMENT_MASS_TOLERANCE: $FRAGMENT_MASS_TOLERANCE"
-echo "-------------> FRAGMENT_ERROR_UNITS: $FRAGMENT_ERROR_UNITS"
-echo "-------------> PRECURSOR_MASS_TOLERANCE: $PRECURSOR_MASS_TOLERANCE"
-echo "-------------> PRECURSOR_ERROR_UNITS: $PRECURSOR_ERROR_UNITS"
-echo "-------------> MISSED_CLEAVAGES: $MISSED_CLEAVAGES"
-echo "-------------> OUTPUT_FOLDER: $OUTPUT_FOLDER"
-echo "-------------> INSTRUMENT_FOLDER: $INSTRUMENT_FOLDER"
-echo "-------------> SEARCH_ENGINE: $SEARCH_ENGINE"
-echo "-------------> EXECUTOR: $EXECUTOR"
-echo "-------------> PROFILE: $PROFILE"
-echo "-------------> LAB: $LAB"
-echo "-------------> SAMPLEQC_API_KEY: $SAMPLEQC_API_KEY"
-echo "-------------> RAWFILE: $RAWFILE"
-echo "-------------> TEST_MODE: $TEST_MODE"
-echo "-------------> TEST_FOLDER: $TEST_FOLDER"
-echo "-------------> NOTIF_EMAIL: $NOTIF_EMAIL"
-echo "-------------> ENABLE_NOTIF_EMAIL: $ENABLE_NOTIF_EMAIL"
-
-exit 1
-
-nextflow run "$WORKFLOW_SCRIPT" $WITH_TOWER $BACKGROUND $WITH_REPORT -work-dir "$WORK_DIR" \
+nextflow run "$WORKFLOW_SCRIPT" $WITH_TOWER -bg -with-report -work-dir "$WORK_DIR" \
   --var_modif "$VAR_MODIF" \
   --sites_modif "$SITES_MODIF" \
   --fragment_mass_tolerance "$FRAGMENT_MASS_TOLERANCE" \
