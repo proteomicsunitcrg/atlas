@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=qsample
 #SBATCH --no-requeue
+#SBATCH --mem=10G
 #SBATCH -p genoa64
 #SBATCH --qos=pipelines
 
@@ -27,11 +28,13 @@ INSTRUMENT_FOLDER=${14}
 SEARCH_ENGINE=${15}
 PROFILE=${16}
 SAMPLEQC_API_KEY=${17}
-RAWFILE=${18}
-TEST_MODE=${19}
-TEST_FOLDER=${20}
-NOTIF_EMAIL=${21}
-ENABLE_NOTIF_EMAIL=${22}
+EXECUTOR=${18}
+RAWFILE=${19}
+TEST_MODE=${20}
+TEST_FOLDER=${21}
+NOTIF_EMAIL=${22}
+ENABLE_NOTIF_EMAIL=${23}
+LAB=${24}
 
 # Define the log file
 LOG_FILE="/users/pr/proteomics/mygit/atlas-logs/atlas_submit_slurm.log"
@@ -57,7 +60,7 @@ trap _term TERM
 log "Script started."
 
 # Nextflow setup
-export PATH="$PATH:/users/pr/proteomics/mysoftware/nextflow"
+export PATH="$PATH:/users/pr/proteomics/mysoftware/nextflow/"
 export NXF_VER="22.04.4"
 export NFX_TEMP="$HOME/temp"
 log "Nextflow environment configured."
@@ -68,8 +71,33 @@ export PATH="/users/pr/proteomics/mysoftware/java/jdk-18.0.1.1/bin:$PATH"
 export LD_LIBRARY_PATH="/users/pr/proteomics/mysoftware/java/jdk-18.0.1.1/lib:${LD_LIBRARY_PATH:-}"
 log "Java environment configured."
 
-# Start the Nextflow pipeline and log its output
-log "Starting Nextflow pipeline."
+echo "-------------> WORK_DIR: $WORK_DIR"
+echo "-------------> WORKFLOW_SCRIPT: $WORKFLOW_SCRIPT"
+echo "-------------> WITH_TOWER: $WITH_TOWER"
+echo "-------------> BACKGROUND: $BACKGROUND"
+echo "-------------> WITH_REPORT: $WITH_REPORT"
+echo "-------------> VAR_MODIF: $VAR_MODIF"
+echo "-------------> SITES_MODIF: $SITES_MODIF"
+echo "-------------> FRAGMENT_MASS_TOLERANCE: $FRAGMENT_MASS_TOLERANCE"
+echo "-------------> FRAGMENT_ERROR_UNITS: $FRAGMENT_ERROR_UNITS"
+echo "-------------> PRECURSOR_MASS_TOLERANCE: $PRECURSOR_MASS_TOLERANCE"
+echo "-------------> PRECURSOR_ERROR_UNITS: $PRECURSOR_ERROR_UNITS"
+echo "-------------> MISSED_CLEAVAGES: $MISSED_CLEAVAGES"
+echo "-------------> OUTPUT_FOLDER: $OUTPUT_FOLDER"
+echo "-------------> INSTRUMENT_FOLDER: $INSTRUMENT_FOLDER"
+echo "-------------> SEARCH_ENGINE: $SEARCH_ENGINE"
+echo "-------------> EXECUTOR: $EXECUTOR"
+echo "-------------> PROFILE: $PROFILE"
+echo "-------------> LAB: $LAB"
+echo "-------------> SAMPLEQC_API_KEY: $SAMPLEQC_API_KEY"
+echo "-------------> RAWFILE: $RAWFILE"
+echo "-------------> TEST_MODE: $TEST_MODE"
+echo "-------------> TEST_FOLDER: $TEST_FOLDER"
+echo "-------------> NOTIF_EMAIL: $NOTIF_EMAIL"
+echo "-------------> ENABLE_NOTIF_EMAIL: $ENABLE_NOTIF_EMAIL"
+
+exit 1
+
 nextflow run "$WORKFLOW_SCRIPT" $WITH_TOWER $BACKGROUND $WITH_REPORT -work-dir "$WORK_DIR" \
   --var_modif "$VAR_MODIF" \
   --sites_modif "$SITES_MODIF" \
@@ -81,7 +109,7 @@ nextflow run "$WORKFLOW_SCRIPT" $WITH_TOWER $BACKGROUND $WITH_REPORT -work-dir "
   --output_folder "$OUTPUT_FOLDER" \
   --instrument_folder "$INSTRUMENT_FOLDER" \
   --search_engine "$SEARCH_ENGINE" \
-  -profile "$PROFILE" \
+  -profile "${EXECUTOR}_${PROFILE},$LAB" \
   --sampleqc_api_key "$SAMPLEQC_API_KEY" \
   --rawfile "$RAWFILE" \
   --test_mode "$TEST_MODE" \
