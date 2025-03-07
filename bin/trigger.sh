@@ -90,8 +90,7 @@ launch_nf_run () {
       ## SPECIFIC run launch depending on the executor
       if [[ $EXECUTOR == "slurm" ]]; then
          echo "[INFO] Launching Nextflow with SLURM..."
-         sbatch --output='/users/pr/proteomics/mygit/atlas-logs/atlas-slurm.out' --error='/users/pr/proteomics/mygit/atlas-logs/atlas-slurm.err' '/users/pr/proteomics/mygit/atlas-test/bin/trigger_slurm.sh' "$ATLAS_RUNS_FOLDER/$CURRENT_UUID" "$@" $TEST_MODE $ORIGIN_FOLDER $NOTIF_EMAIL $ENABLE_NOTIF_EMAIL $LAB
-         #/users/pr/proteomics/mygit/atlas-test/bin/test_sbatch_args.sh "$ATLAS_RUNS_FOLDER/$CURRENT_UUID" "$@" $TEST_MODE $ORIGIN_FOLDER $NOTIF_EMAIL $ENABLE_NOTIF_EMAIL $LAB
+         /users/pr/proteomics/mygit/atlas-test/bin/trigger_slurm.sh "MQ"
       elif [[ $EXECUTOR == "sge" ]]; then
          echo "[INFO] Launching Nextflow with SGE..."
          nextflow run $2 $WITH_TOWER -bg -with-report -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --sites_modif "$4" --fragment_mass_tolerance "$5" --fragment_error_units "$6" --precursor_mass_tolerance "$7" --precursor_error_units "$8" --missed_cleavages "$9" --output_folder "${10}" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${12}" -profile ${15}_${13},$LAB --sampleqc_api_key ${14} --rawfile ${16} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${17}
