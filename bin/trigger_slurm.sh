@@ -10,10 +10,12 @@ set -e          # Exit immediately on error
 set -u          # Exit immediately if using undefined variables
 set -o pipefail # Ensure pipelines return non-zero status if any command fails
 
-CSV_FILE="/users/pr/proteomics/mygit/atlas-config/atlas-test/assets/crg_methods.csv"
 
-PATTERN="$1"
+CSV_FILE="$1"
+PATTERN="$2"
+#etc.
 
+# maximum variables from here to avoid env issues
 IFS=";" read -r _ WORKFLOW NAME VAR_MODIF SITES_MODIF FRAGMENT_MASS_TOLERANCE FRAGMENT_ERROR_UNITS \
     PRECURSOR_MASS_TOLERANCE PRECURSOR_ERROR_UNITS MISSED_CLEAVAGES OUTPUT_FOLDER IS_INSTRUMENT_FOLDER_IN_FILENAME \
     SEARCH_ENGINE NF_PROFILE SAMPLEQC_API_KEY EXECUTOR < <(awk -F';' -v pat="$PATTERN" '$1 == pat' "$CSV_FILE")
@@ -34,7 +36,7 @@ echo "PROFILE: '$NF_PROFILE'"
 echo "EXECUTOR: '$EXECUTOR'"
 echo "==============================================================="
 
-
+exit 1
 
 nextflow run "$WORKFLOW_SCRIPT" $WITH_TOWER -bg -with-report -work-dir "$WORK_DIR" \
   --var_modif "$VAR_MODIF" \
