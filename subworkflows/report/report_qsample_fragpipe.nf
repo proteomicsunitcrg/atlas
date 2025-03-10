@@ -15,7 +15,7 @@ binfolder                      = "$baseDir/bin"
 
 process insertFragpipeFileToQSample {
         tag { "${mzml_file}" }
-        label 'insertQSampleWithoutClitools' 
+        label 'clitools' 
 
         input:
         tuple val(filename), val(basename), val(path)
@@ -43,7 +43,7 @@ process insertFragpipeFileToQSample {
 process insertFragpipeDataToQSample {
 
         tag { "${mzml_file}" }
-        label 'insertQSampleClitools'
+        label 'clitools'
 
         input:
         file(checksum)

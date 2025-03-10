@@ -11,6 +11,7 @@ binfolder                = "$baseDir/bin"
 process output_folder {
         
         tag { "${output_folder}" }
+        label 'clitools'
 
         input:
         file(protinf_file)
@@ -50,6 +51,7 @@ process output_folder {
 process output_folder_diann {
 
         tag { "${output_folder}" }
+        label 'clitools'
 
         input:
         file(tsv_file)
@@ -89,6 +91,7 @@ process output_folder_diann {
 process output_folder_fragpipe {
 
         tag { "${output_folder}" }
+        label 'clitools'
 
         input:
         tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
