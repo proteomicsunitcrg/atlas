@@ -13,23 +13,45 @@ set -x
 
 WORKFLOW=$1
 WORK_DIR=$2
-SEARCH_ENGINE=$3
-PROFILE=$4
-EXECUTOR=$5
-LAB=$6
-RAWFILE=$7
-OUTPUT_FOLDER=$8
+VAR_MODIF=$3
+SITES_MODIF=$4
+FRAGMENT_MASS_TOLERANCE=$5
+FRAGMENT_ERROR_UNITS=$6
+PRECURSOR_MASS_TOLERANCE=$7
+PRECURSOR_ERROR_UNITS=$8
+MISSED_CLEAVAGES=$9
+OUTPUT_FOLDER=${10}
+INSTRUMENT_FOLDER=${11}
+SEARCH_ENGINE=${12}
+NF_PROFILE=${13}
+SAMPLEQC_API_KEY=${14}
+RAWFILE=${15}
+TEST_MODE=${16}
+TEST_FOLDER=${17}
+NOTIF_EMAIL=${18}
+ENABLE_NOTIF_EMAIL=${19}
 
-echo "===================== RECEIVED PARAMS ========================="
-echo "WORKFLOW_SCRIPT: '$WORKFLOW'"
-echo "WORK_DIR: '$WORK_DIR'"
-echo "SEARCH_ENGINE: '$SEARCH_ENGINE'"
-echo "PROFILE: '$PROFILE'"
-echo "EXECUTOR: '$EXECUTOR'"
-echo "LAB: '$LAB'"
-echo "RAWFILE: '$RAWFILE'"
-echo "OUTPUT_FOLDER: '$OUTPUT_FOLDER'"
-echo "==============================================================="
+echo "Workflow: $WORKFLOW"
+echo "Work directory: $WORK_DIR"
+echo "Variable modifications: $VAR_MODIF"
+echo "Site modifications: $SITES_MODIF"
+echo "Fragment mass tolerance: $FRAGMENT_MASS_TOLERANCE"
+echo "Fragment error units: $FRAGMENT_ERROR_UNITS"
+echo "Precursor mass tolerance: $PRECURSOR_MASS_TOLERANCE"
+echo "Precursor error units: $PRECURSOR_ERROR_UNITS"
+echo "Missed cleavages: $MISSED_CLEAVAGES"
+echo "Output folder: $OUTPUT_FOLDER"
+echo "Instrument folder: $INSTRUMENT_FOLDER"
+echo "Search engine: $SEARCH_ENGINE"
+echo "Nextflow profile: $NF_PROFILE"
+echo "SampleQC API key: $SAMPLEQC_API_KEY"
+echo "Raw file: $RAWFILE"
+echo "Test mode: $TEST_MODE"
+echo "Test folder: $TEST_FOLDER"
+echo "Notification email: $NOTIF_EMAIL"
+echo "Enable email notification: $ENABLE_NOTIF_EMAIL"
+
+exit 1
 
 # Define the log file
 LOG_FILE="/users/pr/proteomics/mygit/atlas-logs/atlas_submit_slurm.log"

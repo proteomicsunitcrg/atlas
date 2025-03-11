@@ -80,67 +80,89 @@ notify_slack() {
 
 launch_nf_run () {
 
-      if [ "${10}" = true ]
-      then
-        INSTRUMENT_FOLDER=$(echo ${FILE_BASENAME} | cut -f 3 -d '.')
-      else 
+    if [ "${10}" = true ]; then
+        INSTRUMENT_FOLDER=$(echo "${FILE_BASENAME}" | cut -f 3 -d '.')
+    else
         INSTRUMENT_FOLDER=''
-      fi
+    fi
 
-      ## SPECIFIC run launch depending on the executor
-      if [[ $EXECUTOR == "slurm" ]]; then
-         echo "[INFO] Launching Nextflow with SLURM..."
-         output=$(bash -l -c "sbatch --output='/users/pr/proteomics/mygit/atlas-logs/atlas-trigger-slurm.out' --error='/users/pr/proteomics/mygit/atlas-logs/atlas-trigger-slurm.err' '/users/pr/proteomics/mygit/atlas-test/bin/trigger_slurm.sh' '$2' '$ATLAS_RUNS_FOLDER/$CURRENT_UUID' '${12}' '${13}' '${15}' '$LAB' '${16}' '${10}'" 2>&1)
-         exit_code=$?
-         if [[ $exit_code -eq 0 ]]; then
-            # SEND JOB TO CLUSTER
+    WORK_DIR="$ATLAS_RUNS_FOLDER/$CURRENT_UUID"
+    LOG_DIR="/users/pr/proteomics/mygit/atlas-logs"
+    OUTPUT_FILE="$LOG_DIR/atlas-trigger-slurm.out"
+    ERROR_FILE="$LOG_DIR/atlas-trigger-slurm.err"
+    TRIGGER_SCRIPT="/users/pr/proteomics/mygit/atlas-test/bin/trigger_slurm.sh"
+
+    ARGS=(
+        "$2"                 # Workflow
+        "$WORK_DIR"          # Working directory
+        "$3"                 # Variable modifications
+        "$4"                 # Site modifications
+        "$5"                 # Fragment mass tolerance
+        "$6"                 # Fragment error units
+        "$7"                 # Precursor mass tolerance
+        "$8"                 # Precursor error units
+        "$9"                 # Missed cleavages
+        "${10}"              # Output folder
+        "$INSTRUMENT_FOLDER" # Instrument folder
+        "${12}"              # Search engine
+        "${15}_${13},$LAB"   # NF Profile
+        "${14}"              # SampleQC API key
+        "${16}"              # Raw file
+        "$TEST_MODE"         # Test mode
+        "$ORIGIN_FOLDER"     # Test folder
+        "$NOTIF_EMAIL"       # Notification email
+        "$ENABLE_NOTIF_EMAIL" # Enable email notification
+    )
+
+    # EXECUTOR = SLURM
+    if [[ $EXECUTOR == "slurm" ]]; then
+        echo "[INFO] Launching Nextflow with SLURM..."
+        output=$(bash -l -c "sbatch --output='$OUTPUT_FILE' --error='$ERROR_FILE' '$TRIGGER_SCRIPT' '${ARGS[@]}'" 2>&1)
+        exit_code=$?
+
+        if [[ $exit_code -eq 0 ]]; then
             echo "[INFO] :) Successfully triggered pipeline"
-            #echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') :) Successfully triggered Nextflow pipeline for $TARGET_FILE" >> "$LOG_FILE"
-            #MESSAGE=${1:-:logo_qcloudrgb-02: :white_check_mark: - Sent file to pipeline: $FILES_BASENAME}
-            #notify_slack "$MESSAGE" "$hook_url"
-         else
+        else
             echo "[INFO] :( Error triggering pipeline"
-            #echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') :( Error sending file to pipeline for $TARGET_FILE" >> "$LOG_FILE"
-            #MESSAGE=${1:-:x: :logo_qcloudrgb-02: - Error sending file to pipeline: $FILES_BASENAME}
-            #notify_slack "$MESSAGE" "$hook_url"     
-         fi
-      elif [[ $EXECUTOR == "sge" ]]; then
-         echo "[INFO] Launching Nextflow with SGE..."
-         nextflow run $2 $WITH_TOWER -bg -with-report -work-dir $ATLAS_RUNS_FOLDER/$CURRENT_UUID --var_modif "$3" --sites_modif "$4" --fragment_mass_tolerance "$5" --fragment_error_units "$6" --precursor_mass_tolerance "$7" --precursor_error_units "$8" --missed_cleavages "$9" --output_folder "${10}" --instrument_folder "$INSTRUMENT_FOLDER" --search_engine "${12}" -profile ${15}_${13},$LAB --sampleqc_api_key ${14} --rawfile ${16} --test_mode $TEST_MODE --test_folder $ORIGIN_FOLDER --notif_email $NOTIF_EMAIL --enable_notif_email $ENABLE_NOTIF_EMAIL > ${17}
-      fi
+        fi
 
-      # Reporting log:
-      echo "[INFO] ################################################################"
-      echo "[INFO] ~~~~~~~~~~~~~~~~PROCESSING FILE ${FILE_BASENAME}~~~~~~~~~~~~~~~~"
-      echo "[INFO] Application name: $1"
-      echo "[INFO] Workflow: $2"
-      echo "[INFO] Variable modifications: $3"
-      echo "[INFO] Site modifications: $4"
-      echo "[INFO] Fragment mass tolerance: $5"
-      echo "[INFO] Fragment error units: $6"
-      echo "[INFO] Precursor mass tolerance: $7"
-      echo "[INFO] Precursor mass units: $8"
-      echo "[INFO] Missed cleavages: $9"
-      echo "[INFO] Ouptut folder: ${10}"
-      echo "[INFO] Instrument subfolder: $INSTRUMENT_FOLDER"
-      echo "[INFO] Search engine: ${12}"
-      echo "[INFO] NF Profile: ${15}_${13},${LAB}"
-      echo "[INFO] SampleQC api key: ${14}"
-      echo "[INFO] Raw file: ${16}"
-      echo "[INFO] Log file: ${17}"
-      echo "[INFO] Working folder: $ATLAS_RUNS_FOLDER/$CURRENT_UUID"
-      echo "[INFO] ###############################################################"
-      echo "[INFO] ###############################################################"
-      
-      if [ "$ENABLE_NOTIF_EMAIL" = true ] ; then
-         echo "[INFO] This file was sent to the atlas pipeline..." | mail -s ${FILE_BASENAME} "$NOTIF_EMAIL"
-      fi
+    # EXECUTOR = SGE
+    elif [[ $EXECUTOR == "sge" ]]; then
+        echo "[INFO] Launching Nextflow with SGE..."
+        nextflow run "${ARGS[@]}" $WITH_TOWER -bg -with-report > "${17}"
+    fi
 
-      if [ "$ENABLE_SLACK" = true ] ; then
-	      MESSAGE=":qsample: :white_check_mark: - Sent file to pipeline: $FILE_BASENAME"
-         notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
-      fi
+    # Reporting log:
+    echo "[INFO] ################################################################"
+    echo "[INFO] ~~~~~~~~~~~~~~~~PROCESSING FILE ${FILE_BASENAME}~~~~~~~~~~~~~~~~"
+    echo "[INFO] Workflow: $2"
+    echo "[INFO] Variable modifications: $3"
+    echo "[INFO] Site modifications: $4"
+    echo "[INFO] Fragment mass tolerance: $5"
+    echo "[INFO] Fragment error units: $6"
+    echo "[INFO] Precursor mass tolerance: $7"
+    echo "[INFO] Precursor mass units: $8"
+    echo "[INFO] Missed cleavages: $9"
+    echo "[INFO] Output folder: ${10}"
+    echo "[INFO] Instrument subfolder: $INSTRUMENT_FOLDER"
+    echo "[INFO] Search engine: ${12}"
+    echo "[INFO] NF Profile: ${15}_${13},${LAB}"
+    echo "[INFO] SampleQC API key: ${14}"
+    echo "[INFO] Raw file: ${16}"
+    echo "[INFO] Log file: ${17}"
+    echo "[INFO] Working folder: $WORK_DIR"
+    echo "[INFO] ###############################################################"
+
+    if [ "$ENABLE_NOTIF_EMAIL" = true ]; then
+        echo "[INFO] This file was sent to the atlas pipeline..." | mail -s "${FILE_BASENAME}" "$NOTIF_EMAIL"
+    fi
+
+    if [ "$ENABLE_SLACK" = true ]; then
+        MESSAGE=":qsample: :white_check_mark: - Sent file to pipeline: $FILE_BASENAME"
+        notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+    fi
 }
+
 
 ################FUNCTIONS END
 
