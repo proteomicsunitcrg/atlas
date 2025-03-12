@@ -11,64 +11,64 @@ set -u          # Exit immediately if using undefined variables
 set -o pipefail # Ensure pipelines return non-zero status if any command fails
 set -x
 
-WORKFLOW=$1
-WORK_DIR=$2
-VAR_MODIF=$3
-SITES_MODIF=$4
-FRAGMENT_MASS_TOLERANCE=$5
-FRAGMENT_ERROR_UNITS=$6
-PRECURSOR_MASS_TOLERANCE=$7
-PRECURSOR_ERROR_UNITS=$8
-MISSED_CLEAVAGES=$9
-OUTPUT_FOLDER=${10}
-INSTRUMENT_FOLDER=${11}
-SEARCH_ENGINE=${12}
-NF_PROFILE=${13}
-SAMPLEQC_API_KEY=${14}
-RAWFILE=${15}
-TEST_MODE=${16}
-TEST_FOLDER=${17}
-NOTIF_EMAIL=${18}
-ENABLE_NOTIF_EMAIL=${19}
+declare -A PARAMS  # Create an associative array
 
-echo "Workflow: $WORKFLOW"
-echo "Work directory: $WORK_DIR"
-echo "Variable modifications: $VAR_MODIF"
-echo "Site modifications: $SITES_MODIF"
-echo "Fragment mass tolerance: $FRAGMENT_MASS_TOLERANCE"
-echo "Fragment error units: $FRAGMENT_ERROR_UNITS"
-echo "Precursor mass tolerance: $PRECURSOR_MASS_TOLERANCE"
-echo "Precursor error units: $PRECURSOR_ERROR_UNITS"
-echo "Missed cleavages: $MISSED_CLEAVAGES"
-echo "Output folder: $OUTPUT_FOLDER"
-echo "Instrument folder: $INSTRUMENT_FOLDER"
-echo "Search engine: $SEARCH_ENGINE"
-echo "Nextflow profile: $NF_PROFILE"
-echo "SampleQC API key: $SAMPLEQC_API_KEY"
-echo "Raw file: $RAWFILE"
-echo "Test mode: $TEST_MODE"
-echo "Test folder: $TEST_FOLDER"
-echo "Notification email: $NOTIF_EMAIL"
-echo "Enable email notification: $ENABLE_NOTIF_EMAIL"
+# Extract workflow script (first argument) and ensure it's a valid path
+WORKFLOW_SCRIPT="$1"
+shift  # Remove workflow from the list
 
-exit 1
+# Check if WORKFLOW_SCRIPT is a valid file
+if [[ ! -f "$WORKFLOW_SCRIPT" ]]; then
+    echo "[ERROR] Workflow script '$WORKFLOW_SCRIPT' not found!"
+    exit 1
+fi
+
+# Extract LAB (second argument)
+LAB="$1"
+shift  # Remove LAB from the list
+
+echo "[DEBUG] Workflow script = '$WORKFLOW_SCRIPT'"
+echo "[DEBUG] LAB = '$LAB'"
+
+declare -A PARAMS  # Define associative array
+
+# Process remaining arguments as key-value pairs
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    shift  
+
+    if [[ $# -eq 0 ]]; then
+        echo "[ERROR] Missing value for key: $key"
+        exit 1
+    fi
+
+    value="$1"
+    shift  
+
+    key="${key#--}"
+
+    echo "[DEBUG] Assigning PARAMS[$key]='$value'"
+    
+    PARAMS["$key"]="$value"
+done
+
 
 # Define the log file
 LOG_FILE="/users/pr/proteomics/mygit/atlas-logs/atlas_submit_slurm.log"
 
 # Logging function
 log() {
-   local log_text="$1"
-   echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] $log_text" | tee -a "$LOG_FILE"
+    local log_text="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] $log_text" | tee -a "$LOG_FILE"
 }
 
 # Trap function to handle SIGTERM and propagate it to child processes
 _term() {
-   log "Caught SIGTERM signal!"
-   if [[ -n "${pid:-}" ]]; then
-      kill -s SIGTERM "$pid" || true
-      wait "$pid" || true
-   fi
+    log "Caught SIGTERM signal!"
+    if [[ -n "${pid:-}" ]]; then
+        kill -s SIGTERM "$pid" || true
+        wait "$pid" || true
+    fi
 }
 
 trap _term TERM
@@ -90,27 +90,24 @@ log "Java environment configured."
 
 echo "Start Nextflow CL: $(date)"
 
-nextflow run "${WORKFLOW}" -work-dir "${WORK_DIR}" -profile "${EXECUTOR}_${PROFILE},${LAB}" --search_engine "${SEARCH_ENGINE}" --rawfile "${RAWFILE}" --output_folder "${OUTPUT_FOLDER}"
-
-#nextflow run /users/pr/proteomics/mygit/hello-world  & pid=$!
-#nextflow run "$WORKFLOW" $WITH_TOWER -bg -with-report -work-dir "$WORK_DIR" \
-#  --var_modif "$VAR_MODIF" \
-#  --sites_modif "$SITES_MODIF" \
-#  --fragment_mass_tolerance "$FRAGMENT_MASS_TOLERANCE" \
-#  --fragment_error_units "$FRAGMENT_ERROR_UNITS" \
-#  --precursor_mass_tolerance "$PRECURSOR_MASS_TOLERANCE" \
-#  --precursor_error_units "$PRECURSOR_ERROR_UNITS" \
-#  --missed_cleavages "$MISSED_CLEAVAGES" \
-#  --output_folder "$OUTPUT_FOLDER" \
-#  --instrument_folder "$INSTRUMENT_FOLDER" \
-#  --search_engine "$SEARCH_ENGINE" \
-#   -profile "${EXECUTOR}_${PROFILE},$LAB" \
-#  --sampleqc_api_key "$SAMPLEQC_API_KEY" \
-#  --rawfile "$RAWFILE" \
-#  --test_mode "$TEST_MODE" \
-#  --test_folder "$TEST_FOLDER" \
-#  --notif_email "$NOTIF_EMAIL" \
-#  --enable_notif_email "$ENABLE_NOTIF_EMAIL" & pid=$!
+nextflow run "$WORKFLOW_SCRIPT" -work-dir "${PARAMS[workdir]}" \
+  --var_modif "${PARAMS[var_modif]:-}" \
+  --sites_modif "${PARAMS[sites_modif]:-}" \
+  --fragment_mass_tolerance "${PARAMS[fragment_mass_tolerance]:-}" \
+  --fragment_error_units "${PARAMS[fragment_error_units]:-}" \
+  --precursor_mass_tolerance "${PARAMS[precursor_mass_tolerance]:-}" \
+  --precursor_error_units "${PARAMS[precursor_error_units]:-}" \
+  --missed_cleavages "${PARAMS[missed_cleavages]:-}" \
+  --output_folder "${PARAMS[output_folder]:-}" \
+  --instrument_folder "${PARAMS[instrument_folder]:-}" \
+  --search_engine "${PARAMS[search_engine]:-}" \
+  -profile "${PARAMS[executor]:-}_${PARAMS[nf_profile]:-},$LAB" \
+  --sampleqc_api_key "${PARAMS[sampleqc_api_key]:-}" \
+  --rawfile "${PARAMS[rawfile]:-}" \
+  --test_mode "${PARAMS[test_mode]:-}" \
+  --test_folder "${PARAMS[test_folder]:-}" \
+  --notif_email "${PARAMS[notif_email]:-}" \
+  --enable_notif_email "${PARAMS[enable_notif_email]:-}" & pid=$!
 
 echo "End Nextflow CL: $(date)"
 
@@ -121,9 +118,9 @@ wait "$pid"
 # Capture and log the exit status
 status=$?
 if [ $status -eq 0 ]; then
-   log "Nextflow pipeline completed successfully."
+    log "Nextflow pipeline completed successfully."
 else
-   log "Nextflow pipeline failed with status $status."
+    log "Nextflow pipeline failed with status $status."
 fi
 
 # Exit with the status of the pipeline
