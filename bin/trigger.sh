@@ -78,90 +78,48 @@ notify_slack() {
   curl -X POST -H 'Content-type: application/json' -d "$payload" "$hook" > /dev/null 2>&1
 }
 
-launch_nf_run () {
+launch_nf_run() {
+    # 🔹 Capturar tots els arguments com un array (parells key, value)
+    declare -A PARAMS
+    declare -a ORDERED_KEYS  # Llista per mantenir l'ordre original
 
-    if [ "${10}" = true ]; then
-        INSTRUMENT_FOLDER=$(echo "${FILE_BASENAME}" | cut -f 3 -d '.')
-    else
-        INSTRUMENT_FOLDER=''
-    fi
+    while [[ $# -gt 0 ]]; do
+        key="$1"   # Primer element és la key
+        value="$2"  # Segon element és el valor
+        shift 2  # Avançar dos elements
 
-    WORK_DIR="$ATLAS_RUNS_FOLDER/$CURRENT_UUID"
-    LOG_DIR="/users/pr/proteomics/mygit/atlas-logs"
-    OUTPUT_FILE="$LOG_DIR/atlas-trigger-slurm.out"
-    ERROR_FILE="$LOG_DIR/atlas-trigger-slurm.err"
-    TRIGGER_SCRIPT="/users/pr/proteomics/mygit/atlas-test/bin/trigger_slurm.sh"
-
-    ARGS=(
-        "$2"                 # Workflow
-        "$WORK_DIR"          # Working directory
-        "$3"                 # Variable modifications
-        "$4"                 # Site modifications
-        "$5"                 # Fragment mass tolerance
-        "$6"                 # Fragment error units
-        "$7"                 # Precursor mass tolerance
-        "$8"                 # Precursor error units
-        "$9"                 # Missed cleavages
-        "${10}"              # Output folder
-        "$INSTRUMENT_FOLDER" # Instrument folder
-        "${12}"              # Search engine
-        "${15}_${13},$LAB"   # NF Profile
-        "${14}"              # SampleQC API key
-        "${16}"              # Raw file
-        "$TEST_MODE"         # Test mode
-        "$ORIGIN_FOLDER"     # Test folder
-        "$NOTIF_EMAIL"       # Notification email
-        "$ENABLE_NOTIF_EMAIL" # Enable email notification
-    )
-
-    # EXECUTOR = SLURM
-    if [[ $EXECUTOR == "slurm" ]]; then
-        echo "[INFO] Launching Nextflow with SLURM..."
-        output=$(bash -l -c "sbatch --output='$OUTPUT_FILE' --error='$ERROR_FILE' '$TRIGGER_SCRIPT' '${ARGS[@]}'" 2>&1)
-        exit_code=$?
-
-        if [[ $exit_code -eq 0 ]]; then
-            echo "[INFO] :) Successfully triggered pipeline"
-        else
-            echo "[INFO] :( Error triggering pipeline"
+        # Comprovació de valors per debug
+        if [[ -z "$key" ]]; then
+            echo "[ERROR] Clau buida detectada, saltant entrada."
+            continue
         fi
 
-    # EXECUTOR = SGE
-    elif [[ $EXECUTOR == "sge" ]]; then
+        PARAMS["$key"]="$value"
+        ORDERED_KEYS+=("$key")  # Guardem l'ordre original
+    done
+
+    exit 1  # 🔴 Debug: Parar execució aquí per comprovar valors abans d'executar Nextflow
+
+    # 🔹 Generar els arguments dinàmics per Nextflow
+    NF_ARGS=()
+    for key in "${ORDERED_KEYS[@]}"; do
+        NF_ARGS+=("--$key" "${PARAMS[$key]}")
+    done
+
+    # 🔹 Executar Nextflow segons l'executor (SLURM o SGE)
+    if [[ "${PARAMS[executor]}" == "slurm" ]]; then
+        echo "[INFO] Launching Nextflow with SLURM..."
+        sbatch --output="${PARAMS[log_file]}.out" --error="${PARAMS[log_file]}.err" \
+            nextflow run "${PARAMS[workflow]}" -bg "${NF_ARGS[@]}"
+    elif [[ "${PARAMS[executor]}" == "sge" ]]; then
         echo "[INFO] Launching Nextflow with SGE..."
-        nextflow run "${ARGS[@]}" $WITH_TOWER -bg -with-report > "${17}"
-    fi
-
-    # Reporting log:
-    echo "[INFO] ################################################################"
-    echo "[INFO] ~~~~~~~~~~~~~~~~PROCESSING FILE ${FILE_BASENAME}~~~~~~~~~~~~~~~~"
-    echo "[INFO] Workflow: $2"
-    echo "[INFO] Variable modifications: $3"
-    echo "[INFO] Site modifications: $4"
-    echo "[INFO] Fragment mass tolerance: $5"
-    echo "[INFO] Fragment error units: $6"
-    echo "[INFO] Precursor mass tolerance: $7"
-    echo "[INFO] Precursor mass units: $8"
-    echo "[INFO] Missed cleavages: $9"
-    echo "[INFO] Output folder: ${10}"
-    echo "[INFO] Instrument subfolder: $INSTRUMENT_FOLDER"
-    echo "[INFO] Search engine: ${12}"
-    echo "[INFO] NF Profile: ${15}_${13},${LAB}"
-    echo "[INFO] SampleQC API key: ${14}"
-    echo "[INFO] Raw file: ${16}"
-    echo "[INFO] Log file: ${17}"
-    echo "[INFO] Working folder: $WORK_DIR"
-    echo "[INFO] ###############################################################"
-
-    if [ "$ENABLE_NOTIF_EMAIL" = true ]; then
-        echo "[INFO] This file was sent to the atlas pipeline..." | mail -s "${FILE_BASENAME}" "$NOTIF_EMAIL"
-    fi
-
-    if [ "$ENABLE_SLACK" = true ]; then
-        MESSAGE=":qsample: :white_check_mark: - Sent file to pipeline: $FILE_BASENAME"
-        notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+        nextflow run "${PARAMS[workflow]}" -bg "${NF_ARGS[@]}"
+    else
+        echo "[ERROR] Unknown executor: ${PARAMS[executor]}"
+        exit 1
     fi
 }
+
 
 
 ################FUNCTIONS END
@@ -194,51 +152,66 @@ if [ -n "$FILE_TO_PROCESS" ]; then
 
    for j in ${LIST_PATTERNS}
    do
+      if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then 
 
-   if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
+         echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
 
-      echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
+         CURRENT_UUID=$(uuidgen)
+         CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
 
-      CURRENT_UUID=$(uuidgen)
-      CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
+         if [ "$PROD_MODE" = "true" ]; then
+            mkdir -p "$CURRENT_UUID_FOLDER"
+            cd "$CURRENT_UUID_FOLDER" || exit
+            mv "$FILE_TO_PROCESS" "$CURRENT_UUID_FOLDER"
+         fi
 
-         if [ "$PROD_MODE" = "true" ] ; then
-               mkdir -p $CURRENT_UUID_FOLDER
-               cd $CURRENT_UUID_FOLDER
-               mv $FILE_TO_PROCESS $CURRENT_UUID_FOLDER
+         # 🔹 Llegeix el header del CSV
+         IFS=';' read -r -a headers < <(head -n 1 "$METHODS_CSV")
+
+         # 🔹 Busca la línia on el camp "pattern" coincideix amb "$j"
+         values=$(grep "^$j;" "$METHODS_CSV")
+
+         if [ -z "$values" ]; then
+            echo "[ERROR] No matching pattern $j found in $METHODS_CSV"
+            exit 1
+         fi
+
+         # 🔹 Assegurar que Bash suporta arrays associatius
+         declare -A PARAMS  # Reiniciar array associatiu per evitar valors heretats
+
+         # 🔹 Assignem valors als headers corresponents usant "cut"
+         for i in "${!headers[@]}"; do
+            field=$((i + 1))  # Els camps en `cut` comencen en 1, no en 0
+            key="${headers[i]}"
+            value=$(echo "$values" | cut -d';' -f"$field" | tr -d '\r')  # Eliminar caràcters especials com \r
+
+            # **Si la clau està buida, l'ignorem per evitar errors**
+            if [[ -z "$key" ]]; then
+               echo "[ERROR] Clau buida detectada al header! Index: $i"
+               continue
+            fi
+
+            # **Si el valor és buit, inicialitzar-lo com a ""**
+            [[ -z "$value" ]] && value=""
+            PARAMS["$key"]="$value"
+         done
+
+         # 🔹 Creant array d'arguments per launch_nf_run
+         ARGS=()
+         echo "[INFO] Final arguments to launch_nf_run:"
+         for key in "${headers[@]}"; do
+            echo "[INFO] $key: '${PARAMS[$key]}'"
+            ARGS+=("$key" "${PARAMS[$key]}")
+         done
+
+         # 🔹 Cridar la funció amb els arguments dinàmics
+         launch_nf_run "${ARGS[@]}"
+
       fi
 
-      WF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f2)
-      NAME=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f3)
-      VAR_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f4)
-      SITES_MODIF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f5)
-      FMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f6)
-      FEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f7)
-      PMT=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f8)
-      PEU=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f9)
-      MC=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f10)
-      OF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f11)
-      IF=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f12)
-      ENGINE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f13)
-      NF_PROFILE=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f14)
-      SAMPLEQC_API_KEY=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f15)
-      EXECUTOR=$(cat ${METHODS_CSV} | grep "^$j;" | cut -d';' -f16)
 
-      ##############LAUNCH NEXTFLOW PROCESSES
-      # save num_prtos and peptd with filename encoded and test all script (before general TSV). 
-      if [ "$TEST_MODE" = "true" ] ; then
-         RAWFILE_TO_PROCESS=$ORIGIN_FOLDER/$TEST_FILENAME
-      elif [ "$PROD_MODE" = "true" ] ; then
-         RAWFILE_TO_PROCESS=$CURRENT_UUID_FOLDER/${FILE_BASENAME}
-         TEST_MODE="false"
-      fi
-      if [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
-         #### here the NF process is launched!
-         launch_nf_run "$NAME" $WF_ROOT_FOLDER/$WF".nf" "$VAR_MODIF" "$SITES_MODIF" "$FMT" "$FEU" "$PMT" "$PEU" "$MC" "$OF" "$IF" "$ENGINE" "$NF_PROFILE" "$SAMPLEQC_API_KEY" "$EXECUTOR" $RAWFILE_TO_PROCESS ${LOGS_FOLDER}/${FILE_BASENAME}.log
-      else 
-         echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
-      fi
-   fi
+  
+
    done
       else
       echo "[INFO] No files to process!"
