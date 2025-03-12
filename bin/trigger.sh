@@ -83,43 +83,137 @@ launch_nf_run() {
     declare -A PARAMS
     declare -a ORDERED_KEYS  # Llista per mantenir l'ordre original
 
-    while [[ $# -gt 0 ]]; do
-        key="$1"   # Primer element és la key
-        value="$2"  # Segon element és el valor
-        shift 2  # Avançar dos elements
+    echo "[DEBUG] Nombre total d'arguments rebuts: $#"
 
-        # Comprovació de valors per debug
+    while [[ $# -gt 0 ]]; do
+        key="$1"
+        value="$2"
+        shift 2
+
         if [[ -z "$key" ]]; then
             echo "[ERROR] Clau buida detectada, saltant entrada."
             continue
         fi
 
+        echo "[DEBUG] Afegint PARAMS[$key]='$value'"
         PARAMS["$key"]="$value"
-        ORDERED_KEYS+=("$key")  # Guardem l'ordre original
+        ORDERED_KEYS+=("$key")
     done
 
-    exit 1  # 🔴 Debug: Parar execució aquí per comprovar valors abans d'executar Nextflow
+    # ✅ Construir el path complet al workflow de Nextflow
+    WF_SCRIPT="${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf"
+    echo "[DEBUG] Workflow script seleccionat: $WF_SCRIPT"
 
-    # 🔹 Generar els arguments dinàmics per Nextflow
-    NF_ARGS=()
-    for key in "${ORDERED_KEYS[@]}"; do
-        NF_ARGS+=("--$key" "${PARAMS[$key]}")
-    done
+    # 🔹 Construir -profile personalitzat usant el LAB de l’script
+    EXECUTOR="${PARAMS[executor]}"
+    PROFILE="${PARAMS[nf_profile]}"
+    PROFILE_ARG="-profile '${EXECUTOR}_${PROFILE},${LAB}'"
+    echo "[DEBUG] Afegint a NF_ARGS: $PROFILE_ARG"
 
-    # 🔹 Executar Nextflow segons l'executor (SLURM o SGE)
+    # ✅ Construir -work-dir manualment amb ATLAS_RUNS_FOLDER i CURRENT_UUID
+    WORK_DIR_ARG="-work-dir '${ATLAS_RUNS_FOLDER}/${CURRENT_UUID}'"
+    echo "[DEBUG] Afegint a NF_ARGS: $WORK_DIR_ARG"
+
+    # 🔹 Assegurar que `log_file` es genera correctament dins `launch_nf_run`
+   LOG_FILE="${LOGS_FOLDER}/${FILE_BASENAME}.log"
+   echo "[DEBUG] Log file assignat a: $LOG_FILE"
+
+    # ✅ Calcular INSTRUMENT_FOLDER segons output_folder
+    if [[ "${PARAMS[output_folder]}" == "true" ]]; then
+        INSTRUMENT_FOLDER=$(echo "${FILE_BASENAME}" | cut -f 3 -d '.')
+    else
+        INSTRUMENT_FOLDER=''
+    fi
+    echo "[DEBUG] Assignant INSTRUMENT_FOLDER='$INSTRUMENT_FOLDER'"
+
+    # 🔹 Definir claus a excloure de NF_ARGS
+    EXCLUDE_KEYS=("pattern" "executor" "is_instrument_folder_in_filename" "workflow" "name" "nf_profile")
+
+# 🔹 Generar els arguments dinàmics per Nextflow
+NF_ARGS=()
+echo "[DEBUG] Creant arguments per Nextflow..."
+
+for key in "${ORDERED_KEYS[@]}"; do
+    if [[ " ${EXCLUDE_KEYS[*]} " =~ " $key " ]]; then
+        echo "[DEBUG] Ometent --$key (No necessari per Nextflow)"
+        continue
+    fi
+
+    # ✅ Si el valor conté espais, envoltar-lo amb cometes dobles
+    if [[ "${PARAMS[$key]}" =~ \  ]]; then
+        value="\"${PARAMS[$key]}\""
+    else
+        value="'${PARAMS[$key]}'"
+    fi
+
+    NF_ARGS+=("--$key" "$value")
+
+    echo "[DEBUG] Afegit a NF_ARGS: --$key $value"
+done
+
+    # ✅ Afegir manualment -profile, -work-dir i --instrument_folder
+    NF_ARGS+=("$PROFILE_ARG")
+    NF_ARGS+=("$WORK_DIR_ARG")
+    NF_ARGS+=("--instrument_folder '$INSTRUMENT_FOLDER'")
+
+    # ✅ Afegir les variables globals de l’script
+    NF_ARGS+=("--test_mode '$TEST_MODE'")
+    NF_ARGS+=("--test_folder '$ORIGIN_FOLDER'")
+    NF_ARGS+=("--notif_email '$NOTIF_EMAIL'")
+    NF_ARGS+=("--enable_notif_email '$ENABLE_NOTIF_EMAIL'")
+
+    # 🔹 Depuració final abans d'executar Nextflow
+    echo "[INFO] Arguments finals per Nextflow:"
+    echo "nextflow run '$WF_SCRIPT' -bg ${NF_ARGS[@]}"
+
+    # 🔹 Executar Nextflow segons l'executor
     if [[ "${PARAMS[executor]}" == "slurm" ]]; then
         echo "[INFO] Launching Nextflow with SLURM..."
-        sbatch --output="${PARAMS[log_file]}.out" --error="${PARAMS[log_file]}.err" \
-            nextflow run "${PARAMS[workflow]}" -bg "${NF_ARGS[@]}"
+        #sbatch --output="$LOG_FILE.out" --error="$LOG_FILE.err" 
     elif [[ "${PARAMS[executor]}" == "sge" ]]; then
         echo "[INFO] Launching Nextflow with SGE..."
-        nextflow run "${PARAMS[workflow]}" -bg "${NF_ARGS[@]}"
+        #nextflow run "${PARAMS[workflow]}" -bg "${NF_ARGS[@]}" > "$LOG_FILE" 2>&1
     else
         echo "[ERROR] Unknown executor: ${PARAMS[executor]}"
         exit 1
     fi
-}
 
+# 🔹 Reporting log
+echo "[INFO] ################################################################################################"
+echo "[INFO]                PROCESSING FILE: ${FILE_BASENAME}"
+echo "[INFO] ################################################################################################"
+echo "[INFO] Application name        : ${PARAMS[name]}"
+echo "[INFO] Workflow script         : $WF_SCRIPT"
+echo "[INFO] Variable modifications  : ${PARAMS[var_modif]}"
+echo "[INFO] Site modifications      : ${PARAMS[sites_modif]}"
+echo "[INFO] Fragment mass tolerance : ${PARAMS[fragment_mass_tolerance]}"
+echo "[INFO] Fragment error units    : ${PARAMS[fragment_error_units]}"
+echo "[INFO] Precursor mass tolerance: ${PARAMS[precursor_mass_tolerance]}"
+echo "[INFO] Precursor mass units    : ${PARAMS[precursor_error_units]}"
+echo "[INFO] Missed cleavages        : ${PARAMS[missed_cleavages]}"
+echo "[INFO] Output folder           : ${PARAMS[output_folder]}"
+echo "[INFO] Search engine           : ${PARAMS[search_engine]}"
+echo "[INFO] NF Profile              : ${PARAMS[executor]}_${PARAMS[nf_profile]},$LAB"
+echo "[INFO] SampleQC API key        : ${PARAMS[sampleqc_api_key]}"
+echo "[INFO] Raw file                : ${PARAMS[rawfile]}"
+echo "[INFO] Log file                : $LOG_FILE"
+echo "[INFO] Working folder          : $ATLAS_RUNS_FOLDER/$CURRENT_UUID"
+echo "[INFO] ################################################################################################"
+
+# 🔹 Notificació per email
+if [ "$ENABLE_NOTIF_EMAIL" = "true" ]; then
+    echo "[INFO] Sending notification email to: ${PARAMS[notif_email]}"
+    echo "[INFO] This file was sent to the Atlas pipeline..." | mail -s "Pipeline Notification: ${FILE_BASENAME}" "${PARAMS[notif_email]}"
+fi
+
+# 🔹 Notificació per Slack
+if [ "$ENABLE_SLACK" = "true" ]; then
+    MESSAGE=":qsample: :white_check_mark: - Sent file to pipeline: $FILE_BASENAME"
+    echo "[INFO] Sending Slack notification..."
+    notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+fi
+
+}
 
 
 ################FUNCTIONS END
@@ -196,16 +290,34 @@ if [ -n "$FILE_TO_PROCESS" ]; then
             PARAMS["$key"]="$value"
          done
 
-         # 🔹 Creant array d'arguments per launch_nf_run
-         ARGS=()
-         echo "[INFO] Final arguments to launch_nf_run:"
-         for key in "${headers[@]}"; do
-            echo "[INFO] $key: '${PARAMS[$key]}'"
-            ARGS+=("$key" "${PARAMS[$key]}")
-         done
+# 🔹 Creant array d'arguments per launch_nf_run
+ARGS=()
+echo "[INFO] Final arguments to launch_nf_run:"
+for key in "${headers[@]}"; do
+    echo "[INFO] $key: '${PARAMS[$key]}'"
+    ARGS+=("$key" "${PARAMS[$key]}")
+done
 
-         # 🔹 Cridar la funció amb els arguments dinàmics
-         launch_nf_run "${ARGS[@]}"
+# 🔹 Assignar RAWFILE_TO_PROCESS segons TEST/PROD
+if [ "$TEST_MODE" = "true" ]; then
+    RAWFILE_TO_PROCESS=$ORIGIN_FOLDER/$TEST_FILENAME
+elif [ "$PROD_MODE" = "true" ]; then
+    RAWFILE_TO_PROCESS=$CURRENT_UUID_FOLDER/${FILE_BASENAME}
+    TEST_MODE="false"
+fi
+
+# 🔹 Afegir RAWFILE_TO_PROCESS a ARGS
+ARGS+=("rawfile" "$RAWFILE_TO_PROCESS")
+
+# 🔹 Comprovar si RAWFILE_TO_PROCESS existeix abans d'executar
+if [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
+    echo "[DEBUG] Afegint rawfile a ARGS: $RAWFILE_TO_PROCESS"
+    launch_nf_run "${ARGS[@]}"
+else 
+    echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
+fi
+
+         
 
       fi
 
