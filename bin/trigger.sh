@@ -303,9 +303,7 @@ if [ -n "$FILE_TO_PROCESS" ]; then
             
             # Creating an array of arguments for launch_nf_run
             ARGS=()
-            echo "[INFO] Final arguments to launch_nf_run:"
             for key in "${headers[@]}"; do
-                echo "[INFO] $key: '${PARAMS[$key]}'"
                 ARGS+=("$key" "${PARAMS[$key]}")
             done
             
