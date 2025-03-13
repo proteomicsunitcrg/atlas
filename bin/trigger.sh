@@ -77,67 +77,55 @@ notify_slack() {
 }
 
 launch_nf_run() {
-    # 🔹 Capturar tots els arguments com un array (parells key, value)
+
+    # Capture all arguments as an array (key-value pairs)
     declare -A PARAMS
-    declare -a ORDERED_KEYS  # Llista per mantenir l'ordre original
-    
-    echo "[DEBUG] Nombre total d'arguments rebuts: $#"
-    
+    declare -a ORDERED_KEYS  # List to maintain the original order
+      
     while [[ $# -gt 0 ]]; do
         key="$1"
         value="$2"
         shift 2
-        
         if [[ -z "$key" ]]; then
-            echo "[ERROR] Clau buida detectada, saltant entrada."
+            echo "[ERROR] Empty key detected, skipping entry."
             continue
         fi
-        
-        echo "[DEBUG] Afegint PARAMS[$key]='$value'"
         PARAMS["$key"]="$value"
         ORDERED_KEYS+=("$key")
     done
     
-    # ✅ Construir el path complet al workflow de Nextflow
     WF_SCRIPT="${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf"
-    echo "[DEBUG] Workflow script seleccionat: $WF_SCRIPT"
     
-    # 🔹 Construir -profile personalitzat usant el LAB de l’script
+    # Build a custom -profile using the script's LAB
     EXECUTOR="${PARAMS[executor]}"
     PROFILE="${PARAMS[nf_profile]}"
     PROFILE_ARG="-profile '${EXECUTOR}_${PROFILE},${LAB}'"
-    echo "[DEBUG] Afegint a NF_ARGS: $PROFILE_ARG"
     
-    # ✅ Construir -work-dir manualment amb ATLAS_RUNS_FOLDER i CURRENT_UUID
+    # Manually build -work-dir using ATLAS_RUNS_FOLDER and CURRENT_UUID
     WORK_DIR_ARG="-work-dir '${ATLAS_RUNS_FOLDER}/${CURRENT_UUID}'"
-    echo "[DEBUG] Afegint a NF_ARGS: $WORK_DIR_ARG"
     
-    # 🔹 Assegurar que `log_file` es genera correctament dins `launch_nf_run`
+    # Ensure that log_file is correctly generated within launch_nf_run
     LOG_FILE="${LOGS_FOLDER}/${FILE_BASENAME}.log"
-    echo "[DEBUG] Log file assignat a: $LOG_FILE"
     
-    # ✅ Calcular INSTRUMENT_FOLDER segons output_folder
+    # Calculate INSTRUMENT_FOLDER based on output_folder
     if [[ "${PARAMS[output_folder]}" == "true" ]]; then
         INSTRUMENT_FOLDER=$(echo "${FILE_BASENAME}" | cut -f 3 -d '.')
     else
         INSTRUMENT_FOLDER=''
     fi
-    echo "[DEBUG] Assignant INSTRUMENT_FOLDER='$INSTRUMENT_FOLDER'"
     
-    # 🔹 Definir claus a excloure de NF_ARGS
+    # Define keys to exclude from NF_ARG
     EXCLUDE_KEYS=("pattern" "executor" "is_instrument_folder_in_filename" "workflow" "name" "nf_profile")
     
-    # 🔹 Generar els arguments dinàmics per Nextflow
+    # Generate dynamic arguments for Nextflow
     NF_ARGS=()
-    echo "[DEBUG] Creant arguments per Nextflow..."
     
     for key in "${ORDERED_KEYS[@]}"; do
         if [[ " ${EXCLUDE_KEYS[*]} " =~ " $key " ]]; then
-            echo "[DEBUG] Ometent --$key (No necessari per Nextflow)"
             continue
         fi
         
-        # ✅ Si el valor conté espais, envoltar-lo amb cometes dobles
+        # If the value contains spaces, enclose it in double quotes
         if [[ "${PARAMS[$key]}" =~ \  ]]; then
             value="\"${PARAMS[$key]}\""
         else
@@ -146,32 +134,27 @@ launch_nf_run() {
         
         NF_ARGS+=("--$key" "$value")
         
-        echo "[DEBUG] Afegit a NF_ARGS: --$key $value"
     done
     
-    # ✅ Afegir manualment -profile, -work-dir i --instrument_folder
+    # Manually add -profile, -work-dir, and --instrument_folder
     NF_ARGS+=("$PROFILE_ARG")
     NF_ARGS+=("$WORK_DIR_ARG")
     NF_ARGS+=("--instrument_folder '$INSTRUMENT_FOLDER'")
     
-    # ✅ Afegir les variables globals de l’script
+    # Add the script's global variables
     NF_ARGS+=("--test_mode '$TEST_MODE'")
     NF_ARGS+=("--test_folder '$ORIGIN_FOLDER'")
     NF_ARGS+=("--notif_email '$NOTIF_EMAIL'")
     NF_ARGS+=("--enable_notif_email '$ENABLE_NOTIF_EMAIL'")
-    
-    # 🔹 Depuració final abans d'executar Nextflow
-    echo "[INFO] Arguments finals per Nextflow:"
-    echo "nextflow run '$WF_SCRIPT' -bg ${NF_ARGS[*]}"
-    
-    # 🔹 Executar Nextflow segons l'executor
+        
+    ##################### SLURM
     if [[ "${PARAMS[executor]}" == "slurm" ]]; then
         
         CMD="sbatch \
-            --output='/users/pr/proteomics/mygit/atlas-logs/atlas-trigger-slurm-${FILE_BASENAME}.out' \
-            --error='/users/pr/proteomics/mygit/atlas-logs/atlas-trigger-slurm-${FILE_BASENAME}.err' \
-            /users/pr/proteomics/mygit/atlas-test/bin/trigger_slurm.sh \
-            '/users/pr/proteomics/mygit/atlas-test/${PARAMS[workflow]}.nf' \
+            --output='${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.out' \
+            --error='${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.err' \
+            ${WF_ROOT_FOLDER}/bin/trigger_slurm.sh \
+            '${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf' \
             '$LAB' \
             --workdir '${ATLAS_RUNS_FOLDER}/${CURRENT_UUID}'"
 
@@ -180,35 +163,36 @@ launch_nf_run() {
             CMD+=" '$arg'"
         done
 
-        # Debugging: Print the final command before executing
-        echo "[DEBUG] Executing: $CMD"
-
         # Execute the command
         output=$(bash -l -c "$CMD" 2>&1)
         exit_code=$?
-        if [[ $exit_code -eq 0 ]]; then
+        if [ $exit_code -eq 0 ]; then 
             # SEND JOB TO CLUSTER
             echo "[INFO] :) Successfully triggered pipeline"
-            #echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') :) Successfully triggered Nextflow pipeline for $TARGET_FILE" >> "$LOG_FILE"
-            #MESSAGE=${1:-:logo_qcloudrgb-02: :white_check_mark: - Sent file to pipeline: $FILES_BASENAME}
-            #notify_slack "$MESSAGE" "$hook_url"
+            echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') :) Successfully triggered Nextflow slurm pipeline for $FILE_BASENAME" >> "$LOG_FILE"
+            if [ "$ENABLE_SLACK" = "true" ]; then
+                MESSAGE=":globe_with_meridians: :white_check_mark: - Sent file to slurm pipeline: $FILE_BASENAME"
+                notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+            fi
         else
             echo "[ERROR] sbatch failed with exit code $exit_code"
             echo "[ERROR] Execution output:"
             echo "$output"
-            #echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') :( Error sending file to pipeline for $TARGET_FILE" >> "$LOG_FILE"
-            #MESSAGE=${1:-:x: :logo_qcloudrgb-02: - Error sending file to pipeline: $FILES_BASENAME}
-            #notify_slack "$MESSAGE" "$hook_url"
+            echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') :( Error sending file to slurm pipeline for $TARGET_FILE" >> "$LOG_FILE"
+            if [ "$ENABLE_SLACK" = "true" ]; then
+                MESSAGE=":x: :globe_with_meridians: - Error sending file to slurm pipeline: $FILE_BASENAME"
+                notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+            fi
         fi
+        ##################### SGE
         elif [[ "${PARAMS[executor]}" == "sge" ]]; then
-        echo "[INFO] Launching Nextflow with SGE..."
-        #nextflow run "${PARAMS[workflow]}" -bg "${NF_ARGS[@]}" > "$LOG_FILE" 2>&1
+            echo "[INFO] Launching Nextflow with SGE..."
+            #nextflow run "${PARAMS[workflow]}" -bg "${NF_ARGS[@]}" > "$LOG_FILE" 2>&1
     else
         echo "[ERROR] Unknown executor: ${PARAMS[executor]}"
         exit 1
     fi
     
-    # 🔹 Reporting log
     echo "[INFO] ################################################################################################"
     echo "[INFO]                PROCESSING FILE: ${FILE_BASENAME}"
     echo "[INFO] ################################################################################################"
@@ -227,8 +211,8 @@ launch_nf_run() {
     echo "[INFO] SampleQC API key        : ${PARAMS[sampleqc_api_key]}"
     echo "[INFO] Raw file                : ${PARAMS[rawfile]}"
     if [[ "${PARAMS[executor]}" == "slurm" ]]; then
-        echo "[INFO] Slurm Output Log        : /users/pr/proteomics/mygit/atlas-logs/atlas-trigger-slurm-${FILE_BASENAME}.out"
-        echo "[INFO] Slurm Error Log         : /users/pr/proteomics/mygit/atlas-logs/atlas-trigger-slurm-${FILE_BASENAME}.err"
+        echo "[INFO] Slurm Output Log        : ${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.out"
+        echo "[INFO] Slurm Error Log         : ${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.err"
     else
         echo "[INFO] Log file                : ${LOG_FILE}"
     fi
@@ -236,7 +220,6 @@ launch_nf_run() {
     echo "[INFO] ################################################################"
     echo "[INFO] ################################################################################################"
     
-    # 🔹 Notificació per email
     if [ "$ENABLE_NOTIF_EMAIL" = "true" ]; then
         echo "[INFO] Sending notification email to: ${PARAMS[notif_email]}"
         echo "[INFO] This file was sent to the Atlas pipeline..." | mail -s "Pipeline Notification: ${FILE_BASENAME}" "${PARAMS[notif_email]}"
@@ -288,10 +271,10 @@ if [ -n "$FILE_TO_PROCESS" ]; then
                 mv "$FILE_TO_PROCESS" "$CURRENT_UUID_FOLDER"
             fi
             
-            # 🔹 Llegeix el header del CSV
+            # Read the CSV header
             IFS=';' read -r -a headers < <(head -n 1 "$METHODS_CSV")
             
-            # 🔹 Busca la línia on el camp "pattern" coincideix amb "$j"
+            # Find the line where the 'pattern' field matches '$j
             values=$(grep "^$j;" "$METHODS_CSV")
             
             if [ -z "$values" ]; then
@@ -299,27 +282,26 @@ if [ -n "$FILE_TO_PROCESS" ]; then
                 exit 1
             fi
             
-            # 🔹 Assegurar que Bash suporta arrays associatius
-            declare -A PARAMS  # Reiniciar array associatiu per evitar valors heretats
+            declare -A PARAMS  # Reset associative array to avoid inherited values
             
-            # 🔹 Assignem valors als headers corresponents usant "cut"
+            # Assign values to the corresponding headers using 'cut'
             for i in "${!headers[@]}"; do
-                field=$((i + 1))  # Els camps en `cut` comencen en 1, no en 0
+                field=$((i + 1))  # Fields in cut start at 1, not 0
                 key="${headers[i]}"
-                value=$(echo "$values" | cut -d';' -f"$field" | tr -d '\r')  # Eliminar caràcters especials com \r
+                value=$(echo "$values" | cut -d';' -f"$field" | tr -d '\r')  # Remove special characters like \r
                 
-                # **Si la clau està buida, l'ignorem per evitar errors**
+                # If the key is empty, ignore it to prevent errors
                 if [[ -z "$key" ]]; then
                     echo "[ERROR] Clau buida detectada al header! Index: $i"
                     continue
                 fi
                 
-                # **Si el valor és buit, inicialitzar-lo com a ""**
+                # If the value is empty, initialize it as ""
                 [[ -z "$value" ]] && value=""
                 PARAMS["$key"]="$value"
             done
             
-            # 🔹 Creant array d'arguments per launch_nf_run
+            # Creating an array of arguments for launch_nf_run
             ARGS=()
             echo "[INFO] Final arguments to launch_nf_run:"
             for key in "${headers[@]}"; do
@@ -327,7 +309,7 @@ if [ -n "$FILE_TO_PROCESS" ]; then
                 ARGS+=("$key" "${PARAMS[$key]}")
             done
             
-            # 🔹 Assignar RAWFILE_TO_PROCESS segons TEST/PROD
+            # Assign RAWFILE_TO_PROCESS based on TEST/PROD
             if [ "$TEST_MODE" = "true" ]; then
                 RAWFILE_TO_PROCESS=$ORIGIN_FOLDER/$TEST_FILENAME
                 elif [ "$PROD_MODE" = "true" ]; then
@@ -335,12 +317,11 @@ if [ -n "$FILE_TO_PROCESS" ]; then
                 TEST_MODE="false"
             fi
             
-            # 🔹 Afegir RAWFILE_TO_PROCESS a ARGS
+            # Add RAWFILE_TO_PROCESS to ARGS
             ARGS+=("rawfile" "$RAWFILE_TO_PROCESS")
             
-            # 🔹 Comprovar si RAWFILE_TO_PROCESS existeix abans d'executar
+            # Check if RAWFILE_TO_PROCESS exists before executing
             if [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
-                echo "[DEBUG] Afegint rawfile a ARGS: $RAWFILE_TO_PROCESS"
                 launch_nf_run "${ARGS[@]}"
             else
                 echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
@@ -349,9 +330,6 @@ if [ -n "$FILE_TO_PROCESS" ]; then
             
             
         fi
-        
-        
-        
         
     done
 else
