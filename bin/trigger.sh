@@ -151,16 +151,21 @@ launch_nf_run() {
     if [[ "${PARAMS[executor]}" == "slurm" ]]; then
         
         CMD="sbatch \
-            --output='${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.out' \
-            --error='${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.err' \
-            ${WF_ROOT_FOLDER}/bin/trigger_slurm.sh \
-            '${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf' \
+            --output='/users/pr/proteomics/mygit/atlas-test-logs/atlas-trigger-slurm-${FILE_BASENAME}.out' \
+            --error='/users/pr/proteomics/mygit/atlas-test-logs/atlas-trigger-slurm-${FILE_BASENAME}.err' \
+            /users/pr/proteomics/mygit/atlas-test/bin/trigger_slurm.sh \
+            '/users/pr/proteomics/mygit/atlas-test/${PARAMS[workflow]}.nf' \
             '$LAB' \
             --workdir '${ATLAS_RUNS_FOLDER}/${CURRENT_UUID}'"
 
-        # Add all additional arguments from ARGS
+        # Add all additional arguments from ARGS, properly escaping special characters
         for arg in "${ARGS[@]}"; do
-            CMD+=" '$arg'"
+            # Ensure special characters are correctly quoted
+            if [[ "$arg" =~ [\(\)] ]]; then
+                CMD+=" \"${arg}\""
+            else
+                CMD+=" '$arg'"
+            fi
         done
 
         # Execute the command
