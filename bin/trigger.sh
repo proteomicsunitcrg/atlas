@@ -151,10 +151,10 @@ launch_nf_run() {
     if [[ "${PARAMS[executor]}" == "slurm" ]]; then
         
         CMD="sbatch \
-            --output='/users/pr/proteomics/mygit/atlas-test-logs/atlas-trigger-slurm-${FILE_BASENAME}.out' \
-            --error='/users/pr/proteomics/mygit/atlas-test-logs/atlas-trigger-slurm-${FILE_BASENAME}.err' \
-            /users/pr/proteomics/mygit/atlas-test/bin/trigger_slurm.sh \
-            '/users/pr/proteomics/mygit/atlas-test/${PARAMS[workflow]}.nf' \
+            --output='${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.out' \
+            --error='${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.err' \
+            ${WF_ROOT_FOLDER}/bin/trigger_slurm.sh \
+            '${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf' \
             '$LAB' \
             --workdir '${ATLAS_RUNS_FOLDER}/${CURRENT_UUID}'"
 
@@ -192,7 +192,35 @@ launch_nf_run() {
         ##################### SGE
         elif [[ "${PARAMS[executor]}" == "sge" ]]; then
             echo "[INFO] Launching Nextflow with SGE..."
-            #nextflow run "${PARAMS[workflow]}" -bg "${NF_ARGS[@]}" > "$LOG_FILE" 2>&1
+
+            # Ensure key parameters have default values if missing
+            LOG_FILE="${PARAMS[logfile]:-$LOGS_FOLDER/${FILE_BASENAME}.log}"
+            TEST_MODE="${PARAMS[test_mode]:-false}"
+            TEST_FOLDER="${PARAMS[test_folder]:-$ORIGIN_FOLDER}"
+            NOTIF_EMAIL="${PARAMS[notif_email]:-$NOTIF_EMAIL}"
+            ENABLE_NOTIF_EMAIL="${PARAMS[enable_notif_email]:-$ENABLE_NOTIF_EMAIL}"
+
+            nextflow run "${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf" -bg \
+                -work-dir "${PARAMS[workdir]:-$ATLAS_RUNS_FOLDER/$CURRENT_UUID}" \
+                --var_modif "${PARAMS[var_modif]:-}" \
+                --sites_modif "${PARAMS[sites_modif]:-}" \
+                --fragment_mass_tolerance "${PARAMS[fragment_mass_tolerance]:-}" \
+                --fragment_error_units "${PARAMS[fragment_error_units]:-}" \
+                --precursor_mass_tolerance "${PARAMS[precursor_mass_tolerance]:-}" \
+                --precursor_error_units "${PARAMS[precursor_error_units]:-}" \
+                --missed_cleavages "${PARAMS[missed_cleavages]:-}" \
+                --output_folder "${PARAMS[output_folder]:-}" \
+                --instrument_folder "${PARAMS[instrument_folder]:-}" \
+                --search_engine "${PARAMS[search_engine]:-}" \
+                -profile "${PARAMS[executor]:-}_${PARAMS[nf_profile]:-},$LAB" \
+                --sampleqc_api_key "${PARAMS[sampleqc_api_key]:-}" \
+                --rawfile "${PARAMS[rawfile]:-}" \
+                --test_mode "$TEST_MODE" \
+                --test_folder "$TEST_FOLDER" \
+                --notif_email "$NOTIF_EMAIL" \
+                --enable_notif_email "$ENABLE_NOTIF_EMAIL" \
+                > "$LOG_FILE"
+
     else
         echo "[ERROR] Unknown executor: ${PARAMS[executor]}"
         exit 1
