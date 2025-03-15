@@ -200,7 +200,7 @@ launch_nf_run() {
             NOTIF_EMAIL="${PARAMS[notif_email]:-$NOTIF_EMAIL}"
             ENABLE_NOTIF_EMAIL="${PARAMS[enable_notif_email]:-$ENABLE_NOTIF_EMAIL}"
 
-            nextflow run "${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf" -bg \
+            if nextflow run "${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf" -bg \
                 -work-dir "${PARAMS[workdir]:-$ATLAS_RUNS_FOLDER/$CURRENT_UUID}" \
                 --var_modif "${PARAMS[var_modif]:-}" \
                 --sites_modif "${PARAMS[sites_modif]:-}" \
@@ -219,39 +219,70 @@ launch_nf_run() {
                 --test_folder "$TEST_FOLDER" \
                 --notif_email "$NOTIF_EMAIL" \
                 --enable_notif_email "$ENABLE_NOTIF_EMAIL" \
-                > "$LOG_FILE"
+                > "$LOG_FILE"; then
+                echo "[INFO] :) Successfully triggered pipeline"
+                echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') :) Successfully triggered Nextflow SGE pipeline for $FILE_BASENAME" >> "$LOG_FILE"
+                if [ "$ENABLE_SLACK" = "true" ]; then
+                MESSAGE=":globe_with_meridians: :white_check_mark: - Sent file to SGE pipeline: $FILE_BASENAME"
+                notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+                fi
+            else
+                    echo "[ERROR] nextflow run failed with exit code $exit_code"
+                    echo "[ERROR] Execution output:"
+                    echo "$output"
+                    echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') :( Error sending file to SGE pipeline for $TARGET_FILE" >> "$LOG_FILE"
+                    if [ "$ENABLE_SLACK" = "true" ]; then
+                        MESSAGE=":globe_with_meridians: :x: - Error sending file to SGE pipeline: $FILE_BASENAME"
+                        notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+                    fi
+            fi
 
     else
         echo "[ERROR] Unknown executor: ${PARAMS[executor]}"
         exit 1
     fi
     
-    echo "[INFO] ################################################################################################"
-    echo "[INFO]                PROCESSING FILE: ${FILE_BASENAME}"
-    echo "[INFO] ################################################################################################"
-    echo "[INFO] Application name        : ${PARAMS[name]}"
-    echo "[INFO] Workflow script         : $WF_SCRIPT"
-    echo "[INFO] Variable modifications  : ${PARAMS[var_modif]}"
-    echo "[INFO] Site modifications      : ${PARAMS[sites_modif]}"
-    echo "[INFO] Fragment mass tolerance : ${PARAMS[fragment_mass_tolerance]}"
-    echo "[INFO] Fragment error units    : ${PARAMS[fragment_error_units]}"
-    echo "[INFO] Precursor mass tolerance: ${PARAMS[precursor_mass_tolerance]}"
-    echo "[INFO] Precursor mass units    : ${PARAMS[precursor_error_units]}"
-    echo "[INFO] Missed cleavages        : ${PARAMS[missed_cleavages]}"
-    echo "[INFO] Output folder           : ${PARAMS[output_folder]}"
-    echo "[INFO] Search engine           : ${PARAMS[search_engine]}"
-    echo "[INFO] NF Profile              : ${PARAMS[executor]}_${PARAMS[nf_profile]},$LAB"
-    echo "[INFO] SampleQC API key        : ${PARAMS[sampleqc_api_key]}"
-    echo "[INFO] Raw file                : ${PARAMS[rawfile]}"
+    echo ""
+    echo "   █████╗ ████████╗██╗      █████╗ ███████╗ "
+    echo "  ██╔══██╗╚══██╔══╝██║     ██╔══██╗██╔════╝ "
+    echo "  ███████║   ██║   ██║     ███████║███████╗ "
+    echo "  ██╔══██║   ██║   ██║     ██╔══██║╚════██║ "
+    echo "  ██║  ██║   ██║   ███████╗██║  ██║███████║ "
+    echo "  ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚══════╝ "
+    echo ""
+    echo "--------------------------------------------------------------------------------"
+    echo "                              ATLAS PIPELINE                                    "
+    echo "--------------------------------------------------------------------------------"
+
+    [[ -n "$FILE_BASENAME" ]] && echo "[INFO] Processing File           : ${FILE_BASENAME}"
+    echo "--------------------------------------------------------------------------------"
+
+    [[ -n "${PARAMS[name]}" ]] && echo "[INFO] Application Name          : ${PARAMS[name]}"
+    [[ -n "$WF_SCRIPT" ]] && echo "[INFO] Workflow Script           : $WF_SCRIPT"
+    [[ -n "${PARAMS[var_modif]}" ]] && echo "[INFO] Variable Modifications    : ${PARAMS[var_modif]}"
+    [[ -n "${PARAMS[sites_modif]}" ]] && echo "[INFO] Site Modifications        : ${PARAMS[sites_modif]}"
+    [[ -n "${PARAMS[fragment_mass_tolerance]}" ]] && echo "[INFO] Fragment Mass Tolerance   : ${PARAMS[fragment_mass_tolerance]}"
+    [[ -n "${PARAMS[fragment_error_units]}" ]] && echo "[INFO] Fragment Error Units      : ${PARAMS[fragment_error_units]}"
+    [[ -n "${PARAMS[precursor_mass_tolerance]}" ]] && echo "[INFO] Precursor Mass Tolerance  : ${PARAMS[precursor_mass_tolerance]}"
+    [[ -n "${PARAMS[precursor_error_units]}" ]] && echo "[INFO] Precursor Mass Units      : ${PARAMS[precursor_error_units]}"
+    [[ -n "${PARAMS[missed_cleavages]}" ]] && echo "[INFO] Missed Cleavages          : ${PARAMS[missed_cleavages]}"
+    [[ -n "${PARAMS[output_folder]}" ]] && echo "[INFO] Output Folder             : ${PARAMS[output_folder]}"
+    [[ -n "${PARAMS[search_engine]}" ]] && echo "[INFO] Search Engine             : ${PARAMS[search_engine]}"
+    [[ -n "${PARAMS[executor]}" && -n "${PARAMS[nf_profile]}" ]] && echo "[INFO] NF Profile                : ${PARAMS[executor]}_${PARAMS[nf_profile]},$LAB"
+    [[ -n "${PARAMS[sampleqc_api_key]}" ]] && echo "[INFO] SampleQC API Key          : ${PARAMS[sampleqc_api_key]}"
+    [[ -n "${PARAMS[rawfile]}" ]] && echo "[INFO] Raw File                  : ${PARAMS[rawfile]}"
+
     if [[ "${PARAMS[executor]}" == "slurm" ]]; then
-        echo "[INFO] Slurm Output Log        : ${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.out"
-        echo "[INFO] Slurm Error Log         : ${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.err"
+        [[ -n "$LOGS_FOLDER" && -n "$FILE_BASENAME" ]] && echo "[INFO] Slurm Output Log          : ${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.out"
+        [[ -n "$LOGS_FOLDER" && -n "$FILE_BASENAME" ]] && echo "[INFO] Slurm Error Log           : ${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.err"
     else
-        echo "[INFO] Log file                : ${LOG_FILE}"
+        [[ -n "$LOG_FILE" ]] && echo "[INFO] Log File                  : ${LOG_FILE}"
     fi
-    echo "[INFO] Working folder          : $ATLAS_RUNS_FOLDER/$CURRENT_UUID"
-    echo "[INFO] ################################################################"
-    echo "[INFO] ################################################################################################"
+
+    [[ -n "$ATLAS_RUNS_FOLDER" && -n "$CURRENT_UUID" ]] && echo "[INFO] Working Folder            : $ATLAS_RUNS_FOLDER/$CURRENT_UUID"
+
+    echo "--------------------------------------------------------------------------------"
+
     
     if [ "$ENABLE_NOTIF_EMAIL" = "true" ]; then
         echo "[INFO] Sending notification email to: ${PARAMS[notif_email]}"
