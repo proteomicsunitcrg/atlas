@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=qsample
 #SBATCH --no-requeue
-#SBATCH --mem=16G
+#SBATCH --mem=1G
 #SBATCH -p genoa64
 #SBATCH --qos=pipelines
 
