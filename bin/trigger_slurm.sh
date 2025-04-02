@@ -101,7 +101,7 @@ nextflow run "$WORKFLOW_SCRIPT" -work-dir "${PARAMS[workdir]}" \
   --output_folder "${PARAMS[output_folder]:-}" \
   --instrument_folder "${PARAMS[instrument_folder]:-}" \
   --search_engine "${PARAMS[search_engine]:-}" \
-  -profile "${PARAMS[executor]:-}_${PARAMS[nf_profile]:-},$LAB" \
+  -profile "${PARAMS[nf_profile]:-},$LAB" \
   --sampleqc_api_key "${PARAMS[sampleqc_api_key]:-}" \
   --rawfile "${PARAMS[rawfile]:-}" \
   --test_mode "${PARAMS[test_mode]:-}" \

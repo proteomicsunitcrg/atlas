@@ -97,9 +97,7 @@ launch_nf_run() {
     WF_SCRIPT="${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf"
     
     # Build a custom -profile using the script's LAB
-    EXECUTOR="${PARAMS[executor]}"
-    PROFILE="${PARAMS[nf_profile]}"
-    PROFILE_ARG="-profile '${EXECUTOR}_${PROFILE},${LAB}'"
+    PROFILE_ARG="-profile '${PARAMS[nf_profile]},${LAB}'"
     
     # Manually build -work-dir using ATLAS_RUNS_FOLDER and CURRENT_UUID
     WORK_DIR_ARG="-work-dir '${ATLAS_RUNS_FOLDER}/${CURRENT_UUID}'"
@@ -147,8 +145,8 @@ launch_nf_run() {
     NF_ARGS+=("--notif_email '$NOTIF_EMAIL'")
     NF_ARGS+=("--enable_notif_email '$ENABLE_NOTIF_EMAIL'")
         
-    ##################### SLURM
-    if [[ "${PARAMS[executor]}" == "slurm" ]]; then
+    ##################### WRAPPED
+    if [[ "${PARAMS[executor]}" == "wrapped" ]]; then
         
         CMD="sbatch \
             --output='${LOGS_FOLDER}/atlas-trigger-slurm-${FILE_BASENAME}.out' \
@@ -174,24 +172,24 @@ launch_nf_run() {
         if [ $exit_code -eq 0 ]; then 
             # SEND JOB TO CLUSTER
             echo "[INFO] :) Successfully triggered pipeline"
-            echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') :) Successfully triggered Nextflow slurm pipeline for $FILE_BASENAME" >> "$LOG_FILE"
+            echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') :) Successfully triggered Nextflow pipeline for $FILE_BASENAME" >> "$LOG_FILE"
             if [ "$ENABLE_SLACK" = "true" ]; then
-                MESSAGE=":globe_with_meridians: :white_check_mark: - Sent file to slurm pipeline: $FILE_BASENAME"
+                MESSAGE=":globe_with_meridians: :white_check_mark: - Sent file pipeline: $FILE_BASENAME"
                 notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
             fi
         else
             echo "[ERROR] sbatch failed with exit code $exit_code"
             echo "[ERROR] Execution output:"
             echo "$output"
-            echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') :( Error sending file to slurm pipeline for $TARGET_FILE" >> "$LOG_FILE"
+            echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') :( Error sending file to pipeline for $TARGET_FILE" >> "$LOG_FILE"
             if [ "$ENABLE_SLACK" = "true" ]; then
-                MESSAGE=":x: :globe_with_meridians: - Error sending file to slurm pipeline: $FILE_BASENAME"
+                MESSAGE=":x: :globe_with_meridians: - Error sending file to pipeline: $FILE_BASENAME"
                 notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
             fi
         fi
-        ##################### SGE
-        elif [[ "${PARAMS[executor]}" == "sge" ]]; then
-            echo "[INFO] Launching Nextflow with SGE..."
+        ##################### DIRECT
+        elif [[ "${PARAMS[executor]}" == "direct" ]]; then
+            echo "[INFO] Launching Nextflow with DIRECT mode..."
 
             # Ensure key parameters have default values if missing
             LOG_FILE="${PARAMS[logfile]:-$LOGS_FOLDER/${FILE_BASENAME}.log}"
@@ -212,7 +210,7 @@ launch_nf_run() {
                 --output_folder "${PARAMS[output_folder]:-}" \
                 --instrument_folder "${PARAMS[instrument_folder]:-}" \
                 --search_engine "${PARAMS[search_engine]:-}" \
-                -profile "${PARAMS[executor]:-}_${PARAMS[nf_profile]:-},$LAB" \
+                -profile "${PARAMS[nf_profile]:-},$LAB" \
                 --sampleqc_api_key "${PARAMS[sampleqc_api_key]:-}" \
                 --rawfile "${PARAMS[rawfile]:-}" \
                 --test_mode "$TEST_MODE" \
@@ -221,18 +219,18 @@ launch_nf_run() {
                 --enable_notif_email "$ENABLE_NOTIF_EMAIL" \
                 > "$LOG_FILE"; then
                 echo "[INFO] :) Successfully triggered pipeline"
-                echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') :) Successfully triggered Nextflow SGE pipeline for $FILE_BASENAME" >> "$LOG_FILE"
+                echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') :) Successfully triggered Nextflow pipeline for $FILE_BASENAME" >> "$LOG_FILE"
                 if [ "$ENABLE_SLACK" = "true" ]; then
-                MESSAGE=":globe_with_meridians: :white_check_mark: - Sent file to SGE pipeline: $FILE_BASENAME"
+                MESSAGE=":globe_with_meridians: :white_check_mark: - Sent file to pipeline: $FILE_BASENAME"
                 notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
                 fi
             else
                     echo "[ERROR] nextflow run failed with exit code $exit_code"
                     echo "[ERROR] Execution output:"
                     echo "$output"
-                    echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') :( Error sending file to SGE pipeline for $TARGET_FILE" >> "$LOG_FILE"
+                    echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') :( Error sending file to pipeline for $TARGET_FILE" >> "$LOG_FILE"
                     if [ "$ENABLE_SLACK" = "true" ]; then
-                        MESSAGE=":globe_with_meridians: :x: - Error sending file to SGE pipeline: $FILE_BASENAME"
+                        MESSAGE=":globe_with_meridians: :x: - Error sending file to pipeline: $FILE_BASENAME"
                         notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
                     fi
             fi
