@@ -10,6 +10,7 @@ binfolder                      = "$baseDir/bin"
 
 process insertSampleQCFileToQSample {
         tag { "${mzml_file}" }
+        label 'clitools'
 
         input:
         tuple val(filename), val(basename), val(path)

@@ -99,6 +99,7 @@ process insertDIANNBrukerFileToQSample {
 process insertDIANNDataToQSample {
 
         tag { "${tsv_file}" }
+        label 'clitools'
 
         input:
         file(checksum)
@@ -227,7 +228,6 @@ process insertDIANNBrukerQuantToQSample {
 
 process insertDiannPolymerContToQSample {
      tag { "${mzml_file}" }
-
      label 'clitools'
 
      input:

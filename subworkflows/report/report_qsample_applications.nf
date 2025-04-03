@@ -18,7 +18,7 @@ tools_folder               = params.tools_folder
 
 process insertFileToQSample {
         tag { "${mzml_file}" }
-        label 'insertQSampleWithoutClitools' 
+        label 'clitools' 
 
         input:
         tuple val(filename), val(basename), val(path)
@@ -46,7 +46,7 @@ process insertFileToQSample {
 process insertDataToQSample {
 
         tag { "${protinf_file}" }
-        label 'insertQSampleClitools'
+        label 'clitools'
 
         input:
         file(checksum)
