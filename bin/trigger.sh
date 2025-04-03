@@ -32,9 +32,8 @@ NOTIF_EMAIL=$(grep -E "^${MODE}[^;]*;" "${CSV_FILENAME_RUN_MODES}" | cut -d';' -
 ENABLE_NOTIF_EMAIL=$(grep -E "^${MODE}[^;]*;" "${CSV_FILENAME_RUN_MODES}" | cut -d';' -f7)
 ENABLE_SLACK=$(grep -E "^${MODE}[^;]*;" "${CSV_FILENAME_RUN_MODES}" | cut -d';' -f8)
 SLACK_URL_HOOK=$(grep -E "^${MODE}[^;]*;" "${CSV_FILENAME_RUN_MODES}" | cut -d';' -f9)
-ENABLE_NOTIF_EMAIL=$(grep -E "^${MODE}[^;]*;" "${CSV_FILENAME_RUN_MODES}" | cut -d';' -f10)
-MTIME_VAR=$(grep -E "^${MODE}[^;]*;" "${CSV_FILENAME_RUN_MODES}" | cut -d';' -f11)
-NUM_MAX_PROC=$(grep -E "^${MODE}[^;]*;" "${CSV_FILENAME_RUN_MODES}" | cut -d';' -f12)
+MTIME_VAR=$(grep -E "^${MODE}[^;]*;" "${CSV_FILENAME_RUN_MODES}" | cut -d';' -f10)
+NUM_MAX_PROC=$(grep -E "^${MODE}[^;]*;" "${CSV_FILENAME_RUN_MODES}" | cut -d';' -f11)
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")
 METHODS_CSV=$3/$METHODS_CSV
 
@@ -266,7 +265,7 @@ launch_nf_run() {
     [[ -n "${PARAMS[missed_cleavages]}" ]] && echo "[INFO] Missed Cleavages          : ${PARAMS[missed_cleavages]}"
     [[ -n "${PARAMS[output_folder]}" ]] && echo "[INFO] Output Folder             : ${PARAMS[output_folder]}"
     [[ -n "${PARAMS[search_engine]}" ]] && echo "[INFO] Search Engine             : ${PARAMS[search_engine]}"
-    [[ -n "${PARAMS[executor]}" && -n "${PARAMS[nf_profile]}" ]] && echo "[INFO] NF Profile                : ${PARAMS[executor]}_${PARAMS[nf_profile]},$LAB"
+    [[ -n "${PARAMS[executor]}" && -n "${PARAMS[nf_profile]}" ]] && echo "[INFO] NF Profile                : ${PARAMS[nf_profile]},${PARAMS[executor]},$LAB"
     [[ -n "${PARAMS[sampleqc_api_key]}" ]] && echo "[INFO] SampleQC API Key          : ${PARAMS[sampleqc_api_key]}"
     [[ -n "${PARAMS[rawfile]}" ]] && echo "[INFO] Raw File                  : ${PARAMS[rawfile]}"
 
