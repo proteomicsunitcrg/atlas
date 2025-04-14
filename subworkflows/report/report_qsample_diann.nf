@@ -194,6 +194,7 @@ process insertDIANNBrukerDataToQSample {
 process insertDIANNQuantToQSample {
     
     tag { "${tsvfile}" }
+    label 'clitools'
 
     input:
     file(checksum)
@@ -211,7 +212,8 @@ process insertDIANNQuantToQSample {
 process insertDIANNBrukerQuantToQSample {
     
     tag { "${tsvfile}" }
-
+    label 'clitools'
+    
     input:
     file(checksum)
     file(tsvfile)
