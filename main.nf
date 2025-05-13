@@ -75,21 +75,23 @@ workflow {
       idfilter_score_pr(fdr_pr.out)
       fileinfo_pr(idfilter_score_pr.out)
       protinf_pr(idfilter_score_pr.out)
-      qccalc_pr(protinf_pr.out,trfp_pr.out)
-      
+            
       //Quantification: 
       ffm_pr(trfp_pr.out)
       idmapper_pr(ffm_pr.out,idfilter_score_pr.out)
       protquant_pr(idmapper_pr.out)
-      
+
+      //Output TSV and mzQC:   
+      output_folder_pr(protinf_pr.out,trfp_pr.out,output_folder_ch)
+      qccalc_pr(protinf_pr.out,ffm_pr.out,output_folder_ch,trfp_pr.out)
+
       //Report to QSample database:
       insertFileToQSample_pr(rawfile_ch,trfp_pr.out)
-      insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,qccalc_pr.out,trfp_pr.out)
+      insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,trfp_pr.out)
       insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
       //Report additional applications to QSample:
       insertModificationsToQsample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,sites_modif_ch) 
-      //Report to output folder (if the field output_folder was informed at methods CSV file):
-      output_folder_pr(protinf_pr.out,trfp_pr.out,output_folder_ch)     
+
       //Lab
       insertPTMhistonesToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,idmapper_pr.out,protinf_pr.out)
       insertPolymerContToQSample_pr(insertFileToQSample_pr.out,trfp_pr.out) 
