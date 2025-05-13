@@ -126,13 +126,18 @@ process QCCalculator {
 
     input:
     file(idxml_file)
+    file(ffm_featureXML_file)
+    val output_folder
     tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
 
     output:
-    file("${idxml_file.baseName}_qccalculator.qcML")
+    file("*.mzQC")
 
-    """
-    QCCalculator -in $mzml_file -id $idxml_file -out ${idxml_file.baseName}_qccalculator.qcML
-    """
+    shell:
+    '''
+    request_code=$(basename !{idxml_file} | awk -F'[_.]' '{print $1}')
+    mzqc_output=$request_code".mzQC"
+    QCCalculator -in !{mzml_file} -id !{idxml_file} -feature !{ffm_featureXML_file} -out $mzqc_output
+    cp $mzqc_output !{output_folder}/
+    '''
 }
-

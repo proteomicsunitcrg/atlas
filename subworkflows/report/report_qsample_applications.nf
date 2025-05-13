@@ -53,7 +53,6 @@ process insertDataToQSample {
         file(fileinfo_file)
         file(protinf_file)
         file(idfilter_score_file)
-        file(qccalc_file)
         tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
 
         shell:
