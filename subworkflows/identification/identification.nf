@@ -133,6 +133,9 @@ process QCCalculator {
     output:
     file("*.mzQC")
 
+    when:
+    output_folder != true
+
     shell:
     '''
     request_code=$(basename !{idxml_file} | awk -F'[_.]' '{print $1}')

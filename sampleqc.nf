@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
 include { create_decoy as cdecoy_pr; CometAdapter as comet_adapter_pr } from './subworkflows/search_engine/search_engine'
-include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr; QCCalculator as qccalc_pr } from './subworkflows/identification/identification'
+include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr } from './subworkflows/identification/identification'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
 include { insertSampleQCFileToQSample as insertSampleQCFileToQSample_pr; insertSampleQCDataToQSample as insertSampleQCDataToQSample_pr; insertSampleQCModificationsToQsample as insertSampleQCModificationsToQsample_pr } from './subworkflows/report/report_qsample_sampleqc'
 include { insertSampleQCHistonesToQSample as insertSampleQCHistonesToQSample_pr } from './subworkflows/lab/report_qsample_sampleqc_lab'
@@ -65,7 +65,6 @@ workflow {
    idfilter_score_pr(fdr_pr.out)
    fileinfo_pr(idfilter_score_pr.out)
    protinf_pr(idfilter_score_pr.out)
-   qccalc_pr(protinf_pr.out,trfp_pr.out)
 
    //Quantification:
    ffm_pr(trfp_pr.out)
