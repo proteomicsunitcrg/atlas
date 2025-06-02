@@ -33,6 +33,16 @@ get_qc_area_from_json(){
 
 }
 
+get_qc_area_from_json_by_mass_and_rt(){
+
+ mass=$1
+ rt=$2
+ basename_sh=$3 
+ jq -r '.[] | select(.mz | tostring | startswith("'$mass'")) | select(.RT | tostring | startswith("'$rt'")) | .area' $basename_sh".json"
+
+}
+
+
 get_qc_dppm_from_json(){
 
  mass=$1
@@ -41,11 +51,29 @@ get_qc_dppm_from_json(){
 
 }
 
+get_qc_dppm_from_json_by_mass_and_rt(){
+
+ mass=$1
+ rt=$2
+ basename_sh=$3 
+ jq -r '.[] | select(.mz | tostring | startswith("'$mass'")) | select(.RT | tostring | startswith("'$rt'")) | .dppm' $basename_sh".json"
+
+}
+
 get_qc_RTobs_from_json(){
 
  mass=$1
  basename_sh=$2
  jq -r '.[] | select(.mz | tostring | startswith("'$mass'")) | .RTobs' $basename_sh".json"
+
+}
+
+get_qc_RTobs_from_json_by_mass_and_rt(){
+
+ mass=$1
+ rt=$2
+ basename_sh=$3 
+ jq -r '.[] | select(.mz | tostring | startswith("'$mass'")) | select(.RT | tostring | startswith("'$rt'")) | .RTobs' $basename_sh".json"
 
 }
 

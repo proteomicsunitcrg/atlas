@@ -14,7 +14,6 @@ mz_tolerance             = params.mz_tolerance
 average                  = params.average
 
 //EICExtractor:
-eic_rt_tol               = params.eic_rt_tol
 eic_mz_tol               = params.eic_mz_tol
 extra_assets_file        = params.extra_assets_file
 assets_folder            = params.assets_folder 
@@ -64,7 +63,7 @@ process ProteinQuantifier {
     file("${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv")
 
     """
-    ProteinQuantifier -include_all -average $average -in $idmapper_to_proteinquantifier -out ${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv
+    ProteinQuantifier -top:include_all -top:aggregate $average -in $idmapper_to_proteinquantifier -out ${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv
     """
 }
 
@@ -74,6 +73,7 @@ process EICExtractor {
 
     input:
     tuple val(filename), val(basename), val(path), file(mzML_ff_file)
+    val(eic_rt_tol_value)
 
     output:
     file("${basename}_eic.csv")
@@ -84,6 +84,6 @@ process EICExtractor {
     extra_assets_file_sh=!{extra_assets_file} 
     edta_file=$assets_folder_sh"/"$extra_assets_file_sh
     EICExtractor --helphelp
-    EICExtractor -debug 1 -in !{mzML_ff_file} -pos $edta_file -out !{basename}_eic.csv -rt_tol !{eic_rt_tol} -mz_tol !{eic_mz_tol}
+    EICExtractor -debug 1 -in !{mzML_ff_file} -pos $edta_file -out !{basename}_eic.csv -rt_tol !{eic_rt_tol_value} -mz_tol !{eic_mz_tol}
     '''
 }

@@ -35,17 +35,18 @@ LOGS_FOLDER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f5)
 NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f6)
 ENABLE_NOTIF_EMAIL=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f7)
 ENABLE_NF_TOWER=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f8)
+NUM_MAX_PROC=$(cat $CSV_FILENAME_RUN_MODES | grep $MODE | cut -d';' -f9)
 if [[ $ENABLE_NF_TOWER = "true" ]]; then WITH_TOWER="-with-tower"; fi
 SEC_REACT_WF=$WF_ROOT_FOLDER"/secreact.nf"
 METHODS_CSV=$(ls $3 | grep $LAB | grep "methods")      
 METHODS_CSV=$3/$METHODS_CSV
 
 ## SECRETS FILE CHECK:
-SECRETS_FILE=$(ls $WF_ROOT_FOLDER"/conf" | grep "secret")
-if [ ! -f "$WF_ROOT_FOLDER/conf/$SECRETS_FILE" ]; then
-   echo "[ERROR] There's no SECRETS file in /conf folder. Please check."
-   exit 1
-fi 
+#SECRETS_FILE=$(ls $WF_ROOT_FOLDER"/conf" | grep "secret")
+#if [ ! -f "$WF_ROOT_FOLDER/conf/$SECRETS_FILE" ]; then
+#   echo "[ERROR] There's no SECRETS file in /conf folder. Please check."
+#   exit 1
+#fi 
    
 ## MANAGE TEST DATA
 if [ "$TEST_MODE" = true ] ; then
@@ -158,11 +159,10 @@ launch_all_secondary_reactions () {
 	LIST_PATTERNS=$(cat ${METHODS_CSV} | cut -d';' -f1 | tail -n +2)
 
     FILE_TO_PROCESS=""
-    NUM_MAX_PROC=4
     NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
     if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
-     echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-     FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -7 -printf "%T@ %Tc %p\n" | sort -n | awk '{print $7}' | head -n1)
+     echo "[INFO] Num. of Nextflow jobs running: $NUM_CONCURRENT_PROC < Num. of max. jobs defined by user: $NUM_MAX_PROC, so running the pipeline..."
+     FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*QBSA*" ! -iname "*QHela*" ! -iname "*sp *" ! -iname "*log*" -o -iname "*mzml*" \) -type f -mtime -70 -printf "%T@ %Tc %p\n" | sort -n | awk '{print $7}' | head -n1)
     else
      echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
     fi

@@ -207,6 +207,51 @@ process insertDataToQCloud {
         '''
 }
 
+process insertIdentDataToQCloud {
+
+        tag { "${csv_file}" }
+        label 'clitools'
+
+        input:
+        tuple val(filename), val(basename), val(path)
+        tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
+        file (csv_file)
+
+        shell:
+        '''
+        # Parsings:
+        checksum=$(source !{binfolder}/utils.sh; get_checksum !{path} !{filename})
+        total_tic=$(source !{binfolder}/parsing.sh; get_mzml_param_by_cv !{mzml_file} MS:1000285)
+        total_tic=$(echo "$total_tic * 0.0000000001" | bc -l)
+        mit_ms1=$(source !{binfolder}/parsing_qcloud.sh; get_mit !{mzml_file} MS:1000511 1 MS:1000927)
+        mit_ms2=$(source !{binfolder}/parsing_qcloud.sh; get_mit !{mzml_file} MS:1000511 2 MS:1000927)
+        request_code=$(echo !{mzml_file} | awk -F'[_.]' '{print $1}')
+        basename_sh=$(basename !{mzml_file} | cut -f 1 -d '.')
+        reversed_filename=$(echo $basename_sh | rev)
+        first_3_underscores=$(echo $reversed_filename | cut -d'_' -f1-3)
+        reversed_first_3_underscores=$(echo $first_3_underscores | rev)
+        rest_of_filename=$(echo $reversed_filename | cut -d'_' -f4-)
+        reversed_rest_of_filename=$(echo $rest_of_filename | rev)
+        labsysid=$(echo $reversed_first_3_underscores | cut -d'_' -f1) 
+        creation_date=$(source !{binfolder}/utils.sh; get_mzml_date !{mzml_file})
+        insert_file_string='{"creationDate": "'$creation_date'","filename": "'$reversed_rest_of_filename'","checksum": "'$checksum'"}'
+        echo $insert_file_string > insert_file_string
+ 
+        # Insert to QCloud database: 
+        echo "[INFO] Get acces token......"
+        access_token=$(source !{binfolder}/api.sh; get_api_access_token_qcloud !{url_api_qcloud_signin} !{url_api_qcloud_user} !{url_api_qcloud_pass})
+        # Insert file:
+        echo "[INFO] Insert file......"
+        curl -v -X POST -H "Authorization: $access_token" !{url_api_qcloud_insert_file}/QC:0000012/$labsysid -H "Content-Type: application/json" --data @insert_file_string
+        # Insert data: 
+        echo "[INFO] Insert data......"
+        curl -v -X POST -H "Authorization: $access_token" !{url_api_qcloud_insert_data} -H "Content-Type: application/json" --data @${checksum}_QC_0000048.json
+        curl -v -X POST -H "Authorization: $access_token" !{url_api_qcloud_insert_data} -H "Content-Type: application/json" --data @${checksum}_QC_1000927.json
+        '''
+
+}
+
+
 process insertDataNucleosidesToQCloud {
 
         tag { "${csv_file}" }
@@ -241,22 +286,54 @@ process insertDataNucleosidesToQCloud {
         csv_file_sh=$(echo $PWD"/"!{csv_file})
         $(source !{binfolder}/parsing_qcloud.sh; set_csv_to_json $csv_file_sh $basename_sh)
 
-        GUANO_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json '284.0989' $basename_sh) 
-        GUANO_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json '284.0989' $basename_sh)
-        GUANO_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json '284.0989' $basename_sh)
+        C_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '244.0' '600.' $basename_sh)
+        C_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '244.0' '600.' $basename_sh)
+        C_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '244.0' '600.' $basename_sh)
 
-        INOSINE_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json '269.088' $basename_sh) 
-        INOSINE_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json '269.088' $basename_sh)
-        INOSINE_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json '269.088' $basename_sh)
+        G_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '284.0' '1812.' $basename_sh) 
+        G_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '284.0' '1812.' $basename_sh)
+        G_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '284.0' '1812.' $basename_sh)
 
-        METHYILADENO25_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json '282.1197' $basename_sh)
-        METHYILADENO25_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json '282.1197' $basename_sh) 
-        METHYILADENO25_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json '282.1197' $basename_sh)
+        I_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '269.0' '1824.' $basename_sh) 
+        I_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '269.0' '1824.' $basename_sh)
+        I_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '269.0' '1824.' $basename_sh)
 
-        METHYL50_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json '259.0' $basename_sh) 
-        METHYL50_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json '259.0' $basename_sh)
-        METHYL50_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json '259.0' $basename_sh)
- 
+        m1A_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '282.1' '604.' $basename_sh)
+        m1A_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '282.1' '604.' $basename_sh) 
+        m1A_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '282.1' '604.' $basename_sh)
+
+        m3C_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '258.1' '591.' $basename_sh)
+        m3C_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '258.1' '591.' $basename_sh) 
+        m3C_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '258.1' '591.' $basename_sh)
+
+        m5C_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '258.1' '800.' $basename_sh)
+        m5C_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '258.1' '800.' $basename_sh) 
+        m5C_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '258.1' '800.' $basename_sh)
+
+        Cm_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '258.1' '1140.' $basename_sh)
+        Cm_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '258.1' '1140.' $basename_sh) 
+        Cm_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '258.1' '1140.' $basename_sh)
+
+        m7G_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '298.1' '924.' $basename_sh)
+        m7G_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '298.1' '924.' $basename_sh) 
+        m7G_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '298.1' '924.' $basename_sh)
+
+        m5U_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '259.0' '1930.' $basename_sh) 
+        m5U_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '259.0' '1930.' $basename_sh)
+        m5U_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '259.0' '1930.' $basename_sh)
+
+        Y_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '245.0' '969.' $basename_sh)
+        Y_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '245.0' '969.' $basename_sh)
+        Y_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '245.0' '969.' $basename_sh)
+
+        U_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '245.0' '1632.' $basename_sh)
+        U_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '245.0' '1632.' $basename_sh)
+        U_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '245.0' '1632.' $basename_sh)
+
+        s2C_area=$(source !{binfolder}/parsing_qcloud.sh; get_qc_area_from_json_by_mass_and_rt '265.0' '1608.' $basename_sh)
+        s2C_rt=$(source !{binfolder}/parsing_qcloud.sh; get_qc_RTobs_from_json_by_mass_and_rt '265.0' '1608.' $basename_sh)
+        s2C_dppm=$(source !{binfolder}/parsing_qcloud.sh; get_qc_dppm_from_json_by_mass_and_rt '265.0' '1608.' $basename_sh)
+
         # QCN1 JSON files:
         # TOTAL TIC:
         $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json $checksum "QC:9000005" "QC:0000048")
@@ -267,24 +344,59 @@ process insertDataNucleosidesToQCloud {
         # MIT MS2:
         $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json $checksum "QC:9000002" "QC:1000928")
         $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json $checksum $mit_ms2 "QC:9000002" "QC:1000928")
+
         # PEAK AREA:
+        echo "Mark1-------------------------"
         $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json_monitored_peptides $checksum "QC:1001844")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $GUANO_area "QC:1001844" "GUANOSINE")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $INOSINE_area "QC:1001844" "INOSINE")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYILADENO25_area "QC:1001844" "METHYILADENOSINE")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYL50_area "QC:1001844" "METHYLURIDINE")
+        echo "Mark2-------------------------"
+        echo "C_area: "$C_area
+
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $C_area "QC:1001844" "C")
+echo "Mark3-------------------------"
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $G_area "QC:1001844" "G")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $I_area "QC:1001844" "I")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m1A_area "QC:1001844" "m1A")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m3C_area "QC:1001844" "m3C")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m5C_area "QC:1001844" "m5C")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $Cm_area "QC:1001844" "Cm")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m7G_area "QC:1001844" "m7G")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m5U_area "QC:1001844" "m5U")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $Y_area "QC:1001844" "Y")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $U_area "QC:1001844" "U")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $s2C_area "QC:1001844" "s2C")
+
         # RT:
         $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json_monitored_peptides $checksum "QC:1000894")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $GUANO_rt "QC:1000894" "GUANOSINE")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $INOSINE_rt "QC:1000894" "INOSINE")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYILADENO25_rt "QC:1000894" "METHYILADENOSINE")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYL50_rt "QC:1000894" "METHYLURIDINE")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $C_rt "QC:1000894" "C")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $G_rt "QC:1000894" "G")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $I_rt "QC:1000894" "I")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m1A_rt "QC:1000894" "m1A")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m3C_rt "QC:1000894" "m3C")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m5C_rt "QC:1000894" "m5C")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $Cm_rt "QC:1000894" "Cm")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m7G_rt "QC:1000894" "m7G")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m5U_rt "QC:1000894" "m5U")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $Y_rt "QC:1000894" "Y")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $U_rt "QC:1000894" "U")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $s2C_rt "QC:1000894" "s2C")
+
         # MASS ACCURACY:
         $(source !{binfolder}/parsing_qcloud.sh; create_qcloud_json_monitored_peptides $checksum "QC:1000014")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $GUANO_dppm "QC:1000014" "GUANOSINE")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $INOSINE_dppm "QC:1000014" "INOSINE")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYILADENO25_dppm "QC:1000014" "METHYILADENOSINE")
-        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $METHYL50_dppm "QC:1000014" "METHYLURIDINE")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $C_dppm "QC:1000014" "C")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $G_dppm "QC:1000014" "G")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $I_dppm "QC:1000014" "I")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m1A_dppm "QC:1000014" "m1A")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m3C_dppm "QC:1000014" "m3C")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m5C_dppm "QC:1000014" "m5C")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $Cm_dppm "QC:1000014" "Cm")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m7G_dppm "QC:1000014" "m7G")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $m5U_dppm "QC:1000014" "m5U")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $Y_dppm "QC:1000014" "Y")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $U_dppm "QC:1000014" "U")
+        $(source !{binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json_monitored_peptides $checksum $s2C_dppm "QC:1000014" "s2C")
+
+echo "Mark4-------------------------"
+
         # Insert to QCloud database: 
         echo "[INFO] Get acces token......"
         access_token=$(source !{binfolder}/api.sh; get_api_access_token_qcloud !{url_api_qcloud_signin} !{url_api_qcloud_user} !{url_api_qcloud_pass})
