@@ -1,23 +1,38 @@
-# atlas
-
-[![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A522.04.4.5706-23aa62.svg)](https://www.nextflow.io/)
-[![run with singularity](https://img.shields.io/badge/run%20with-singularity-1d355c.svg?labelColor=000000)](https://sylabs.io/docs/)
-[![Launch on Nextflow Tower](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Nextflow%20Tower-%234256e7)](https://tower.nf/launch?pipeline=https://github.com/proteomicsunitcrg/atlas)
+# Atlas
 
 ## Introduction
 
-**atlas** is a new [Nextflow-based](https://www.nextflow.io) pipeline for processing and analysis of mass spectrometry data. Specifically, atlas is designed to support proteomics laboratories in the daily quality assessment of different proteomics applications. It can work for many kinds of workflows, including the analysis of regular proteomes, phosphoproteomes, quantification of histones and it can process data on independent acquisition mode, among others. For this plethora of workflows, **atlas** is capable of extracting several key quality control parameters that substantially simplify the assessment of the experiments performed on mass spectrometers. **atlas** is based on [OpenMS](https://github.com/OpenMS/OpenMS) modules, an open source processing software for mass spectrometry data which is containerized using [Singularity](https://sylabs.io/docs), a software used to encapsulate all required dependencies. By using containers we are able to freeze the scripts and libraries of this analysis software so in this way we ensure a high reproducibility of our quality control analysis. The pipeline is implemented using the new [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) syntax and it is designed to work in HPC environments.
+**Atlas** is a Nextflow-based pipeline developed for the processing and analysis of mass spectrometry data, specifically designed to assist proteomics laboratories with daily quality assessments across various proteomics applications. It supports multiple workflows, such as regular proteomes, phosphoproteomes, and independent acquisition modes, among others.
 
-### More detailed documentation can be found [here](https://github.com/proteomicsunitcrg/atlas/wiki).
+With these diverse workflows, **Atlas** extracts critical quality control parameters, simplifying the evaluation of mass spectrometry experiments. **Atlas** can be configured to use various search engines, including:
+
+- **[Fragpipe](https://fragpipe.nesvilab.org/)** 
+- **[Comet](http://comet-ms.sourceforge.net/)**
+- **[Mascot](https://www.matrixscience.com)**
+- **[DIA-NN](https://github.com/vdemichev/DiaNN)**
+
+The pipeline is implemented using the latest **Nextflow DSL2 syntax** and is designed to operate efficiently in **HPC (High-Performance Computing) environments**.
+
+For more detailed information, please refer to the [documentation](https://github.com/proteomicsunitcrg/atlas/wiki).
+
+---
 
 ## Credits
 
-**atlas** was originally written by @rolivella.
+The **Atlas** pipeline was initially developed by **@rolivella**.
 
-We thank the following people for their assistance in the development of this pipeline:
+We would like to express our gratitude to the following individuals for their valuable contributions during the development:
 
-Eduard Sabidó (@edunivers), Cristina Chiva, Eva Borràs, Guadalupe Espadas, Olga Pastor, Enrique Alonso, Selena Fernández.
+- Eduard Sabidó (@edunivers)
+- Cristina Chiva
+- Eva Borràs
+- Guadalupe Espadas
+- Olga Pastor
+- Enrique Alonso
+- Selena Fernández
+
+---
 
 ## Citations
 
-An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
+A comprehensive list of references for the tools utilized in the pipeline can be found in the **CITATIONS.md** file.

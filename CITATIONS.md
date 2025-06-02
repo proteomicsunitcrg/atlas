@@ -10,10 +10,10 @@
 - [DIA-NN](https://github.com/vdemichev/DiaNN)
   > Demichev, Vadim, et al. "DIA-NN: neural networks and interference correction enable deep proteome coverage in high throughput." Nature methods 17.1 (2020): 41-44.
 
-- [DIA Umpire](https://diaumpire.nesvilab.org/)
-  > Tsou, Chih-Chiang, et al. "DIA-Umpire: comprehensive computational framework for data-independent acquisition proteomics." Nature methods 12.3 (2015): 258-264.
-
 - [Mascot](http://www.matrixscience.com/)
   > Perkins, David N., et al. "Probability‐based protein identification by searching sequence databases using mass spectrometry data." ELECTROPHORESIS: An International Journal 20.18 (1999): 3551-3567.
 
 - [mzsniffer](https://github.com/wfondrie/mzsniffer)
+
+- [Philosopher](https://github.com/Nesvilab/philosopher)
+  > da Veiga Leprevost F, Haynes SE, Avtonomov DM, Chang HY, Shanmugam AK, Mellacheruvu D, Kong AT, Nesvizhskii AI.[ Philosopher: a versatile toolkit for shotgun proteomics data analysis](https://www.nature.com/articles/s41592-020-0912-y). Nat Methods. 2020 Sep;17(9):869-870. doi: 10.1038/s41592-020-0912-y. PMID: 32669682; PMCID: PMC7509848.
