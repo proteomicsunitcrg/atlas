@@ -61,3 +61,41 @@ process ProteinQuantifier {
     ProteinQuantifier -top:include_all -top:aggregate $average -in $idmapper_to_proteinquantifier -out ${idmapper_to_proteinquantifier.baseName}_proteinquantifier.csv
     """
 }
+
+process msnbasexic {
+
+    label 'msnbase'
+    tag { "${basename}" }
+
+    input:
+    tuple val(filename), val(basename), val(path), file(mzML_file)
+    val(tsv_file)
+    val(output_dir)
+    val(analyte_name)
+    val(rt_tol_sec)
+    val(mz_tol_ppm)
+    val(msLevel)
+    val(plot_xic_ms1)
+    val(plot_xic_ms2)
+    val(plot_output_path)
+    val(overwrite_tsv)
+
+    output:
+    file("${basename}_msnbasexic.tsv")
+
+    script:
+    """
+    Rscript msnbasexic.R \\
+      --file_name ${mzML_file} \\
+      --tsv_name ${tsv_file} \\
+      --output_dir ${output_dir} \\
+      --analyte_name ${analyte_name} \\
+      --rt_tol_sec ${rt_tol_sec} \\
+      --mz_tol_ppm ${mz_tol_ppm} \\
+      --msLevel ${msLevel} \\
+      --plot_xic_ms1 ${plot_xic_ms1} \\
+      --plot_xic_ms2 ${plot_xic_ms2} \\
+      --plot_output_path ${plot_output_path} \\
+      --overwrite_tsv ${overwrite_tsv}
+    """
+}
