@@ -26,6 +26,10 @@ json_yaxis_window <- list(
 # PPP constant (OPTIONAL):  
 PPP_THRESHOLD_RATIO <- 0.05
 
+# Set verbose logging
+# Set to TRUE for detailed logs, FALSE to disable
+verbose_logging <- FALSE
+
 # Define command-line options
 option_list <- list(
   make_option(c("--file_name"), type = "character", help = "Input mzML file path"),
@@ -125,7 +129,10 @@ compute_xic <- function(ms_data, mz1, rt_target, rt_tol_sec, mz_tol, msLevel, pp
         min_diff <- min(mz_diff, na.rm = TRUE)
         closest_mz <- mz_values[which.min(mz_diff)]
         ppm_difference <- (min_diff / mz1) * 1e6
-        message(glue("MS1 Spectrum {i} (RT: {rt_vals[i]}, Scan: {scan_num}) discarded: Closest m/z {round(closest_mz, 5)} differs by {round(ppm_difference, 2)} ppm from {mz1}"))
+        if (verbose_logging) {
+           message(glue("MS1 Spectrum {i} (RT: {rt_vals[i]}, Scan: {scan_num}) discarded: Closest m/z {round(closest_mz, 5)} differs by {round(ppm_difference, 2)} ppm from {mz1}"))
+        }
+        return(NA)
       }
 
       if (length(valid_idx) > 0) {
@@ -133,8 +140,10 @@ compute_xic <- function(ms_data, mz1, rt_target, rt_tol_sec, mz_tol, msLevel, pp
         mz_selected <- mz_values[valid_idx]
         closest_mz <- mz_selected[which.min(abs(mz_selected - mz1))]
         ppm_difference <- ((closest_mz - mz1) / mz1) * 1e6
-        message(glue("MS1 Spectrum {i} (RT: {rt_vals[i]}, Scan: {scan_num}) used: Closest m/z {round(closest_mz, 5)} is {round(ppm_difference, 2)} ppm from {mz1}. Mean intensity = {round(mean_int, 2)}"))
-        mean_int
+        if (verbose_logging) {
+           message(glue("MS1 Spectrum {i} (RT: {rt_vals[i]}, Scan: {scan_num}) used: Closest m/z {round(closest_mz, 5)} is {round(ppm_difference, 2)} ppm from {mz1}. Mean intensity = {round(mean_int, 2)}"))
+        }
+        return(mean_int)
       } else {
         NA
       }

@@ -69,6 +69,7 @@ process msnbasexic {
 
     input:
     tuple val(filename), val(basename), val(path), file(mzML_file)
+    file(msnbasexic_script) 
     val(tsv_file)
     val(output_dir)
     val(analyte_name)
@@ -81,11 +82,11 @@ process msnbasexic {
     val(overwrite_tsv)
 
     output:
-    file("${basename}_msnbasexic.tsv")
+    file("*.json")
 
     script:
     """
-    Rscript msnbasexic.R \\
+    Rscript ${msnbasexic_script} \\
       --file_name ${mzML_file} \\
       --tsv_name ${tsv_file} \\
       --output_dir ${output_dir} \\

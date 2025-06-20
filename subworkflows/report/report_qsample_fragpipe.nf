@@ -53,6 +53,7 @@ process insertFragpipeDataToQSample {
         file('ion.tsv')
         file('combined_protein.tsv')
         file('global.summary.tsv')
+        file('combined_ion.tsv')
 
         shell:
         '''
@@ -114,7 +115,8 @@ process insertFragpipeSecReactDataToQSample {
         file('ion.tsv')                                                                 
         file('combined_protein.tsv')
         file('global.summary.tsv')    
- 
+        file("combined_ion.tsv")
+        
         shell:
         '''
         checksum=$(cat !{checksum})

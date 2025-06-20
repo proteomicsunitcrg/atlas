@@ -100,6 +100,7 @@ process output_folder_fragpipe {
         file("ion.tsv")
         file("combined_protein.tsv")
         file("global.modsummary.tsv")
+        file("combined_ion.tsv")
         file(checksum)
         val output_folder
 
