@@ -155,7 +155,8 @@ create_qcloud_json(){
   checksum=$1
   category=$2
   param_id=$3
-  echo "{}" > "${checksum}_${param_id}.json"
+  param_id_underscore=$(echo "$param_id" | tr ':' '_')
+  echo "{}" > "${checksum}_${param_id_underscore}.json"
 }
 
 # Function: Create empty JSON for monitored peptides
@@ -167,8 +168,10 @@ create_qcloud_json(){
 create_qcloud_json_monitored_peptides(){
   checksum=$1
   param_id=$2
-  echo "{}" > "${checksum}_${param_id}.json"
+  param_id_underscore=$(echo "$param_id" | tr ':' '_')
+  echo "{}" > "${checksum}_${param_id_underscore}.json"
 }
+
 
 # Function: Create full QCloud JSON with parameter metadata
 # Inputs:
@@ -219,7 +222,9 @@ set_value_to_qcloud_json(){
   value=$2
   category=$3
   file_id=$4
-  jq --arg v "$value" '.value = ($v|tonumber)' "${checksum}_${file_id}.json" > tmp.json && mv tmp.json "${checksum}_${file_id}.json"
+  file_id_underscore=$(echo "$file_id" | tr ':' '_')
+  json_file="${checksum}_${file_id_underscore}.json"
+  jq --arg v "$value" '.value = ($v|tonumber)' "$json_file" > tmp.json && mv tmp.json "$json_file"
 }
 
 # Function: Set a value into structured QC JSON with contextSource
@@ -386,4 +391,74 @@ extract_peptide_metrics_qcsummary() {
 
     # Write value to JSON file with checksum and param_id for later use
     set_value_to_qcloud_json_monitored_peptides "$checksum" "$value" "$param_id" "$peptide"
+}
+
+# Function: Extract and store TIC, MIT MS1 and MIT MS2
+# Inputs:
+#   $1 - mzML file
+#   $2 - checksum
+# Output:
+#   Writes values to respective JSONs
+extract_general_metrics(){
+  local mzml_file=$1
+  local checksum=$2
+
+  echo "[DEBUG] --- extract_general_metrics ---"
+  echo "[DEBUG] mzML: $mzml_file"
+  echo "[DEBUG] checksum: $checksum"
+
+  # Path i basename com a get_mit
+  local curr_dir=$(pwd)
+  local basename=$(basename "$curr_dir/$mzml_file" | cut -f 1 -d '.')
+  echo "[DEBUG] Base name: $basename"
+  echo "[DEBUG] Current working directory: $curr_dir"
+
+  # Define CV accessions
+  local cv_ms_level="MS:1000511"
+  local cv_it="MS:1000927"
+  echo "[DEBUG] CV MS level: $cv_ms_level"
+  echo "[DEBUG] CV Ion trap: $cv_it"
+
+  # TIC extraction using grep
+  echo "[DEBUG] Starting TIC extraction..."
+  local tic
+  tic=$(grep -oP 'total ion current="[0-9eE\+\.-]+"' "$curr_dir/$mzml_file" | \
+        sed 's/.*="//;s/"//' | awk '{sum+=$1} END{print sum}')
+  echo "[DEBUG] TIC raw value: $tic"
+  : "${tic:=0}"
+  echo "[DEBUG] TIC (final): $tic"
+
+  # MIT MS1
+  echo "[DEBUG] Extracting MIT MS1..."
+  local mit_ms1
+  mit_ms1=$(get_mit "$mzml_file" "$cv_ms_level" "1" "$cv_it")
+  echo "[DEBUG] MIT MS1 raw value: $mit_ms1"
+  : "${mit_ms1:=0}"
+  echo "[DEBUG] MIT MS1 (final): $mit_ms1"
+
+  # MIT MS2
+  echo "[DEBUG] Extracting MIT MS2..."
+  local mit_ms2
+  mit_ms2=$(get_mit "$mzml_file" "$cv_ms_level" "2" "$cv_it")
+  echo "[DEBUG] MIT MS2 raw value: $mit_ms2"
+  : "${mit_ms2:=0}"
+  echo "[DEBUG] MIT MS2 (final): $mit_ms2"
+
+  # Assign QC param IDs
+  local param_id_tic="QC:4000055"
+  local param_id_mit_ms1="QC:4000056"
+  local param_id_mit_ms2="QC:4000057"
+  echo "[DEBUG] QC param IDs - TIC: $param_id_tic, MS1: $param_id_mit_ms1, MS2: $param_id_mit_ms2"
+
+  # Write to JSONs
+  echo "[DEBUG] Writing TIC to JSON..."
+  set_value_to_qcloud_json "$checksum" "$tic" "general" "$param_id_tic"
+
+  echo "[DEBUG] Writing MIT MS1 to JSON..."
+  set_value_to_qcloud_json "$checksum" "$mit_ms1" "general" "$param_id_mit_ms1"
+
+  echo "[DEBUG] Writing MIT MS2 to JSON..."
+  set_value_to_qcloud_json "$checksum" "$mit_ms2" "general" "$param_id_mit_ms2"
+
+  echo "[DEBUG] --- extract_general_metrics DONE ---"
 }

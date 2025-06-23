@@ -199,6 +199,20 @@ process insertDataToQCloud {
 
     echo "All peptides processed successfully."
 
+    echo "Extracting general metrics..."
+    # TOTAL TIC:
+    echo "TOTAL TIC..."
+    source ${binfolder}/parsing_qcloud.sh; create_qcloud_json \$checksum "QC:9000005" "QC:0000048"
+    source ${binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json \$checksum \$total_tic "QC:0000048" "QC:0000048"
+    # MIT MS1:
+    echo "MIT MS1..."
+    source ${binfolder}/parsing_qcloud.sh; create_qcloud_json \$checksum "QC:9000002" "QC:1000927"
+    source ${binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json \$checksum \$mit_ms1 "QC:9000002" "QC:1000927"
+    # MIT MS2:
+    echo "MIT MS2..."
+    source ${binfolder}/parsing_qcloud.sh; create_qcloud_json \$checksum "QC:9000002" "QC:1000928"
+    source ${binfolder}/parsing_qcloud.sh; set_value_to_qcloud_json \$checksum \$mit_ms2 "QC:9000002" "QC:1000928"
+
     # Get access token
     echo "Getting access token..."
     if ! access_token=\$(source ${binfolder}/api.sh; get_api_access_token_qcloud ${url_api_qcloud_signin} ${url_api_qcloud_user} ${url_api_qcloud_pass}); then
