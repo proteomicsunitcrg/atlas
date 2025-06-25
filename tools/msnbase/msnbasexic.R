@@ -114,41 +114,47 @@ compute_xic <- function(ms_data, mz1, rt_target, rt_tol_sec, mz_tol, msLevel, pp
 
     # Build XIC by averaging intensities per spectrum within the m/z window
     rt_vals <- rtime(ms1_data)
-    int_vals <- sapply(seq_along(spectra(ms1_data)), function(i) {
-      spec <- spectra(ms1_data)[[i]]
+    
+    # spectra preload 
+    sp_list <- spectra(ms1_data)
+
+    message(glue("  Preloaded {length(sp_list)} MS1 spectra into memory"))
+    start_time <- Sys.time()
+
+    int_vals <- sapply(seq_along(sp_list), function(i) {
+      spec <- sp_list[[i]]
       mz_values <- mz(spec)
       intensity_values <- intensity(spec)
-      scan_num <- acquisitionNum(spec)  # Use acquisitionNum to get scan number
+      scan_num <- acquisitionNum(spec)
+      rt_vals <- rtime(ms1_data)
 
-      # Filter intensities within m/z window
       valid_idx <- which(mz_values >= mz_window[1] & mz_values <= mz_window[2])
 
-      # Log for debugging with scan number and ppm difference
       if (length(valid_idx) == 0) {
-        mz_diff <- abs(mz_values - mz1)
-        min_diff <- min(mz_diff, na.rm = TRUE)
-        closest_mz <- mz_values[which.min(mz_diff)]
-        ppm_difference <- (min_diff / mz1) * 1e6
         if (verbose_logging) {
-           message(glue("MS1 Spectrum {i} (RT: {rt_vals[i]}, Scan: {scan_num}) discarded: Closest m/z {round(closest_mz, 5)} differs by {round(ppm_difference, 2)} ppm from {mz1}"))
+          mz_diff <- abs(mz_values - mz1)
+          min_diff <- min(mz_diff, na.rm = TRUE)
+          closest_mz <- mz_values[which.min(mz_diff)]
+          ppm_difference <- (min_diff / mz1) * 1e6
+          message(glue("MS1 Spectrum {i} (RT: {rt_vals[i]}, Scan: {scan_num}) discarded: Closest m/z {round(closest_mz, 5)} differs by {round(ppm_difference, 2)} ppm from {mz1}"))
         }
         return(NA)
       }
 
-      if (length(valid_idx) > 0) {
-        mean_int <- mean(intensity_values[valid_idx], na.rm = TRUE)
+      mean_int <- mean(intensity_values[valid_idx], na.rm = TRUE)
+      if (verbose_logging) {
         mz_selected <- mz_values[valid_idx]
         closest_mz <- mz_selected[which.min(abs(mz_selected - mz1))]
         ppm_difference <- ((closest_mz - mz1) / mz1) * 1e6
-        if (verbose_logging) {
-           message(glue("MS1 Spectrum {i} (RT: {rt_vals[i]}, Scan: {scan_num}) used: Closest m/z {round(closest_mz, 5)} is {round(ppm_difference, 2)} ppm from {mz1}. Mean intensity = {round(mean_int, 2)}"))
-        }
-        return(mean_int)
-      } else {
-        NA
+        message(glue("MS1 Spectrum {i} (RT: {rt_vals[i]}, Scan: {scan_num}) used: Closest m/z {round(closest_mz, 5)} is {round(ppm_difference, 2)} ppm from {mz1}. Mean intensity = {round(mean_int, 2)}"))
       }
-    })
 
+      return(mean_int)
+    })
+    
+    elapsed <- Sys.time() - start_time
+    message(glue("  XIC extraction loop (MS1) completed in {round(as.numeric(elapsed, units = 'secs'), 2)} seconds"))
+    
     # Clean up NA intensities
     valid <- which(!is.na(int_vals))
     if (length(valid) == 0) {
@@ -191,44 +197,56 @@ compute_xic <- function(ms_data, mz1, rt_target, rt_tol_sec, mz_tol, msLevel, pp
 
     # Intensity for the fragment
     rt_vals <- rtime(ms2_data)
-    int_vals <- sapply(seq_along(spectra(ms2_data)), function(i) {
+    sp_list <- spectra(ms2_data)
+
+    message(glue("  Preloaded {length(sp_list)} MS2 spectra into memory"))
+    start_time <- Sys.time()
+
+    int_vals <- sapply(seq_along(sp_list), function(i) {
       result <- tryCatch({
-        spec <- spectra(ms2_data)[[i]]
+        spec <- sp_list[[i]]
         scan_num <- acquisitionNum(spec)
         rt_val <- rtime(spec)
-
         mz_values <- mz(spec)
         intensity_values <- intensity(spec)
 
         if (length(mz_values) == 0 || length(intensity_values) == 0) {
-          message(glue("MS2 Spectrum {i} (RT: {rt_val}, Scan: {scan_num}) skipped: Empty spectrum"))
+          if (verbose_logging) {
+            message(glue("MS2 Spectrum {i} (RT: {rt_val}, Scan: {scan_num}) skipped: Empty spectrum"))
+          }
           return(NA)
         }
 
-        # Search fragment
         valid_idx <- which(mz_values >= mz_window_fragment[1] & mz_values <= mz_window_fragment[2])
 
         if (length(valid_idx) == 0) {
-          mz_diff <- abs(mz_values - ms2_target_mz)
-          min_diff <- min(mz_diff, na.rm = TRUE)
-          closest_mz <- mz_values[which.min(mz_diff)]
-          ppm_difference <- (min_diff / ms2_target_mz) * 1e6
-          message(glue("MS2 Spectrum {i} (RT: {rt_val}, Scan: {scan_num}) discarded: Closest m/z {round(closest_mz, 5)} differs by {round(ppm_difference, 2)} ppm from fragment {ms2_target_mz}"))
+          if (verbose_logging) {
+            mz_diff <- abs(mz_values - ms2_target_mz)
+            min_diff <- min(mz_diff, na.rm = TRUE)
+            closest_mz <- mz_values[which.min(mz_diff)]
+            ppm_difference <- (min_diff / ms2_target_mz) * 1e6
+            message(glue("MS2 Spectrum {i} (RT: {rt_val}, Scan: {scan_num}) discarded: Closest m/z {round(closest_mz, 5)} differs by {round(ppm_difference, 2)} ppm from fragment {ms2_target_mz}"))
+          }
           return(NA)
-        } else {
-          sum_int <- sum(intensity_values[valid_idx], na.rm = TRUE)
+        }
+
+        sum_int <- sum(intensity_values[valid_idx], na.rm = TRUE)
+        if (verbose_logging) {
           closest_mz <- mz_values[valid_idx][which.min(abs(mz_values[valid_idx] - ms2_target_mz))]
           ppm_difference <- ((closest_mz - ms2_target_mz) / ms2_target_mz) * 1e6
           message(glue("MS2 Spectrum {i} (RT: {rt_val}, Scan: {scan_num}) used: Fragment m/z {round(closest_mz, 5)} is {round(ppm_difference, 2)} ppm from {ms2_target_mz}. Sum intensity = {round(sum_int, 2)}"))
-          return(sum_int)
         }
+
+        return(sum_int)
       }, error = function(e) {
         warning(glue("Error in MS2 Spectrum {i}: {e$message}"))
         return(NA)
       })
-
-      return(result)
     })
+
+    elapsed <- Sys.time() - start_time
+    message(glue("  XIC extraction loop (MS2) completed in {round(as.numeric(elapsed, units = 'secs'), 2)} seconds"))
+
 
     # Filter valid values
     valid <- which(!is.na(int_vals))
