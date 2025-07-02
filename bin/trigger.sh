@@ -234,6 +234,52 @@ launch_nf_run() {
                     fi
             fi
 
+            elif [[ "${PARAMS[executor]}" == "local" ]]; then
+                echo "[INFO] Launching Nextflow in LOCAL mode..."
+
+                LOG_FILE="${PARAMS[logfile]:-$LOGS_FOLDER/${FILE_BASENAME}.log}"
+                TEST_MODE="${PARAMS[test_mode]:-false}"
+                TEST_FOLDER="${PARAMS[test_folder]:-$ORIGIN_FOLDER}"
+                NOTIF_EMAIL="${PARAMS[notif_email]:-$NOTIF_EMAIL}"
+                ENABLE_NOTIF_EMAIL="${PARAMS[enable_notif_email]:-$ENABLE_NOTIF_EMAIL}"
+
+                if nextflow run "${WF_ROOT_FOLDER}/${PARAMS[workflow]}.nf" -bg \
+                    -work-dir "${PARAMS[workdir]:-$ATLAS_RUNS_FOLDER/$CURRENT_UUID}" \
+                    --var_modif "${PARAMS[var_modif]:-}" \
+                    --sites_modif "${PARAMS[sites_modif]:-}" \
+                    --fragment_mass_tolerance "${PARAMS[fragment_mass_tolerance]:-}" \
+                    --fragment_error_units "${PARAMS[fragment_error_units]:-}" \
+                    --precursor_mass_tolerance "${PARAMS[precursor_mass_tolerance]:-}" \
+                    --precursor_error_units "${PARAMS[precursor_error_units]:-}" \
+                    --missed_cleavages "${PARAMS[missed_cleavages]:-}" \
+                    --output_folder "${PARAMS[output_folder]:-}" \
+                    --instrument_folder "${PARAMS[instrument_folder]:-}" \
+                    --search_engine "${PARAMS[search_engine]:-}" \
+                    -profile "${PARAMS[nf_profile]:-},$LAB" \
+                    --sampleqc_api_key "${PARAMS[sampleqc_api_key]:-}" \
+                    --rawfile "${PARAMS[rawfile]:-}" \
+                    --test_mode "$TEST_MODE" \
+                    --test_folder "$TEST_FOLDER" \
+                    --notif_email "$NOTIF_EMAIL" \
+                    --enable_notif_email "$ENABLE_NOTIF_EMAIL" \
+                    > "$LOG_FILE"; then
+
+                    echo "[INFO] Successfully triggered pipeline (local)"
+                    echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') Pipeline launched: $FILE_BASENAME" >> "$LOG_FILE"
+
+                    if [ "$ENABLE_SLACK" = "true" ]; then
+                        MESSAGE=":house_with_garden: :white_check_mark: - Sent file to local pipeline: $FILE_BASENAME"
+                        notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+                    fi
+                else
+                    echo "[ERROR] Nextflow run (local) failed."
+                    echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') Pipeline error: $FILE_BASENAME" >> "$LOG_FILE"
+                    if [ "$ENABLE_SLACK" = "true" ]; then
+                        MESSAGE=":x: :house_with_garden: - Error in local pipeline: $FILE_BASENAME"
+                        notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+                    fi
+                fi
+
     else
         echo "[ERROR] Unknown executor: ${PARAMS[executor]}"
         exit 1
