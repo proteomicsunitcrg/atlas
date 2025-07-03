@@ -393,37 +393,57 @@ extract_peptide_metrics_qcsummary() {
     set_value_to_qcloud_json_monitored_peptides "$checksum" "$value" "$param_id" "$peptide"
 }
 
-# Function: Extract and store TIC, MIT MS1 and MIT MS2
+# Function: Extract and store TIC, MIT MS1 and MIT MS2 using config parameters
 # Inputs:
 #   $1 - mzML file
-#   $2 - checksum
+#   $2 - config file path
 # Output:
-#   Writes values to respective JSONs
+#   Creates JSON files and returns values
 extract_general_metrics(){
   local mzml_file=$1
-  local checksum=$2
+  local config_file=$2
 
   echo "[DEBUG] --- extract_general_metrics ---"
   echo "[DEBUG] mzML: $mzml_file"
-  echo "[DEBUG] checksum: $checksum"
+  echo "[DEBUG] config: $config_file"
 
-  # Path i basename com a get_mit
-  local curr_dir=$(pwd)
-  local basename=$(basename "$curr_dir/$mzml_file" | cut -f 1 -d '.')
-  echo "[DEBUG] Base name: $basename"
-  echo "[DEBUG] Current working directory: $curr_dir"
+  # Extract information from filename
+  local basename_file=$(basename "$mzml_file")
+  local sample_id=$(extract_sample_id_from_filename "$basename_file")
+  local checksum=$(extract_checksum_from_filename "$sample_id")
+  local uuid=$(extract_uuid_from_filename "$sample_id")
 
-  # Define CV accessions
-  local cv_ms_level="MS:1000511"
-  local cv_it="MS:1000927"
-  echo "[DEBUG] CV MS level: $cv_ms_level"
-  echo "[DEBUG] CV Ion trap: $cv_it"
+  echo "[DEBUG] Extracted from filename:"
+  echo "[DEBUG] Sample ID: $sample_id"
+  echo "[DEBUG] Checksum: $checksum"
+  echo "[DEBUG] UUID: $uuid"
 
-  # TIC extraction using grep
-  echo "[DEBUG] Starting TIC extraction..."
+  # Parse config file to get ontology references (with better newline handling)
+  local cv_total_tic=$(grep -A 10 "ms_params.*=" "$config_file" | grep "total_tic" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local cv_ms_level=$(grep -A 10 "ms_params.*=" "$config_file" | grep "ms_type" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local cv_injection_time=$(grep -A 10 "ms_params.*=" "$config_file" | grep "injection_time" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+
+  # Parse QC parameter IDs from config (with better newline handling)
+  local param_id_tic=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "tic" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local param_id_mit_ms1=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep "mit_ms1" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local param_id_mit_ms2=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep "mit_ms2" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+
+  # Parse QC context IDs from config (with better newline handling)
+  local context_id_tic=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep -w "tic" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local context_id_mit_ms1=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep "mit_ms1" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local context_id_mit_ms2=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep "mit_ms2" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+
+  echo "[DEBUG] Parsed from config:"
+  echo "[DEBUG] CV TIC: '$cv_total_tic'"
+  echo "[DEBUG] CV MS level: '$cv_ms_level'" 
+  echo "[DEBUG] CV injection time: '$cv_injection_time'"
+  echo "[DEBUG] QC param IDs - TIC: '$param_id_tic', MS1: '$param_id_mit_ms1', MS2: '$param_id_mit_ms2'"
+  echo "[DEBUG] QC context IDs - TIC: '$context_id_tic', MS1: '$context_id_mit_ms1', MS2: '$context_id_mit_ms2'"
+
+  # TIC extraction using xmllint approach
+  echo "[DEBUG] Starting TIC extraction using xmllint..."
   local tic
-  tic=$(grep -oP 'total ion current="[0-9eE\+\.-]+"' "$curr_dir/$mzml_file" | \
-        sed 's/.*="//;s/"//' | awk '{sum+=$1} END{print sum}')
+  tic=$(get_tic "$mzml_file" "$cv_total_tic")
   echo "[DEBUG] TIC raw value: $tic"
   : "${tic:=0}"
   echo "[DEBUG] TIC (final): $tic"
@@ -431,7 +451,7 @@ extract_general_metrics(){
   # MIT MS1
   echo "[DEBUG] Extracting MIT MS1..."
   local mit_ms1
-  mit_ms1=$(get_mit "$mzml_file" "$cv_ms_level" "1" "$cv_it")
+  mit_ms1=$(get_mit "$mzml_file" "$cv_ms_level" "1" "$cv_injection_time")
   echo "[DEBUG] MIT MS1 raw value: $mit_ms1"
   : "${mit_ms1:=0}"
   echo "[DEBUG] MIT MS1 (final): $mit_ms1"
@@ -439,26 +459,119 @@ extract_general_metrics(){
   # MIT MS2
   echo "[DEBUG] Extracting MIT MS2..."
   local mit_ms2
-  mit_ms2=$(get_mit "$mzml_file" "$cv_ms_level" "2" "$cv_it")
+  mit_ms2=$(get_mit "$mzml_file" "$cv_ms_level" "2" "$cv_injection_time")
   echo "[DEBUG] MIT MS2 raw value: $mit_ms2"
   : "${mit_ms2:=0}"
   echo "[DEBUG] MIT MS2 (final): $mit_ms2"
 
-  # Assign QC param IDs
-  local param_id_tic="QC:4000055"
-  local param_id_mit_ms1="QC:4000056"
-  local param_id_mit_ms2="QC:4000057"
-  echo "[DEBUG] QC param IDs - TIC: $param_id_tic, MS1: $param_id_mit_ms1, MS2: $param_id_mit_ms2"
+  # Create JSON files with proper QCloud structure
+  echo "[DEBUG] Creating QCloud JSON files with proper structure..."
+  
+  create_qcloud_json_with_header "$checksum" "$param_id_tic" "$context_id_tic" "$tic" "$uuid"
+  create_qcloud_json_with_header "$checksum" "$param_id_mit_ms1" "$context_id_mit_ms1" "$mit_ms1" "$uuid"
+  create_qcloud_json_with_header "$checksum" "$param_id_mit_ms2" "$context_id_mit_ms2" "$mit_ms2" "$uuid"
 
-  # Write to JSONs
-  echo "[DEBUG] Writing TIC to JSON..."
-  set_value_to_qcloud_json "$checksum" "$tic" "general" "$param_id_tic"
-
-  echo "[DEBUG] Writing MIT MS1 to JSON..."
-  set_value_to_qcloud_json "$checksum" "$mit_ms1" "general" "$param_id_mit_ms1"
-
-  echo "[DEBUG] Writing MIT MS2 to JSON..."
-  set_value_to_qcloud_json "$checksum" "$mit_ms2" "general" "$param_id_mit_ms2"
-
+  echo "[DEBUG] QCloud JSON files created successfully"
   echo "[DEBUG] --- extract_general_metrics DONE ---"
+  
+  # Return the values for use in metadata.json
+  echo "$tic,$mit_ms1,$mit_ms2,$checksum,$uuid"
+} 
+
+# Function: Create QCloud JSON with proper header structure
+# Inputs:
+#   $1 - checksum (from filename, not file hash)
+#   $2 - qCCV parameter ID
+#   $3 - contextSource ID
+#   $4 - value
+#   $5 - uuid (for filename)
+create_qcloud_json_with_header() {
+    local checksum=$1
+    local qccv=$2
+    local context_source=$3
+    local value=$4
+    local uuid=$5
+    
+    # Clean up any newlines/carriage returns from inputs
+    context_source=$(echo "$context_source" | tr -d '\n\r')
+    qccv=$(echo "$qccv" | tr -d '\n\r')
+    
+    # Extract just the numeric part from contextSource for filename (e.g., "QC:1000927" -> "1000927")
+    local context_code=$(echo "$context_source" | cut -d':' -f2)
+    
+    # Create filename using contextSource: {uuid}_{checksum}_QC_{context_code}.json
+    local output_file="${uuid}_${checksum}_QC_${context_code}.json"
+    
+    echo "[DEBUG] Creating file: '$output_file'" >&2
+    echo "[DEBUG] qCCV: '$qccv'" >&2
+    echo "[DEBUG] contextSource: '$context_source'" >&2
+    
+    cat > "$output_file" << EOF
+{
+  "file" : {
+    "checksum" : "$checksum"
+  },
+  "data" : [ {
+    "parameter" : {
+      "qCCV" : "$qccv"
+    },
+    "values" : [ {
+      "value" : "$value",
+      "contextSource" : "$context_source"
+    } ]
+  } ]
+}
+EOF
+
+    echo "[DEBUG] Created JSON file: $output_file" >&2
+}
+
+# Function: Extract Total Ion Current (TIC) from mzML file using xmllint
+# Inputs: 
+#   $1 - mzML file
+#   $2 - CV accession for TIC (e.g., "MS:1000285")
+# Output:
+#   Prints the total TIC value (sum of all TIC values) as integer to stdout
+get_tic(){
+  local mzml_file=$1
+  local cv_tic=$2
+  local curr_dir=$(pwd)
+  local basename=$(basename "$curr_dir/$mzml_file" | cut -f 1 -d '.')
+
+  echo "[DEBUG] --- get_tic ---" >&2
+  echo "[DEBUG] mzML file: $mzml_file" >&2
+  echo "[DEBUG] CV TIC accession: $cv_tic" >&2
+
+  # Extract TIC values using xmllint (similar to get_mit approach)
+  xmllint --xpath '//*[@accession="'$cv_tic'"]/@value' "$mzml_file" > "$curr_dir/$basename.tic.str" 2>/dev/null
+
+  # Extract numeric values and sum them, converting scientific notation to full numbers
+  grep -o '".*"' "$curr_dir/$basename.tic.str" | sed 's/"//g' > "$curr_dir/$basename.tic.num"
+
+  # Sum all TIC values using awk with printf to avoid scientific notation
+  awk '{sum+=$1} END{printf "%.0f", sum}' "$curr_dir/$basename.tic.num"
+}
+
+# Function: Extract checksum from filename by reversing and taking first element
+# Input: filename like "2019_QC01_ref_6583a564-93dd-4500-a101-b2fe56496b25_QC01_93d2a97b9d0b35c9668663223bdef998"
+# Output: checksum (last part: "93d2a97b9d0b35c9668663223bdef998")
+extract_checksum_from_filename() {
+    local filename=$1
+    echo "$filename" | rev | cut -d'_' -f1 | rev
+}
+
+# Function: Extract UUID from filename by reversing and taking third element
+# Input: filename like "2019_QC01_ref_6583a564-93dd-4500-a101-b2fe56496b25_QC01_93d2a97b9d0b35c9668663223bdef998"
+# Output: UUID (third from end: "6583a564-93dd-4500-a101-b2fe56496b25")
+extract_uuid_from_filename() {
+    local filename=$1
+    echo "$filename" | rev | cut -d'_' -f3 | rev
+}
+
+# Function: Extract sample ID from filename (everything except extension)
+# Input: filename like "2019_QC01_ref_6583a564-93dd-4500-a101-b2fe56496b25_QC01_93d2a97b9d0b35c9668663223bdef998.raw.mzML"
+# Output: sample_id without extension
+extract_sample_id_from_filename() {
+    local filename=$1
+    basename "$filename" .mzML | sed 's/\.raw$//'
 }

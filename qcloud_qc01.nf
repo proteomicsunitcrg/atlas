@@ -6,6 +6,7 @@ include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conve
 include { msnbasexic as msnbasexic_pr } from './subworkflows/quantification/quantification'
 include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/report/report_qcloud'
 include { create_decoy as cdecoy_pr; fragpipe_prep as fragpipe_prep_pr; fragpipe_main as fragpipe_main_pr; extract_apex_rt as extract_apex_rt_pr } from './subworkflows/search_engine/search_engine.nf'
+include { EXTRACT_METADATA } from './modules/qcloud/extract_metadata'
 
 workflow {
 
@@ -78,8 +79,10 @@ workflow {
         overwrite_tsv_ch
     )
 
+    EXTRACT_METADATA(trfp_pr.out)
+
     // Report to QCloud database
-    insertDataToQCloud_pr(rawfile_ch, trfp_pr.out, msnbasexic_pr.out)
+    //insertDataToQCloud_pr(rawfile_ch, trfp_pr.out, msnbasexic_pr.out)
 
     // Error handler
     workflow.onError {
