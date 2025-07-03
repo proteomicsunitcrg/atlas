@@ -340,57 +340,79 @@ extract_peptide_metrics() {
     set_value_to_qcloud_json_monitored_peptides "$checksum" "$dppm" "$json_dppm_id" "$peptide"
 }
 
+# Function: Extract peptide metrics from QC summary JSON and create QCloud JSON
+# Inputs:
+#   $1 - JSON file path (msnbasexic output)
+#   $2 - peptide short name (e.g., "LVN")
+#   $3 - sample ID
+#   $4 - checksum
+#   $5 - QC CV term (e.g., "QC:1001844")
+#   $6 - config file path
+# Output:
+#   Creates/updates QCloud JSON file with proper structure
 extract_peptide_metrics_qcsummary() {
-    local json_path=$1
-    local peptide=$2
-    local sample_id=$3      
+    local json_file=$1
+    local peptide_short_name=$2
+    local sample_id=$3
     local checksum=$4
-    local param_id=$5
-
-    echo "[DEBUG] --- extract_peptide_metrics_qcsummary ---"
-    echo "[DEBUG] json_path: $json_path"
-    echo "[DEBUG] peptide: $peptide"
-    echo "[DEBUG] sample_id: $sample_id"
-    echo "[DEBUG] checksum: $checksum"
-    echo "[DEBUG] param_id: $param_id"
-
-    # Normalize sample_id in case it includes .raw.mzML (safety fallback)
-    sample_id=$(echo "$sample_id" | sed 's/\.raw\.mzML$//')
-
-    if [[ -z "$sample_id" ]]; then
-        echo "[ERROR] sample_id is empty! Please provide the mzML basename."
-        return 1
+    local qccv=$5
+    local config_file=$6
+    
+    echo "[DEBUG] extract_peptide_metrics_qcsummary: $json_file, peptide: $peptide_short_name, qccv: $qccv"
+    
+    # Extract the metric type from qccv for filename
+    local qcode=$(echo "$qccv" | sed 's/QC://')
+    local output_file="${checksum}_QC_${qcode}.json"
+    
+    echo "[DEBUG] Output file: $output_file"
+    
+    # Get the OpenMS notation name from config mapping
+    local long_name=$(get_openms_peptide_name "$config_file" "$peptide_short_name")
+    
+    echo "[DEBUG] OpenMS name for $peptide_short_name: $long_name"
+    
+    # Extract the value from the JSON file - use short_name for lookup
+    local value=$(jq -r --arg peptide "$peptide_short_name" --arg sample "$sample_id" '.data[$peptide][$sample] // "null"' "$json_file")
+    
+    echo "[DEBUG] Extracted value for $peptide_short_name: $value"
+    
+    if [[ "$value" == "null" || -z "$value" ]]; then
+        echo "[WARNING] No value found for peptide $peptide_short_name in $json_file - skipping"
+        return 0  # Continue processing instead of failing
     fi
-
-    local value
-    value=$(jq -r --arg pep "$peptide" --arg sid "$sample_id" '.data[$pep][$sid]' "$json_path")
-
-    echo "[DEBUG] Lookup: .data[\"$peptide\"][\"$sample_id\"]"
-    echo "[DEBUG] Raw jq result: $value"
-
-    if [[ "$value" == "null" ]]; then
-        echo "[WARNING] No exact match for [$peptide], trying prefix match..."
-
-        local key_match
-        key_match=$(jq -r --arg pep "$peptide" '.data | keys[] | select(startswith($pep))' "$json_path" | head -n1)
-
-        echo "[DEBUG] Found key match by prefix: $key_match"
-
-        if [[ -n "$key_match" ]]; then
-            value=$(jq -r --arg km "$key_match" --arg sid "$sample_id" '.data[$km][$sid]' "$json_path")
-            echo "[DEBUG] Retrieved value from prefix key: $value"
-        fi
+    
+    # Create or update the QCloud JSON file
+    if [[ ! -f "$output_file" ]]; then
+        # Create new file with proper structure
+        cat > "$output_file" << EOF
+{
+  "file": {
+    "checksum": "$checksum"
+  },
+  "data": [
+    {
+      "parameter": {
+        "qCCV": "$qccv"
+      },
+      "values": [
+        {
+          "contextSource": "$long_name",
+          "value": "$value"
+        }
+      ]
+    }
+  ]
+}
+EOF
+    else
+        # Add to existing file (append to values array)
+        local temp_file=$(mktemp)
+        jq --arg contextSource "$long_name" --arg value "$value" \
+           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+           "$output_file" > "$temp_file" && mv "$temp_file" "$output_file"
     fi
-
-    if [[ -z "$value" || "$value" == "null" ]]; then
-        echo "[WARNING] No value found for [$peptide] in [$sample_id] from $json_path"
-        value=0
-    fi
-
-    echo "[DEBUG] Final value: $value"
-
-    # Write value to JSON file with checksum and param_id for later use
-    set_value_to_qcloud_json_monitored_peptides "$checksum" "$value" "$param_id" "$peptide"
+    
+    echo "[DEBUG] Updated $output_file with $peptide_short_name data"
 }
 
 # Function: Extract and store TIC, MIT MS1 and MIT MS2 using config parameters
@@ -574,4 +596,146 @@ extract_uuid_from_filename() {
 extract_sample_id_from_filename() {
     local filename=$1
     basename "$filename" .mzML | sed 's/\.raw$//'
+}
+
+# Function: Process peptides from msnbasexic JSON outputs
+# Inputs:
+#   $1 - mzML file (for extracting sample info)
+#   $2 - config file path (passed from Nextflow)
+#   $3 - peptides TSV file path (passed from Nextflow)
+#   $4+ - msnbasexic JSON files (individual files)
+# Output:
+#   Creates QCloud JSON files for each peptide/metric combination
+process_peptides_from_msnbasexic() {
+    local mzml_file=$1
+    local config_file=$2
+    local peptides_file=$3
+    shift 3  # Remove first 3 arguments, rest are JSON files
+    local json_files=("$@")  # Array of JSON files
+    
+    echo "[DEBUG] --- process_peptides_from_msnbasexic ---"
+    echo "[DEBUG] mzML: $mzml_file"
+    echo "[DEBUG] config: $config_file"
+    echo "[DEBUG] peptides_file: $peptides_file"
+    echo "[DEBUG] JSON files: ${json_files[*]}"
+    
+    # Extract information from filename
+    local basename_file=$(basename "$mzml_file")
+    local sample_id=$(extract_sample_id_from_filename "$basename_file")
+    local checksum=$(extract_checksum_from_filename "$sample_id")
+    local uuid=$(extract_uuid_from_filename "$sample_id")
+    
+    echo "[DEBUG] Sample info - ID: $sample_id, Checksum: $checksum, UUID: $uuid"
+    
+    # Parse QC term IDs from config (the actual values we need)
+    local area_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "area" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local rt_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "rt" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local dppm_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "dppm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local fwhm_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "fwhm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')  # ✅ CORRECT
+
+    echo "[DEBUG] QC mappings - Area: $area_qccv, RT: $rt_qccv, dppm: $dppm_qccv"
+    
+    # Parse JSON pattern mappings from config to avoid hardcoding
+    local area_pattern=$(grep -A 10 "json_pattern_map.*=" "$config_file" | grep "Log2_Total_Area" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local rt_pattern=$(grep -A 10 "json_pattern_map.*=" "$config_file" | grep "Observed_RT_sec" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local dppm_pattern=$(grep -A 10 "json_pattern_map.*=" "$config_file" | grep "dmz_ppm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local fwhm_pattern=$(grep -A 10 "json_pattern_map.*=" "$config_file" | grep "FWHM" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    
+    echo "[DEBUG] JSON patterns from config - Area: $area_pattern, RT: $rt_pattern, dppm: $dppm_pattern, FWHM: $fwhm_pattern"
+    
+    # Find specific JSON files using patterns from config
+    local area_json=""
+    local rt_json=""
+    local dppm_json=""
+    local fwhm_json=""
+    
+    for json_file in "${json_files[@]}"; do
+        # Remove the * from patterns for matching
+        local area_prefix=$(echo "$area_pattern" | sed 's/\*$//')
+        local rt_prefix=$(echo "$rt_pattern" | sed 's/\*$//')
+        local dppm_prefix=$(echo "$dppm_pattern" | sed 's/\*$//')
+        local fwhm_prefix=$(echo "$fwhm_pattern" | sed 's/\*$//')
+        
+        case "$json_file" in
+            ${area_prefix}*) area_json="$json_file" ;;
+            ${rt_prefix}*) rt_json="$json_file" ;;
+            ${dppm_prefix}*) dppm_json="$json_file" ;;
+            ${fwhm_prefix}*) fwhm_json="$json_file" ;;
+        esac
+    done
+    
+    echo "[DEBUG] Found JSON files:"
+    echo "[DEBUG] Area JSON: $area_json"
+    echo "[DEBUG] RT JSON: $rt_json"
+    echo "[DEBUG] dppm JSON: $dppm_json"
+    echo "[DEBUG] FWHM JSON: $fwhm_json"
+    
+    # Check if peptides file exists
+    if [[ ! -f "$peptides_file" ]]; then
+        echo "[ERROR] Peptides file not found: $peptides_file"
+        return 1
+    fi
+    
+    echo "[DEBUG] Peptides file found successfully!"
+    
+    # Process each peptide
+    while IFS=':' read -r peptide_name mz_value rt_value; do
+        echo "[DEBUG] Processing peptide: $peptide_name (m/z: $mz_value, RT: $rt_value)"
+        
+        # Extract values for each metric using your existing function
+        if [[ -f "$area_json" ]]; then
+            echo "[DEBUG] Extracting area for $peptide_name from $area_json"
+            extract_peptide_metrics_qcsummary "$area_json" "$peptide_name" "$sample_id" "$checksum" "$area_qccv" "$config_file"
+        fi
+
+        if [[ -f "$rt_json" ]]; then
+            echo "[DEBUG] Extracting RT for $peptide_name from $rt_json"
+            extract_peptide_metrics_qcsummary "$rt_json" "$peptide_name" "$sample_id" "$checksum" "$rt_qccv" "$config_file"
+        fi
+
+        if [[ -f "$dppm_json" ]]; then
+            echo "[DEBUG] Extracting dppm for $peptide_name from $dppm_json"
+            extract_peptide_metrics_qcsummary "$dppm_json" "$peptide_name" "$sample_id" "$checksum" "$dppm_qccv" "$config_file"
+        fi
+
+        if [[ -f "$fwhm_json" ]]; then
+            extract_peptide_metrics_qcsummary "$fwhm_json" "$peptide_name" "$sample_id" "$checksum" "$fwhm_qccv" "$config_file" 
+        fi
+        
+    done < <(read_peptides_from_tsv "$peptides_file")
+    
+    echo "[DEBUG] --- process_peptides_from_msnbasexic DONE ---"
+}
+
+# Function: Read peptides from TSV file
+# Input: TSV file path
+# Output: Prints peptide information (short_name:mz_M0:rt_teoretical)
+# Assumes TSV structure: short_name	long_name	mz_M0	mz_M1	mz_M2	ms2_mz	rt_teoretical
+read_peptides_from_tsv() {
+    local tsv_file=$1
+    
+    echo "[DEBUG] Reading peptides from: $tsv_file" >&2
+    
+    # Skip header line and extract columns by position using awk (more reliable than read)
+    # Column 1: short_name, Column 3: mz_M0, Column 7: rt_teoretical
+    tail -n +2 "$tsv_file" | awk -F'\t' '{print $1 ":" $3 ":" $7}'
+}
+
+# Function: Get OpenMS notation peptide name from config mapping
+get_openms_peptide_name() {
+    local config_file=$1
+    local simple_name=$2
+    
+    echo "[DEBUG] Looking up OpenMS name for: $simple_name" >&2
+    
+    # Extract the OpenMS name from config mapping
+    local openms_name=$(grep -A 20 "peptide_name_mapping_openms_notation" "$config_file" | grep "\"$simple_name\":" | sed 's/.*: *"\([^"]*\)".*/\1/')
+    
+    if [[ -z "$openms_name" ]]; then
+        echo "[WARNING] No OpenMS mapping found for $simple_name, using simple name" >&2
+        echo "$simple_name"
+    else
+        echo "[DEBUG] Found OpenMS name: $openms_name" >&2
+        echo "$openms_name"
+    fi
 }
