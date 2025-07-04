@@ -8,6 +8,7 @@ include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/rep
 include { create_decoy as cdecoy_pr; fragpipe_prep as fragpipe_prep_pr; fragpipe_main as fragpipe_main_pr; extract_apex_rt as extract_apex_rt_pr } from './subworkflows/search_engine/search_engine.nf'
 include { PROCESS_PEPTIDES } from './modules/qcloud/process_peptides'
 include { EXTRACT_METADATA } from './modules/qcloud/extract_metadata'
+include { SUBMIT_TO_QCLOUD } from './modules/qcloud/submit_qcloud' 
 
 workflow {
 
@@ -89,8 +90,18 @@ workflow {
     //Extract mit ms1 and ms2, tic
     EXTRACT_METADATA(trfp_pr.out)
 
-    // Report to QCloud database
-    //insertDataToQCloud_pr(rawfile_ch, trfp_pr.out, msnbasexic_pr.out)
+    // Combine all JSON outputs for API submission (using correct channel names!)
+    combined_jsons_ch = EXTRACT_METADATA.out.qc_jsons
+        .join(PROCESS_PEPTIDES.out.peptide_jsons)
+        .map { basename_mzml, metadata_jsons, peptide_jsons ->
+            [basename_mzml, [metadata_jsons, peptide_jsons].flatten()]
+        }
+
+    // Submit to QCloud API
+    SUBMIT_TO_QCLOUD(
+        combined_jsons_ch.map { it[1] },  // all JSON files
+        combined_jsons_ch.map { it[0] }   // basename_mzml
+    )
 
     // Error handler
     workflow.onError {

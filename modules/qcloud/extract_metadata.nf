@@ -7,7 +7,7 @@ process EXTRACT_METADATA {
     
     output:
     path "metadata.json", emit: metadata_json
-    path "*_QC_*.json", emit: qc_jsons, optional: true
+    tuple val(basename_mzml), path("*_QC_*.json"), emit: qc_jsons, optional: true
     
     script:
     """

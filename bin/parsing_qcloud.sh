@@ -341,15 +341,6 @@ extract_peptide_metrics() {
 }
 
 # Function: Extract peptide metrics from QC summary JSON and create QCloud JSON
-# Inputs:
-#   $1 - JSON file path (msnbasexic output)
-#   $2 - peptide short name (e.g., "LVN")
-#   $3 - sample ID
-#   $4 - checksum
-#   $5 - QC CV term (e.g., "QC:1001844")
-#   $6 - config file path
-# Output:
-#   Creates/updates QCloud JSON file with proper structure
 extract_peptide_metrics_qcsummary() {
     local json_file=$1
     local peptide_short_name=$2
@@ -362,7 +353,22 @@ extract_peptide_metrics_qcsummary() {
     
     # Extract the metric type from qccv for filename
     local qcode=$(echo "$qccv" | sed 's/QC://')
-    local output_file="${checksum}_QC_${qcode}.json"
+
+    # Parse filename by reversing and splitting by underscore
+    local reversed_sample_id=$(echo "$sample_id" | rev)
+    local checksum_reversed=$(echo "$reversed_sample_id" | cut -d'_' -f1)
+    local context_code_reversed=$(echo "$reversed_sample_id" | cut -d'_' -f2)
+    local uuid_reversed=$(echo "$reversed_sample_id" | cut -d'_' -f3)
+
+    # Reverse them back to get original values
+    local checksum_extracted=$(echo "$checksum_reversed" | rev)
+    local context_code=$(echo "$context_code_reversed" | rev)
+    local uuid=$(echo "$uuid_reversed" | rev)
+
+    echo "[DEBUG] Parsed from sample_id: UUID=$uuid, Context=$context_code, Checksum=$checksum_extracted"
+
+    # Create filename in correct format: uuid_context_checksum_QC_qcode.json
+    local output_file="${uuid}_${context_code}_${checksum}_QC_${qcode}.json"
     
     echo "[DEBUG] Output file: $output_file"
     
@@ -489,9 +495,9 @@ extract_general_metrics(){
   # Create JSON files with proper QCloud structure
   echo "[DEBUG] Creating QCloud JSON files with proper structure..."
   
-  create_qcloud_json_with_header "$checksum" "$param_id_tic" "$context_id_tic" "$tic" "$uuid"
-  create_qcloud_json_with_header "$checksum" "$param_id_mit_ms1" "$context_id_mit_ms1" "$mit_ms1" "$uuid"
-  create_qcloud_json_with_header "$checksum" "$param_id_mit_ms2" "$context_id_mit_ms2" "$mit_ms2" "$uuid"
+  create_qcloud_json_with_header "$checksum" "$param_id_tic" "$context_id_tic" "$tic" "$uuid" "$sample_id"
+  create_qcloud_json_with_header "$checksum" "$param_id_mit_ms1" "$context_id_mit_ms1" "$mit_ms1" "$uuid" "$sample_id"
+  create_qcloud_json_with_header "$checksum" "$param_id_mit_ms2" "$context_id_mit_ms2" "$mit_ms2" "$uuid" "$sample_id"
 
   echo "[DEBUG] QCloud JSON files created successfully"
   echo "[DEBUG] --- extract_general_metrics DONE ---"
@@ -513,20 +519,27 @@ create_qcloud_json_with_header() {
     local context_source=$3
     local value=$4
     local uuid=$5
+    local sample_id=$6  # Add sample_id parameter
     
     # Clean up any newlines/carriage returns from inputs
     context_source=$(echo "$context_source" | tr -d '\n\r')
     qccv=$(echo "$qccv" | tr -d '\n\r')
     
-    # Extract just the numeric part from contextSource for filename (e.g., "QC:1000927" -> "1000927")
-    local context_code=$(echo "$context_source" | cut -d':' -f2)
+    # Extract context code (QC01) using reverse parsing like in peptides
+    local reversed_sample_id=$(echo "$sample_id" | rev)
+    local context_code_reversed=$(echo "$reversed_sample_id" | cut -d'_' -f2)
+    local context_code=$(echo "$context_code_reversed" | rev)
     
-    # Create filename using contextSource: {uuid}_{checksum}_QC_{context_code}.json
-    local output_file="${uuid}_${checksum}_QC_${context_code}.json"
+    # Extract just the numeric part from context_source for filename (e.g., "QC:1000927" -> "1000927")
+    local qcode=$(echo "$context_source" | cut -d':' -f2)
+    
+    # Create filename with correct format: {uuid}_{context_code}_{checksum}_QC_{qcode}.json
+    local output_file="${uuid}_${context_code}_${checksum}_QC_${qcode}.json"
     
     echo "[DEBUG] Creating file: '$output_file'" >&2
     echo "[DEBUG] qCCV: '$qccv'" >&2
     echo "[DEBUG] contextSource: '$context_source'" >&2
+    echo "[DEBUG] Context code from sample_id: '$context_code'" >&2
     
     cat > "$output_file" << EOF
 {
@@ -730,4 +743,183 @@ get_openms_peptide_name() {
         echo "[DEBUG] Found OpenMS name: $openms_name" >&2
         echo "$openms_name"
     fi
+}
+
+
+#!/bin/bash
+
+# Function: Submit all QCloud data (file metadata + metrics data)
+submit_all_qcloud_data() {
+    local sample_id=$1
+    local config_file=$2
+    shift 2  # Remove sample_id and config_file, rest are JSON files
+    local json_files=("$@")
+    
+    echo "[DEBUG] --- submit_all_qcloud_data ---"
+    echo "[DEBUG] Sample ID: $sample_id"
+    echo "[DEBUG] Config file: $config_file"
+    echo "[DEBUG] JSON files available: ${json_files[*]}"
+    
+    # Use existing API URL parameters (no need to extract from config)
+    local signin_url="${url_api_qcloud_signin}"
+    local api_user="${url_api_qcloud_user}"
+    local api_pass="${url_api_qcloud_pass}"
+    local insert_file_url="${url_api_qcloud_insert_file}"
+    local insert_data_url="${url_api_qcloud_insert_data}"
+    
+    # Use your existing context source for monitored peptides
+    local context_source=$(extract_context_value "$config_file" "monitored_peptides")
+    
+    echo "[DEBUG] API URLs - Signin: $signin_url, Insert File: $insert_file_url, Insert Data: $insert_data_url"
+    echo "[DEBUG] Context source: $context_source"
+    
+    # Extract sample information
+    local checksum=$(extract_checksum_from_filename "$sample_id")
+    local labsysid=$(extract_uuid_from_filename "$sample_id")
+    
+    echo "[DEBUG] Sample info - Checksum: $checksum, LabSysID: $labsysid"
+    
+    # Get access token using your existing function
+    echo "Getting access token..."
+    if ! access_token=$(source api.sh; get_api_access_token_qcloud "$signin_url" "$api_user" "$api_pass"); then
+        echo "ERROR: Failed to get access token"
+        return 1
+    fi
+    
+    # Step 1: Insert file metadata (if we have a file metadata JSON)
+    local file_metadata_json=""
+    for json_file in "${json_files[@]}"; do
+        if [[ "$json_file" == *"file_metadata"* ]]; then
+            file_metadata_json="$json_file"
+            break
+        fi
+    done
+    
+    if [[ -n "$file_metadata_json" && -f "$file_metadata_json" ]]; then
+        echo "Inserting file metadata to QCloud..."
+        submit_file_metadata "$file_metadata_json" "$access_token" "$insert_file_url" "$context_source" "$labsysid"
+    else
+        echo "[INFO] No file metadata JSON found, skipping file metadata insertion"
+    fi
+    
+    # Step 2: Insert all metrics data using your existing qcloud_terms
+    echo "Inserting metrics data to QCloud..."
+    submit_metrics_data "$access_token" "$insert_data_url" "$config_file" "${json_files[@]}"
+    
+    echo "[DEBUG] --- submit_all_qcloud_data DONE ---"
+}
+
+# Function: Submit file metadata (same as before)
+submit_file_metadata() {
+    local json_file=$1
+    local access_token=$2
+    local insert_file_url=$3
+    local context_source=$4
+    local labsysid=$5
+    
+    echo "[DEBUG] Submitting file metadata: $json_file"
+    
+    local api_url="${insert_file_url}/${context_source}/${labsysid}"
+    echo "DEBUG: Using URL: $api_url"
+    
+    response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \
+        -H "Authorization: $access_token" \
+        -H "Content-Type: application/json" \
+        "$api_url" \
+        --data @"$json_file")
+
+    local http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    local body=$(echo $response | sed -e 's/HTTPSTATUS:.*//')
+
+    echo "HTTP Status: $http_code"
+    echo "Response: $body"
+
+    if [[ $http_code -ne 200 && $http_code -ne 201 ]]; then
+        echo "ERROR: Failed to insert file metadata (HTTP $http_code)"
+        echo "Response: $body"
+        return 1
+    fi
+    
+    echo "Successfully submitted file metadata"
+}
+
+# Function: Submit metrics data using your existing qcloud_terms
+submit_metrics_data() {
+    local access_token=$1
+    local insert_data_url=$2
+    local config_file=$3
+    shift 3
+    local json_files=("$@")
+    
+    # Extract QC codes from your existing qcloud_terms
+    local qc_codes=(
+        $(extract_qcloud_term "$config_file" "tic")
+        $(extract_qcloud_term "$config_file" "mit_ms1")
+        $(extract_qcloud_term "$config_file" "area")
+        $(extract_qcloud_term "$config_file" "rt")
+        $(extract_qcloud_term "$config_file" "dppm")
+        $(extract_qcloud_term "$config_file" "fwhm")
+    )
+    
+    echo "[DEBUG] QC codes to submit: ${qc_codes[*]}"
+    
+    # Submit each QC parameter
+    for qc_code in "${qc_codes[@]}"; do
+        # Convert QC:1001844 to QC_1001844 for filename matching
+        local param_code=$(echo "$qc_code" | sed 's/:/_/g')
+        
+        # Find corresponding JSON file
+        local json_file=""
+        for file in "${json_files[@]}"; do
+            if [[ "$file" == *"${param_code}.json" ]]; then
+                json_file="$file"
+                break
+            fi
+        done
+        
+        if [[ -n "$json_file" && -f "$json_file" ]]; then
+            echo "Posting $json_file for parameter $qc_code"
+            
+            # Show JSON content for debugging
+            echo "DEBUG: Content of $json_file:"
+            head -5 "$json_file"
+            
+            response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \
+                -H "Authorization: $access_token" \
+                -H "Content-Type: application/json" \
+                "$insert_data_url" \
+                --data @"$json_file")
+
+            local http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+            local body=$(echo $response | sed -e 's/HTTPSTATUS:.*//')
+
+            echo "HTTP Status: $http_code"
+            echo "Response: $body"
+
+            if [[ $http_code -ne 200 && $http_code -ne 201 ]]; then
+                echo "WARNING: Failed to post $json_file (HTTP $http_code)"
+                echo "Response: $body"
+            else
+                echo "Successfully posted $json_file"
+            fi
+        else
+            echo "WARNING: JSON file for parameter $qc_code not found. Skipping."
+        fi
+    done
+}
+
+# Helper function: Extract QCloud term values from your existing config
+extract_qcloud_term() {
+    local config_file=$1
+    local term_key=$2
+    
+    grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "$term_key" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r'
+}
+
+# Helper function: Extract context values from your existing config
+extract_context_value() {
+    local config_file=$1
+    local context_key=$2
+    
+    grep -A 10 "qcloud_contexts.*=" "$config_file" | grep -w "$context_key" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r'
 }

@@ -7,7 +7,7 @@ process PROCESS_PEPTIDES {
     path(msnbasexic_output)
     
     output:
-    path "*_QC_*.json", emit: peptide_jsons, optional: true
+    tuple val(basename_mzml), path("*_QC_*.json"), emit: peptide_jsons, optional: true
     path "peptides_summary.json", emit: summary_json
     
     script:
