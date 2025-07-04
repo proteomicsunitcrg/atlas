@@ -631,36 +631,27 @@ process_peptides_from_msnbasexic() {
     local area_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "area" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
     local rt_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "rt" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
     local dppm_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "dppm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
-    local fwhm_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "fwhm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')  # ✅ CORRECT
+    local fwhm_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "fwhm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
 
-    echo "[DEBUG] QC mappings - Area: $area_qccv, RT: $rt_qccv, dppm: $dppm_qccv"
+    echo "[DEBUG] QC mappings - Area: $area_qccv, RT: $rt_qccv, dppm: $dppm_qccv, FWHM: $fwhm_qccv"
     
-    # Parse JSON pattern mappings from config to avoid hardcoding
-    local area_pattern=$(grep -A 10 "json_pattern_map.*=" "$config_file" | grep "Log2_Total_Area" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
-    local rt_pattern=$(grep -A 10 "json_pattern_map.*=" "$config_file" | grep "Observed_RT_sec" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
-    local dppm_pattern=$(grep -A 10 "json_pattern_map.*=" "$config_file" | grep "dmz_ppm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
-    local fwhm_pattern=$(grep -A 10 "json_pattern_map.*=" "$config_file" | grep "FWHM" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
-    
-    echo "[DEBUG] JSON patterns from config - Area: $area_pattern, RT: $rt_pattern, dppm: $dppm_pattern, FWHM: $fwhm_pattern"
-    
-    # Find specific JSON files using patterns from config
+    # Find specific JSON files by direct pattern matching (more flexible)
     local area_json=""
     local rt_json=""
     local dppm_json=""
     local fwhm_json=""
     
     for json_file in "${json_files[@]}"; do
-        # Remove the * from patterns for matching
-        local area_prefix=$(echo "$area_pattern" | sed 's/\*$//')
-        local rt_prefix=$(echo "$rt_pattern" | sed 's/\*$//')
-        local dppm_prefix=$(echo "$dppm_pattern" | sed 's/\*$//')
-        local fwhm_prefix=$(echo "$fwhm_pattern" | sed 's/\*$//')
-        
         case "$json_file" in
-            ${area_prefix}*) area_json="$json_file" ;;
-            ${rt_prefix}*) rt_json="$json_file" ;;
-            ${dppm_prefix}*) dppm_json="$json_file" ;;
-            ${fwhm_prefix}*) fwhm_json="$json_file" ;;
+            *Total_Area*) area_json="$json_file" ;;           # Prefer raw area values
+            *Log2_Total_Area*) 
+                if [[ -z "$area_json" ]]; then                # Fallback to log2 if no raw area
+                    area_json="$json_file"
+                fi
+                ;;
+            *Observed_RT_sec*) rt_json="$json_file" ;;
+            *dmz_ppm*) dppm_json="$json_file" ;;
+            *FWHM*) fwhm_json="$json_file" ;;
         esac
     done
     
@@ -699,6 +690,7 @@ process_peptides_from_msnbasexic() {
         fi
 
         if [[ -f "$fwhm_json" ]]; then
+            echo "[DEBUG] Extracting FWHM for $peptide_name from $fwhm_json"
             extract_peptide_metrics_qcsummary "$fwhm_json" "$peptide_name" "$sample_id" "$checksum" "$fwhm_qccv" "$config_file" 
         fi
         

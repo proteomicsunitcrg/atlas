@@ -10,9 +10,10 @@ suppressPackageStartupMessages(library(jsonlite))
 suppressPackageStartupMessages(library(glue))
 
 # Define metrics to be exported to JSON
-json_metrics <- c("Log2_Total_Area", "dmz_ppm", "Observed_RT_sec", "FWHM")
+json_metrics <- c("Log2_Total_Area", "Total_Area", "dmz_ppm", "Observed_RT_sec", "FWHM")
 json_titles <- list(
   Log2_Total_Area = "Log₂ Area",
+  Total_Area = "Area",
   dmz_ppm = "Δm/z (ppm)",
   Observed_RT_sec = "Observed Retention Time (s)",
   FWHM = "Full Width at Half Max (s)"
@@ -306,6 +307,7 @@ function_create_output_df <- function(sample_name, analyte, rt_target, rt_obs, m
     dmz_Da = mz_exp_result - mz1,
     Max_Intensity = format_custom(intensity_mz1),
     Area = format_custom(area_mz1),
+    Total_Area = format_custom(area_mz1),
     Log2_Total_Area = format_custom(ifelse(!is.na(area_mz1) & area_mz1 > 0, log2(area_mz1), NA)),
     FWHM = format_custom(fwhm),
     PPP = format_custom(ppp)
