@@ -41,8 +41,10 @@ checksum=$(cat !{checksum})
 
 echo "Calculating parameters..."
 
-#Totals:
+## Total number of modified sites:
 num_peptides_total=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+echo "[INFO] num_peptides_total: $num_peptides_total"
+
 num_pic_n_term=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} ".(Phenylisocyanate)")
 num_prop_k=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Propionyl)")
 num_prop_n_term=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} ".(Propionyl)")
@@ -50,7 +52,13 @@ num_k_dim=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_
 num_k_trim=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Trimethyl)")
 num_k_acet=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Acetyl)")
 num_k_croton=$(source !{binfolder}/parsing.sh; get_num_peptidoform_sites !{protinf_file} "K(Crotonaldehyde)")
-num_peptides_modif=$(echo "$num_pic_n_term+$num_prop_k+$num_prop_n_term+$num_k_dim+$num_k_trim+$num_k_acet+$num_k_croton" | bc -l)
+num_peptides_modif_sites=$(echo "$num_pic_n_term+$num_prop_k+$num_prop_n_term+$num_k_dim+$num_k_trim+$num_k_acet+$num_k_croton" | bc -l)
+echo "[INFO] num_peptides_modif_sites: $num_peptides_modif_sites"
+
+# Total number of modified peptides:
+pattern=".(Phenylisocyanate)|K\\(Propionyl\\)|.(Propionyl)|K\\(Dimethyl\\)|K\\(Trimethyl\\)|K\\(Acetyl\\)|K\\(Crotonaldehyde\\)"
+num_peptides_modif=$(source !{binfolder}/parsing.sh; get_num_all_modified_peptidoforms !{protinf_file} "$pattern")
+echo "[INFO] num_peptides_modif: $num_peptides_modif"
 
 ### Extract parameters from IDMapper file:
 sum_area_propionyl_protein_n_terminal=$(source !{binfolder}/parsing.sh; get_sum_area_propionyl_protein_n_terminal !{idmapper_file})
