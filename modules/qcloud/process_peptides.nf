@@ -5,6 +5,7 @@ process PROCESS_PEPTIDES {
     input:
     tuple val(filename_mzml), val(basename_mzml), val(path_mzml), file(mzml_file)
     path(msnbasexic_output)
+    val(selected_tsv_file)  
     
     output:
     tuple val(basename_mzml), path("*_QC_*.json"), emit: peptide_jsons, optional: true
@@ -25,8 +26,8 @@ process PROCESS_PEPTIDES {
     echo "mzML file: ${mzml_file}"
     echo "msnbasexic output files: ${msnbasexic_output}"
     
-    # Pass the config and TSV file paths from Nextflow to bash function
-    process_peptides_from_msnbasexic ${mzml_file} "${params.home_dir}/mygit/atlas-config/atlas-test/conf/tools/qcloud.config" "${params.peptides_tsv_file}" ${msnbasexic_output}
+    # Pass the config and dynamically selected TSV file paths from Nextflow to bash function
+    process_peptides_from_msnbasexic ${mzml_file} "${params.home_dir}/mygit/atlas-config/atlas-test/conf/tools/qcloud.config" "${selected_tsv_file}" ${msnbasexic_output}
     
     # Create summary
     echo "Peptide processing completed for ${mzml_file}" > peptides_summary.json

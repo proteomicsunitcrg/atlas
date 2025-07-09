@@ -222,12 +222,12 @@ process extract_apex_rt {
     file combined_ion     // File containing experimental RT values
 
     output:
-    path "qcloud_qc01_updated.tsv"
+    path "qcloud_updated.tsv"
 
     script:
     """
     # Write header: same columns, overwriting rt_teoretical with updated values
-    echo -e "short_name\tlong_name\tmz_M0\tmz_M1\tmz_M2\tms2_mz\trt_teoretical" > qcloud_qc01_updated.tsv
+    echo -e "short_name\tlong_name\tmz_M0\tmz_M1\tmz_M2\tms2_mz\trt_teoretical" > qcloud_updated.tsv
 
     # Process each data line, skipping the header
     tail -n +2 ${qcloud_tsv} | while IFS=\$'\\t' read -r short_name long_name mz_M0 mz_M1 mz_M2 ms2_mz rt_teoretical; do
@@ -236,7 +236,7 @@ process extract_apex_rt {
 
         # Output the line with updated rt_teoretical value, and empty mz_M1
         echo -e "\${short_name}\t\${long_name}\t\${mz_M0}\t\t\${mz_M2}\t\${ms2_mz}\t\${rt_teoretical}"
-    done >> qcloud_qc01_updated.tsv
+    done >> qcloud_updated.tsv
     """
 
 }

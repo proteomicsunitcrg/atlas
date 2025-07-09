@@ -2,6 +2,9 @@
 
 nextflow.enable.dsl=2
 
+// Import utility functions
+include { extractQCType; selectTsvFile } from './modules/functions/utils'
+
 include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
 include { msnbasexic as msnbasexic_pr } from './subworkflows/quantification/quantification'
 include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/report/report_qcloud'
@@ -11,6 +14,18 @@ include { EXTRACT_METADATA } from './modules/qcloud/extract_metadata'
 include { SUBMIT_TO_QCLOUD } from './modules/qcloud/submit_qcloud' 
 
 workflow {
+    // Extract filename from the full path for parsing
+    def rawfilePath = params.rawfile
+    def filename = new File(rawfilePath).getName()
+    
+    // Extract QC type and select appropriate TSV file
+    def qcType = extractQCType(filename)
+    def selected_tsv_file = selectTsvFile(qcType, params)
+
+    log.info "Raw file: ${params.rawfile}"
+    log.info "Filename: ${filename}"
+    log.info "Extracted QC type: ${qcType}"
+    log.info "Selected TSV file: ${selected_tsv_file}"
 
     Channel
     .fromPath(params.rawfile)
@@ -25,7 +40,7 @@ workflow {
     // Channels for msnbasexic_pr grouped params
     xic_params = params.msnbasexic_params
 
-    tsv_file_ch         = Channel.value(xic_params.tsv_file)
+    tsv_file_ch         = Channel.value(selected_tsv_file)
     output_dir_ch       = Channel.value(xic_params.output_dir)
     analyte_name_ch     = Channel.value(xic_params.analyte_name)
     rt_tol_sec_ch       = Channel.value(xic_params.rt_tol_sec)
@@ -38,7 +53,7 @@ workflow {
 
     // Parse TSV file of peptides into tuples (meta, data)
     peptide_seqs = Channel
-    .fromPath(xic_params.tsv_file)
+    .fromPath(selected_tsv_file)
     .splitCsv(header: true, sep: '\t')
     .map { row ->
         def meta = [ id: row.short_name ]
@@ -54,13 +69,13 @@ workflow {
     cdecoy_pr(rawfile_ch)
 
     // Search engine preparation and execution
-    fragpipe_prep_pr(rawfile_ch,cdecoy_pr.out)
+    fragpipe_prep_pr(rawfile_ch, cdecoy_pr.out)
     fragpipe_main_pr(rawfile_ch, fragpipe_prep_pr.out)
 
     combined_ion_ch = fragpipe_main_pr.out[5]
 
     extract_apex_rt_pr(
-        Channel.fromPath(xic_params.tsv_file),  // Pass the TSV file directly
+        Channel.fromPath(selected_tsv_file),  // Use the selected TSV file
         combined_ion_ch
     )
 
@@ -84,7 +99,8 @@ workflow {
     //Extract area, rt, dppm, and fwhm
     PROCESS_PEPTIDES(
         trfp_pr.out,
-        msnbasexic_pr.out
+        msnbasexic_pr.out,
+        Channel.value(selected_tsv_file)
     )
 
     //Extract mit ms1 and ms2, tic
