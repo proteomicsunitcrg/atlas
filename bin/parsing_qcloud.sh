@@ -421,12 +421,6 @@ EOF
     echo "[DEBUG] Updated $output_file with $peptide_short_name data"
 }
 
-# Function: Extract and store TIC, MIT MS1 and MIT MS2 using config parameters
-# Inputs:
-#   $1 - mzML file
-#   $2 - config file path
-# Output:
-#   Creates JSON files and returns values
 extract_general_metrics(){
   local mzml_file=$1
   local config_file=$2
@@ -455,18 +449,20 @@ extract_general_metrics(){
   local param_id_tic=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "tic" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
   local param_id_mit_ms1=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep "mit_ms1" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
   local param_id_mit_ms2=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep "mit_ms2" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local param_id_ms2_count=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep "ms2_scan_count" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
 
   # Parse QC context IDs from config (with better newline handling)
   local context_id_tic=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep -w "tic" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
   local context_id_mit_ms1=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep "mit_ms1" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
   local context_id_mit_ms2=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep "mit_ms2" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local context_id_ms2_count=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep "ms2_scan_count" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
 
   echo "[DEBUG] Parsed from config:"
   echo "[DEBUG] CV TIC: '$cv_total_tic'"
   echo "[DEBUG] CV MS level: '$cv_ms_level'" 
   echo "[DEBUG] CV injection time: '$cv_injection_time'"
-  echo "[DEBUG] QC param IDs - TIC: '$param_id_tic', MS1: '$param_id_mit_ms1', MS2: '$param_id_mit_ms2'"
-  echo "[DEBUG] QC context IDs - TIC: '$context_id_tic', MS1: '$context_id_mit_ms1', MS2: '$context_id_mit_ms2'"
+  echo "[DEBUG] QC param IDs - TIC: '$param_id_tic', MS1: '$param_id_mit_ms1', MS2: '$param_id_mit_ms2', MS2 scan count: '$param_id_ms2_count'"
+  echo "[DEBUG] QC context IDs - TIC: '$context_id_tic', MS1: '$context_id_mit_ms1', MS2: '$context_id_mit_ms2', MS2 scan count: '$context_id_ms2_count'"
 
   # TIC extraction using xmllint approach
   echo "[DEBUG] Starting TIC extraction using xmllint..."
@@ -492,19 +488,28 @@ extract_general_metrics(){
   : "${mit_ms2:=0}"
   echo "[DEBUG] MIT MS2 (final): $mit_ms2"
 
+  # MS2 scan count
+  echo "[DEBUG] Extracting MS2 scan count..."
+  local ms2_scan_count
+  ms2_scan_count=$(get_msn_scan_count "$mzml_file" "$cv_ms_level" "2")
+  echo "[DEBUG] MS2 scan count raw value: $ms2_scan_count"
+  : "${ms2_scan_count:=0}"
+  echo "[DEBUG] MS2 scan count (final): $ms2_scan_count"
+
   # Create JSON files with proper QCloud structure
   echo "[DEBUG] Creating QCloud JSON files with proper structure..."
   
   create_qcloud_json_with_header "$checksum" "$param_id_tic" "$context_id_tic" "$tic" "$uuid" "$sample_id"
   create_qcloud_json_with_header "$checksum" "$param_id_mit_ms1" "$context_id_mit_ms1" "$mit_ms1" "$uuid" "$sample_id"
   create_qcloud_json_with_header "$checksum" "$param_id_mit_ms2" "$context_id_mit_ms2" "$mit_ms2" "$uuid" "$sample_id"
+  create_qcloud_json_with_header "$checksum" "$param_id_ms2_count" "$context_id_ms2_count" "$ms2_scan_count" "$uuid" "$sample_id"
 
   echo "[DEBUG] QCloud JSON files created successfully"
   echo "[DEBUG] --- extract_general_metrics DONE ---"
   
   # Return the values for use in metadata.json
-  echo "$tic,$mit_ms1,$mit_ms2,$checksum,$uuid"
-} 
+  echo "$tic,$mit_ms1,$mit_ms2,$ms2_scan_count,$checksum,$uuid"
+}
 
 # Function: Create QCloud JSON with proper header structure
 # Inputs:
@@ -559,6 +564,22 @@ create_qcloud_json_with_header() {
 EOF
 
     echo "[DEBUG] Created JSON file: $output_file" >&2
+}
+
+# Function: Count MSN scans in mzML file
+# Inputs: 
+#   $1 - mzML file
+#   $2 - CV accession for ms level (e.g., "MS:1000511")
+#   $3 - ms level value (1 or 2)
+# Output:
+#   Prints the count of MSN scans (numeric) to stdout
+get_msn_scan_count(){
+  mzml_file=$1
+  cv_ms_level=$2
+  ms_level=$3
+
+  # Direct count using xmllint's count() function - most efficient
+  xmllint --xpath "count(//*[@accession='$cv_ms_level' and @value='$ms_level'])" "$mzml_file" 2>/dev/null || echo "0"
 }
 
 # Function: Extract Total Ion Current (TIC) from mzML file using xmllint
