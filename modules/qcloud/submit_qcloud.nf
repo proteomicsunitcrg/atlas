@@ -5,6 +5,7 @@ process SUBMIT_TO_QCLOUD {
     input:
     path json_files
     val sample_id
+    val qcloud_sample_type
     
     output:
     path "qcloud_submission_*.log"
@@ -16,6 +17,7 @@ process SUBMIT_TO_QCLOUD {
     chmod +x api.sh
     
     echo "Submitting QCloud data for sample: ${sample_id}"
+    echo "Using QCloud sample type: ${qcloud_sample_type}"
     echo "Available JSON files:"
     ls -la *.json || echo "No JSON files found"
     
@@ -70,7 +72,7 @@ process SUBMIT_TO_QCLOUD {
     echo \$insert_file_string > insert_file_string
     
     echo "Inserting file metadata to QCloud..."
-    echo "DEBUG: Using URL: \${INSERT_FILE_URL}/QC:0000005/\$labsysid"
+    echo "DEBUG: Using URL: \${INSERT_FILE_URL}/${qcloud_sample_type}/\$labsysid"
     echo "DEBUG: File registration JSON:"
     cat insert_file_string
     
@@ -78,7 +80,7 @@ process SUBMIT_TO_QCLOUD {
     response=\$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \\
         -H "Authorization: \$access_token" \\
         -H "Content-Type: application/json" \\
-        "\${INSERT_FILE_URL}/QC:0000005/\$labsysid" \\
+        "\${INSERT_FILE_URL}/${qcloud_sample_type}/\$labsysid" \\
         --data @insert_file_string)
     
     http_code=\$(echo \$response | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')

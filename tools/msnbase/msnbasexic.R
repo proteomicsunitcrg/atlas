@@ -27,6 +27,9 @@ json_yaxis_window <- list(
 # PPP constant (OPTIONAL):  
 PPP_THRESHOLD_RATIO <- 0.05
 
+IMPUTE_MISSING_VALUES <- TRUE
+IMPUTE_VALUE <- 0
+
 # Set verbose logging
 # Set to TRUE for detailed logs, FALSE to disable
 verbose_logging <- FALSE
@@ -373,6 +376,13 @@ calculate_fwhm <- function(rt_values, intensities) {
   list(fwhm = fwhm, left_rt = left_rt, right_rt = right_rt)
 }
 
+# Utility: Replace NA values with a fixed value if imputation is enabled
+impute_na_values <- function(values, impute = FALSE, impute_val = NA) {
+  if (!impute) return(values)
+  values[is.na(values)] <- impute_val
+  return(values)
+}
+
 # Trapezoidal area calculation
 compute_xic_area <- function(rt_values, intensities) {
   valid <- which(!is.na(rt_values) & !is.na(intensities))
@@ -549,16 +559,64 @@ for (analyte in analyte_names) {
     message(glue("    Fragment target m/z (ms2_mz): {analyte_data$ms2_mz}"))
   }
   xic <- compute_xic(ms_data, mz1, rt_target, opt$rt_tol_sec, mz_tol, opt$msLevel, opt$mz_tol_ppm, ms2_target_mz = if (opt$msLevel == 2) as.numeric(analyte_data$ms2_mz) else NULL)
+  
   if (length(xic) == 0 || is.null(xic[[1]])) {
-    message(glue("  No XIC signal found for analyte {analyte}. Skipping."))
-    next
-  }
+  
+    if (IMPUTE_MISSING_VALUES) {
+      message(glue("  No XIC signal for analyte {analyte}, imputing with value {IMPUTE_VALUE}"))
+
+      sample_base <- tools::file_path_sans_ext(basename(opt$file_name))
+      sample_name <- sub("\\.raw$", "", sample_base)
+
+      rt_obs <- NA
+      intensity_mz1 <- IMPUTE_VALUE
+      area_mz1 <- IMPUTE_VALUE
+      fwhm_value <- IMPUTE_VALUE
+      ppp_value <- IMPUTE_VALUE
+      mz_exp_result <- NA
+
+      result_row <- function_create_output_df(
+        sample_name, analyte, analyte_data$rt_target, rt_obs,
+        mz1, mz_exp_result, intensity_mz1, area_mz1, fwhm_value, ppp_value
+      )
+
+      all_results[[analyte]] <- result_row
+
+      message(glue("  Imputed metrics for {analyte}:"))
+      message(glue("    Area: {area_mz1}"))
+      message(glue("    Log2 Area: {ifelse(area_mz1 > 0, log2(area_mz1), NA)}"))
+      message(glue("    FWHM: {fwhm_value}"))
+      message(glue("    PPP: {ppp_value}"))
+
+      for (metric in json_metrics) {
+        if (metric %in% colnames(result_row)) {
+          update_metric_json(metric, analyte, sample_name, result_row[[metric]], opt$msLevel)
+          message(glue("    Updated JSON metric (imputed): {metric}"))
+        }
+      }
+
+      next
+    } else {
+      message(glue("  No XIC signal found for analyte {analyte}. Skipping."))
+      next
+    }
+  }  
+    
   rt_values <- rtime(xic[[1]])
   int <- intensity(xic[[1]])
 
   if (length(rt_values) == 0 || length(int) == 0 || all(is.na(int))) {
     warning(glue("No valid XIC signal for analyte {analyte}. Skipping."))
     next
+  }
+
+  # Impute missing intensity values if configured
+  int <- impute_na_values(int,
+                          impute = IMPUTE_MISSING_VALUES,
+                          impute_val = IMPUTE_VALUE)
+
+  if (IMPUTE_MISSING_VALUES && any(is.na(int))) {
+    message(glue("  Imputing {sum(is.na(int))} missing intensities with value {IMPUTE_VALUE}"))
   }
 
   max_idx <- which.max(int)

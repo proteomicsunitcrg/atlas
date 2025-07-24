@@ -3,7 +3,7 @@
 nextflow.enable.dsl=2
 
 // Import utility functions
-include { extractQCType; selectTsvFile } from './modules/functions/utils'
+include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSampleType } from './modules/functions/utils'
 
 include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
 include { msnbasexic as msnbasexic_pr } from './subworkflows/quantification/quantification'
@@ -19,14 +19,19 @@ workflow {
     def rawfilePath = params.rawfile
     def filename = new File(rawfilePath).getName()
     
-    // Extract QC type and select appropriate TSV file
-    def qcType = extractQCType(filename)
+    // Extract QC type using proper reverse parsing
+    def qcType = extractQCTypeFromFilename(filename)
     def selected_tsv_file = selectTsvFile(qcType, params)
+    
+    // Get QCloud sample type code from mapping file
+    def qcodeFilePath = "${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv"
+    def qcloud_sample_type = getQCloudSampleType(qcType, qcodeFilePath)
 
     log.info "Raw file: ${params.rawfile}"
     log.info "Filename: ${filename}"
     log.info "Extracted QC type: ${qcType}"
     log.info "Selected TSV file: ${selected_tsv_file}"
+    log.info "QCloud sample type code: ${qcloud_sample_type}"
 
     Channel
     .fromPath(params.rawfile)
@@ -137,7 +142,8 @@ workflow {
     // Submit to QCloud API with correct sample info
     SUBMIT_TO_QCLOUD(
         all_json_files,
-        sample_info
+        sample_info,
+        Channel.value(qcloud_sample_type)
     )
 
     // Error handler

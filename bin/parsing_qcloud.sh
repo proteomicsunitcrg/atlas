@@ -383,10 +383,10 @@ extract_peptide_metrics_qcsummary() {
     echo "[DEBUG] Extracted value for $peptide_short_name: $value"
     
     if [[ "$value" == "null" || -z "$value" ]]; then
-        echo "[WARNING] No value found for peptide $peptide_short_name in $json_file - skipping"
-        return 0  # Continue processing instead of failing
+        echo "[WARNING] No value found for peptide $peptide_short_name in $json_file - using 0"
+        value="0"  # Use 0 instead of skipping
     fi
-    
+        
     # Create or update the QCloud JSON file
     if [[ ! -f "$output_file" ]]; then
         # Create new file with proper structure
