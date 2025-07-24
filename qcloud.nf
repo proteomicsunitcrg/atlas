@@ -11,6 +11,7 @@ include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/rep
 include { create_decoy as cdecoy_pr; fragpipe_prep as fragpipe_prep_pr; fragpipe_main as fragpipe_main_pr; extract_apex_rt as extract_apex_rt_pr } from './subworkflows/search_engine/search_engine.nf'
 include { PROCESS_PEPTIDES } from './modules/qcloud/process_peptides'
 include { EXTRACT_METADATA } from './modules/qcloud/extract_metadata'
+include { EXTRACT_FRAGPIPE_METRICS } from './modules/qcloud/extract_fragpipe_metrics'
 include { SUBMIT_TO_QCLOUD } from './modules/qcloud/submit_qcloud' 
 
 workflow {
@@ -103,20 +104,40 @@ workflow {
         Channel.value(selected_tsv_file)
     )
 
-    //Extract mit ms1 and ms2, tic
+    //Extract mit ms1 and ms2, tic, ms2 scan count
     EXTRACT_METADATA(trfp_pr.out)
 
-    // Combine all JSON outputs for API submission (using correct channel names!)
-    combined_jsons_ch = EXTRACT_METADATA.out.qc_jsons
-        .join(PROCESS_PEPTIDES.out.peptide_jsons)
-        .map { basename_mzml, metadata_jsons, peptide_jsons ->
-            [basename_mzml, [metadata_jsons, peptide_jsons].flatten()]
+    // Extract FragPipe metrics using actual TSV files
+    EXTRACT_FRAGPIPE_METRICS(
+        rawfile_ch.map { file, base, path -> 
+            // Fix: Remove .raw from the end (not .raw.SOMETHING)
+            def sample_id = base.replaceAll(/\.raw$/, '')
+            [sample_id, file, base, path]
         }
+        .combine(fragpipe_main_pr.out[1])  // protein.tsv (index 1)
+        .combine(fragpipe_main_pr.out[0])  // peptide.tsv (index 0)  
+        .combine(fragpipe_main_pr.out[6])  // psm.tsv (index 6)
+        .map { sample_id, file, base, path, protein_tsv, peptide_tsv, psm_tsv ->
+            [sample_id, protein_tsv, peptide_tsv, psm_tsv]
+        }
+    )
 
-    // Submit to QCloud API
+    all_json_files = EXTRACT_METADATA.out.qc_jsons
+        .map { basename, jsons -> jsons }
+        .mix(PROCESS_PEPTIDES.out.peptide_jsons.map { basename, jsons -> jsons })
+        .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
+        .flatten()
+        .collect()
+
+    sample_info = EXTRACT_METADATA.out.qc_jsons.map { basename_mzml, jsons -> 
+        // Remove .mzML extension to get the base sample name
+        basename_mzml.replaceAll(/\.mzML$/, '')
+    }
+
+    // Submit to QCloud API with correct sample info
     SUBMIT_TO_QCLOUD(
-        combined_jsons_ch.map { it[1] },  // all JSON files
-        combined_jsons_ch.map { it[0] }   // basename_mzml
+        all_json_files,
+        sample_info
     )
 
     // Error handler

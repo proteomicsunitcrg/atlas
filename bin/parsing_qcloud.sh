@@ -662,10 +662,10 @@ process_peptides_from_msnbasexic() {
     echo "[DEBUG] Sample info - ID: $sample_id, Checksum: $checksum, UUID: $uuid"
     
     # Parse QC term IDs from config (the actual values we need)
-    local area_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "area" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
-    local rt_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "rt" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
-    local dppm_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "dppm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
-    local fwhm_qccv=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "fwhm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local area_qccv=$(grep "\barea\b.*:" "$config_file" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local rt_qccv=$(grep "\brt\b.*:" "$config_file" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local dppm_qccv=$(grep "\bdppm\b.*:" "$config_file" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local fwhm_qccv=$(grep "\bfwhm\b.*:" "$config_file" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
 
     echo "[DEBUG] QC mappings - Area: $area_qccv, RT: $rt_qccv, dppm: $dppm_qccv, FWHM: $fwhm_qccv"
     
@@ -876,6 +876,11 @@ submit_metrics_data() {
     local qc_codes=(
         $(extract_qcloud_term "$config_file" "tic")
         $(extract_qcloud_term "$config_file" "mit_ms1")
+        $(extract_qcloud_term "$config_file" "mit_ms2")
+        $(extract_qcloud_term "$config_file" "ms2_scan_count")
+        $(extract_qcloud_term "$config_file" "num_prot_ungrouped")
+        $(extract_qcloud_term "$config_file" "num_pept_ungrouped")
+        $(extract_qcloud_term "$config_file" "num_psm")
         $(extract_qcloud_term "$config_file" "area")
         $(extract_qcloud_term "$config_file" "rt")
         $(extract_qcloud_term "$config_file" "dppm")
@@ -943,4 +948,108 @@ extract_context_value() {
     local context_key=$2
     
     grep -A 10 "qcloud_contexts.*=" "$config_file" | grep -w "$context_key" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r'
+}
+
+# Function: Count rows in TSV files (excluding header)
+# Inputs: 
+#   $1 - TSV file path
+# Output:
+#   Prints the count of data rows (excluding header) to stdout
+count_tsv_rows(){
+  local tsv_file=$1
+  
+  echo "[DEBUG] Counting rows in: $tsv_file" >&2  # ✅ Send to stderr
+  
+  if [[ ! -f "$tsv_file" ]]; then
+    echo "[WARNING] TSV file not found: $tsv_file" >&2  # ✅ Send to stderr
+    echo "0"
+    return 1
+  fi
+  
+  # Count lines excluding header (subtract 1 for header row)
+  local total_lines=$(wc -l < "$tsv_file")
+  local data_rows=$((total_lines - 1))
+  
+  echo "[DEBUG] Total lines: $total_lines, Data rows: $data_rows" >&2  # ✅ Send to stderr
+  
+  # Ensure we don't return negative numbers
+  if [[ $data_rows -lt 0 ]]; then
+    echo "0"
+  else
+    echo "$data_rows"  # ✅ Only the number goes to stdout
+  fi
+}
+
+# Function: Extract FragPipe metrics (protein, peptide, PSM counts) and create QCloud JSONs
+# Inputs:
+#   $1 - protein.tsv file
+#   $2 - peptide.tsv file  
+#   $3 - psm.tsv file
+#   $4 - config file path
+#   $5 - sample_id (passed from Nextflow)
+# Output:
+#   Creates QCloud JSON files and returns values
+extract_fragpipe_metrics(){
+  local protein_tsv=$1
+  local peptide_tsv=$2
+  local psm_tsv=$3
+  local config_file=$4
+  local sample_id=$5
+
+  echo "[DEBUG] --- extract_fragpipe_metrics ---"
+  echo "[DEBUG] Protein TSV: $protein_tsv"
+  echo "[DEBUG] Peptide TSV: $peptide_tsv"
+  echo "[DEBUG] PSM TSV: $psm_tsv"
+  echo "[DEBUG] Config: $config_file"
+  echo "[DEBUG] Sample ID: $sample_id"
+
+  # Extract sample information
+  local checksum=$(extract_checksum_from_filename "$sample_id")
+  local uuid=$(extract_uuid_from_filename "$sample_id")
+
+  echo "[DEBUG] Sample info - Checksum: $checksum, UUID: $uuid"
+
+  # Parse QC parameter IDs from config
+  local param_id_num_prot=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep "num_prot_ungrouped" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local param_id_num_pept=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep "num_pept_ungrouped" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local param_id_num_psm=$(grep -A 10 "qcloud_terms.*=" "$config_file" | grep "num_psm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+
+  # Parse QC context IDs from config
+  local context_id_num_prot=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep "num_prot_ungrouped" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local context_id_num_pept=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep "num_pept_ungrouped" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+  local context_id_num_psm=$(grep -A 10 "qcloud_contexts.*=" "$config_file" | grep "num_psm" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+
+  echo "[DEBUG] QC param IDs - Proteins: '$param_id_num_prot', Peptides: '$param_id_num_pept', PSMs: '$param_id_num_psm'"
+  echo "[DEBUG] QC context IDs - Proteins: '$context_id_num_prot', Peptides: '$context_id_num_pept', PSMs: '$context_id_num_psm'"
+
+  # Count rows in each TSV file
+  echo "[DEBUG] Counting protein rows..."
+  local num_proteins
+  num_proteins=$(count_tsv_rows "$protein_tsv")
+  : "${num_proteins:=0}"
+  echo "[DEBUG] Number of proteins (final): $num_proteins"
+
+  echo "[DEBUG] Counting peptide rows..."
+  local num_peptides
+  num_peptides=$(count_tsv_rows "$peptide_tsv")
+  : "${num_peptides:=0}"
+  echo "[DEBUG] Number of peptides (final): $num_peptides"
+
+  echo "[DEBUG] Counting PSM rows..."
+  local num_psms
+  num_psms=$(count_tsv_rows "$psm_tsv")
+  : "${num_psms:=0}"
+  echo "[DEBUG] Number of PSMs (final): $num_psms"
+
+  # Create QCloud JSON files
+  echo "[DEBUG] Creating QCloud JSON files for FragPipe metrics..."
+  create_qcloud_json_with_header "$checksum" "$param_id_num_prot" "$context_id_num_prot" "$num_proteins" "$uuid" "$sample_id"
+  create_qcloud_json_with_header "$checksum" "$param_id_num_pept" "$context_id_num_pept" "$num_peptides" "$uuid" "$sample_id"
+  create_qcloud_json_with_header "$checksum" "$param_id_num_psm" "$context_id_num_psm" "$num_psms" "$uuid" "$sample_id"
+
+  echo "[DEBUG] FragPipe QCloud JSON files created successfully"
+  echo "[DEBUG] --- extract_fragpipe_metrics DONE ---"
+  
+  # Return the values
+  echo "$num_proteins,$num_peptides,$num_psms,$checksum,$uuid"
 }
