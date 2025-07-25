@@ -55,14 +55,49 @@ process SUBMIT_TO_QCLOUD {
     uuid=\$(echo "\$uuid_reversed" | rev)
     labsysid="\$uuid"
     
-    # Extract filename (remove .raw extension if present)
-    reversed_rest_of_filename=\$(echo "${sample_id}" | sed 's/\\.raw\$//')
-    
+    # Clean filename by removing UUID, QC code, and checksum using reverse parsing
+    # Original: 2019_QC01_ref_6583a564-93dd-4500-a101-b2fe56496b25_QC01_93d2a97b9d0b35c9668663223bdef998.raw
+    # Desired: 2019_QC01_ref
+
+    echo "Original sample_id: ${sample_id}"
+
+    # Remove .raw extension first
+    filename_no_ext=\$(echo "${sample_id}" | sed 's/\\.raw\$//')
+    echo "Filename without extension: \$filename_no_ext"
+
+    # Reverse filename, split by "_", remove first 3 elements, reverse back
+    reversed_filename=\$(echo "\$filename_no_ext" | rev)
+    echo "Reversed filename: \$reversed_filename"
+
+    # Split by underscore and convert to array
+    IFS='_' read -ra parts <<< "\$reversed_filename"
+    echo "Number of parts: \${#parts[@]}"
+
+    # Check if we have enough parts to remove (need at least 4 parts)
+    if [ \${#parts[@]} -gt 3 ]; then
+        # Remove first 3 elements (checksum, QC code, UUID)
+        cleaned_parts=("\${parts[@]:3}")
+        
+        # Join remaining parts and reverse back
+        cleaned_reversed=\$(IFS='_'; echo "\${cleaned_parts[*]}")
+        cleaned_filename=\$(echo "\$cleaned_reversed" | rev)
+        
+        echo "Cleaned filename: \$cleaned_filename"
+    else
+        # Fallback: use original filename if not enough parts
+        cleaned_filename="\$filename_no_ext"
+        echo "Warning: Not enough parts for cleaning, using original: \$cleaned_filename"
+    fi
+
+    # Use cleaned filename for API
+    reversed_rest_of_filename="\$cleaned_filename"
+        
     # Get current date in the correct format for QCloud API
     creation_date=\$(date -u +"%Y-%m-%d %H:%M:%S")
 
     echo "File metadata:"
-    echo "  Filename: \$reversed_rest_of_filename"
+    echo "  Original filename: ${sample_id}"
+    echo "  Cleaned filename: \$reversed_rest_of_filename"
     echo "  Checksum: \$checksum"
     echo "  LabSysID: \$labsysid"
     echo "  Creation Date: \$creation_date"
