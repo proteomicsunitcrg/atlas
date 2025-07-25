@@ -27,7 +27,7 @@ json_yaxis_window <- list(
 # PPP constant (OPTIONAL):  
 PPP_THRESHOLD_RATIO <- 0.05
 
-IMPUTE_MISSING_VALUES <- TRUE
+IMPUTE_MISSING_VALUES <- FALSE
 IMPUTE_VALUE <- 0
 
 # Set verbose logging
@@ -610,10 +610,25 @@ for (analyte in analyte_names) {
     next
   }
 
+  # === DEBUG SECTION 3 ===
+  cat("=== DEBUG: Before impute_na_values for analyte", analyte, "===\n")
+  cat("=== DEBUG: IMPUTE_MISSING_VALUES =", IMPUTE_MISSING_VALUES, "===\n")
+  cat("=== DEBUG: NA values in intensities:", sum(is.na(int)), "===\n")
+  # === END DEBUG SECTION 3 ===
+  
   # Impute missing intensity values if configured
+  int_before <- int
   int <- impute_na_values(int,
                           impute = IMPUTE_MISSING_VALUES,
                           impute_val = IMPUTE_VALUE)
+  
+  # === DEBUG SECTION 4 ===
+  cat("=== DEBUG: After impute_na_values ===\n")
+  cat("=== DEBUG: NA values before:", sum(is.na(int_before)), "after:", sum(is.na(int)), "===\n")
+  if (sum(is.na(int_before)) != sum(is.na(int))) {
+    cat("=== DEBUG: IMPUTATION OCCURRED! ===\n")
+  }
+  # === END DEBUG SECTION 4 ===
 
   if (IMPUTE_MISSING_VALUES && any(is.na(int))) {
     message(glue("  Imputing {sum(is.na(int))} missing intensities with value {IMPUTE_VALUE}"))

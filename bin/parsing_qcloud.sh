@@ -377,14 +377,12 @@ extract_peptide_metrics_qcsummary() {
     
     echo "[DEBUG] OpenMS name for $peptide_short_name: $long_name"
     
-    # Extract the value from the JSON file - use short_name for lookup
+    # Extract the value from the JSON file
     local value=$(jq -r --arg peptide "$peptide_short_name" --arg sample "$sample_id" '.data[$peptide][$sample] // "null"' "$json_file")
-    
-    echo "[DEBUG] Extracted value for $peptide_short_name: $value"
-    
+
     if [[ "$value" == "null" || -z "$value" ]]; then
-        echo "[WARNING] No value found for peptide $peptide_short_name in $json_file - using 0"
-        value="0"  # Use 0 instead of skipping
+        echo "[INFO] Peptide $peptide_short_name not found in R output - respecting R script decision to exclude"
+        return 0  # Skip this peptide entirely - don't create JSON for it
     fi
         
     # Create or update the QCloud JSON file
