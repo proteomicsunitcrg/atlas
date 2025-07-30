@@ -59,13 +59,40 @@ workflow {
       idfilter_aaa_pr(mao_pr.out.mix(mao_pr.out))
    } else if (params.search_engine == "fragpipe") {
       fragpipe_prep_pr(rawfile_ch,cdecoy_pr.out)
-      fragpipe_main_pr(rawfile_ch,fragpipe_prep_pr.out)
+      fragpipe_main_pr(rawfile_ch, fragpipe_prep_pr.out[0], fragpipe_prep_pr.out[1], fragpipe_prep_pr.out[2])
       insertFragpipeFileToQSample_pr(rawfile_ch,trfp_pr.out)
-      insertFragpipeDataToQSample_pr(insertFragpipeFileToQSample_pr.out,trfp_pr.out,fragpipe_main_pr.out)
+      insertFragpipeDataToQSample_pr(
+          insertFragpipeFileToQSample_pr.out,
+          trfp_pr.out,
+          fragpipe_main_pr.out[0],  // peptide.tsv
+          fragpipe_main_pr.out[1],  // protein.tsv
+          fragpipe_main_pr.out[2],  // ion.tsv
+          fragpipe_main_pr.out[3],  // combined_protein.tsv
+          fragpipe_main_pr.out[4],  // global.modsummary.tsv (maps to global.summary.tsv)
+          fragpipe_main_pr.out[5]   // combined_ion.tsv
+      )
       insertPolymerContToQSample_pr(insertFragpipeFileToQSample_pr.out,trfp_pr.out)
-      insertFragpipeSecReactDataToQSample_pr(insertFragpipeFileToQSample_pr.out,fragpipe_main_pr.out)
+      insertFragpipeSecReactDataToQSample_pr(
+          insertFragpipeFileToQSample_pr.out,
+          fragpipe_main_pr.out[0],  // peptide.tsv
+          fragpipe_main_pr.out[1],  // protein.tsv
+          fragpipe_main_pr.out[2],  // ion.tsv
+          fragpipe_main_pr.out[3],  // combined_protein.tsv
+          fragpipe_main_pr.out[4],  // global.modsummary.tsv (maps to global.summary.tsv)
+          fragpipe_main_pr.out[5]   // combined_ion.tsv
+      )
       //Report to output folder (if the field output_folder was informed at methods CSV file):
-      output_folder_fragpipe_pr(trfp_pr.out,fragpipe_main_pr.out,insertFragpipeFileToQSample_pr.out,output_folder_ch)
+      output_folder_fragpipe_pr(
+          trfp_pr.out,                          // tuple (filename_mzml, basename_mzml, path_mzml, mzml_file)
+          fragpipe_main_pr.out[0],              // peptide.tsv
+          fragpipe_main_pr.out[1],              // protein.tsv
+          fragpipe_main_pr.out[2],              // ion.tsv
+          fragpipe_main_pr.out[3],              // combined_protein.tsv
+          fragpipe_main_pr.out[4],              // global.modsummary.tsv
+          fragpipe_main_pr.out[5],              // combined_ion.tsv
+          insertFragpipeFileToQSample_pr.out,   // checksum
+          output_folder_ch                      // output_folder
+      )
    }
 
    if (params.search_engine == "comet" || params.search_engine == "mascot") {
