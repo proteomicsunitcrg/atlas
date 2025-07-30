@@ -13,6 +13,8 @@ include { PROCESS_PEPTIDES } from './modules/qcloud/process_peptides'
 include { EXTRACT_METADATA } from './modules/qcloud/extract_metadata'
 include { EXTRACT_FRAGPIPE_METRICS } from './modules/qcloud/extract_fragpipe_metrics'
 include { SUBMIT_TO_QCLOUD } from './modules/qcloud/submit_qcloud' 
+include { MODIFY_FRAGPIPE_WORKFLOW } from './modules/qcloud/modify_workflow'
+include { EXTRACT_INSTRUMENT_INFO } from './modules/qcloud/extract_instrument'
 
 workflow {
     // Extract filename from the full path for parsing
@@ -74,9 +76,27 @@ workflow {
     trfp_pr(rawfile_ch)
     cdecoy_pr(rawfile_ch)
 
+    // Extract instrument information from mzML files
+    EXTRACT_INSTRUMENT_INFO(trfp_pr.out)
+
+    // Extract instrument info and modify FragPipe workflow based on instrument type
+    MODIFY_FRAGPIPE_WORKFLOW(
+        EXTRACT_INSTRUMENT_INFO.out.instrument_info,  // [basename, instrument_accession]
+        Channel.fromPath(params.fp_workflow.replaceAll("'", "")),
+        Channel.fromPath("${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcloud_instruments_ot.tsv")
+    )
+
+    // Search engine preparation and execution
     // Search engine preparation and execution
     fragpipe_prep_pr(rawfile_ch, cdecoy_pr.out)
-    fragpipe_main_pr(rawfile_ch, fragpipe_prep_pr.out)
+
+    // Combine channels: use modified workflow + manifest and fasta from fragpipe_prep
+    fragpipe_main_pr(
+        rawfile_ch,
+        MODIFY_FRAGPIPE_WORKFLOW.out.modified_workflow.map { sample_id, workflow -> workflow },
+        fragpipe_prep_pr.out[1],
+        fragpipe_prep_pr.out[2]
+    )
 
     combined_ion_ch = fragpipe_main_pr.out[5]
 

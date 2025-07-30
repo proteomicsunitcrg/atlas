@@ -334,6 +334,48 @@ launch_nf_run() {
     
 }
 
+extract_qccode_and_request() {
+    local file_path="$1"
+    local filename
+    local filename_core
+    local reversed
+    local part1 part2 part3
+    local checksum uuid_candidate qccode_candidate
+
+    filename=$(basename "$file_path")
+
+    # 1. Strip file extension (.raw, .mzML, etc.)
+    filename_core="${filename%%.raw*}"  # adjust if needed for .mzML
+
+    # 2. Reverse filename to process from the end
+    reversed=$(echo "$filename_core" | rev)
+
+    # 3. Split reversed string by "_" to isolate last fields
+    IFS='_' read -r part1 part2 part3 _ <<< "$reversed"
+
+    # 4. Reverse each back to get actual values
+    checksum=$(echo "$part1" | rev)
+    qccode_candidate=$(echo "$part2" | rev)
+    uuid_candidate=$(echo "$part3" | rev)
+
+    # 5. Validation patterns
+    local uuid_regex='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    local qccode_regex='^QC[0-9]+$'
+    local checksum_regex='^[0-9a-f]{32}$'
+
+    if [[ "$uuid_candidate" =~ $uuid_regex && "$qccode_candidate" =~ $qccode_regex && "$checksum" =~ $checksum_regex ]]; then
+        QCCODE="$qccode_candidate"
+        REQUEST=""  # Can be extracted if needed
+        echo "[INFO] Detected QCloud filename structure → QCCODE: $QCCODE"
+    else
+        # Fallback to classic extraction from the start
+        local file_arr=($(echo "$filename" | tr "_" "\n"))
+        REQUEST="${file_arr[0]}"
+        QCCODE="${file_arr[1]}"
+        echo "[INFO] Using QSample filename parsing → REQUEST: $REQUEST | QCCODE: $QCCODE"
+    fi
+}
+
 
 ################FUNCTIONS END
 
@@ -358,10 +400,8 @@ fi
 
 if [ -n "$FILE_TO_PROCESS" ]; then
     
-    FILE_BASENAME=$(basename $FILE_TO_PROCESS)
-    FILE_ARR=($(echo $FILE_BASENAME | tr "_" "\n"))
-    REQUEST="${FILE_ARR[0]}"
-    QCCODE="${FILE_ARR[1]}"
+    FILE_BASENAME=$(basename "$FILE_TO_PROCESS")
+    extract_qccode_and_request "$FILE_TO_PROCESS"
     
     for j in ${LIST_PATTERNS}
     do

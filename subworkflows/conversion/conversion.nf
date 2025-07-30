@@ -18,7 +18,7 @@ process ThermoRawFileParser {
         basename_wo_ext=${basename_sh%.*}
         cp $path_sh/$filename_sh $basename_wo_ext".mzML"    
     else
-        ThermoRawFileParser.sh -i=!{path}/!{filename} -f=2 -o ./
+        ThermoRawFileParser.sh -i=!{path}/!{filename} -f=2 -m=0 -o ./
     fi
     '''
 }
