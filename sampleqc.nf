@@ -2,8 +2,10 @@
 
 nextflow.enable.dsl=2
 
+params.api_key_qchl = params.sampleqc_api_key ?: null
+
 include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
-include { create_decoy as cdecoy_pr; CometAdapter as comet_adapter_pr } from './subworkflows/search_engine/search_engine'
+include { create_decoy as cdecoy_pr; CometAdapter as comet_adapter_pr; MascotAdapterOnline as mao_pr } from './subworkflows/search_engine/search_engine'
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr } from './subworkflows/identification/identification'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
 include { insertSampleQCFileToQSample as insertSampleQCFileToQSample_pr; insertSampleQCDataToQSample as insertSampleQCDataToQSample_pr; insertSampleQCModificationsToQsample as insertSampleQCModificationsToQsample_pr } from './subworkflows/report/report_qsample_sampleqc'
@@ -55,7 +57,7 @@ workflow {
    //Search engine:
    mao_pr(trfp_pr.out,cdecoy_pr.out,var_modif_ch,fragment_mass_tolerance_ch,fragment_error_units_ch)
    //Identification:
-   idfilter_aaa_pr(mao_pr.out.mix(mao_pr.out))
+   idfilter_aaa_pr(mao_pr.out)
  }
 
  if (params.search_engine == "comet" || params.search_engine == "mascot") {
