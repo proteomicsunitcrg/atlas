@@ -55,9 +55,9 @@ process SUBMIT_TO_QCLOUD {
     uuid=\$(echo "\$uuid_reversed" | rev)
     labsysid="\$uuid"
     
-    # Clean filename by removing UUID, QC code, and checksum using reverse parsing
-    # Original: 2019_QC01_ref_6583a564-93dd-4500-a101-b2fe56496b25_QC01_93d2a97b9d0b35c9668663223bdef998.raw
-    # Desired: 2019_QC01_ref
+    # Clean filename by removing timestamp, UUID, QC code, and checksum
+    # Original: 20250729_C39321_001_autoQC01___20250729170452_f96990c5-5d2a-42ac-8b38-31d341be673d_QC01_e1033c0c2b8f753d87113e72577e4141.raw
+    # Desired: 20250729_C39321_001_autoQC01
 
     echo "Original sample_id: ${sample_id}"
 
@@ -65,8 +65,14 @@ process SUBMIT_TO_QCLOUD {
     filename_no_ext=\$(echo "${sample_id}" | sed 's/\\.raw\$//')
     echo "Filename without extension: \$filename_no_ext"
 
+    # First, remove the ___timestamp pattern if it exists
+    # Pattern: ___YYYYMMDDHHMMSS (e.g., ___20250729170452)
+    filename_no_timestamp=\$(echo "\$filename_no_ext" | sed 's/___[0-9]\\{14\\}//')
+    echo "Filename after removing timestamp: \$filename_no_timestamp"
+
+    # Now apply the existing reverse parsing logic to remove UUID, QC code, and checksum
     # Reverse filename, split by "_", remove first 3 elements, reverse back
-    reversed_filename=\$(echo "\$filename_no_ext" | rev)
+    reversed_filename=\$(echo "\$filename_no_timestamp" | rev)
     echo "Reversed filename: \$reversed_filename"
 
     # Split by underscore and convert to array
@@ -84,9 +90,9 @@ process SUBMIT_TO_QCLOUD {
         
         echo "Cleaned filename: \$cleaned_filename"
     else
-        # Fallback: use original filename if not enough parts
-        cleaned_filename="\$filename_no_ext"
-        echo "Warning: Not enough parts for cleaning, using original: \$cleaned_filename"
+        # Fallback: use filename without timestamp if not enough parts
+        cleaned_filename="\$filename_no_timestamp"
+        echo "Warning: Not enough parts for cleaning, using filename without timestamp: \$cleaned_filename"
     fi
 
     # Use cleaned filename for API
