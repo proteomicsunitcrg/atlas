@@ -10,6 +10,7 @@ include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSamp
 // SUBWORKFLOWS
 // ----------------------------
 include { diann_qcloud as diann_pr } from './subworkflows/dia/diann_qcloud.nf'
+include { ThermoRawFileParserDiann as trfp_pr } from './subworkflows/conversion/conversion'
 
 // ----------------------------
 // QCLOUD MODULES
@@ -36,7 +37,16 @@ log.info "Selected TSV file: ${selected_tsv_file}"
 log.info "QCloud sample type: ${qcloud_sample_type}"
 log.info "Checksum: ${checksum}"
 
-def rawfile_ch    = Channel.fromPath(params.rawfile)
+// FIX: Create proper tuple structure for ThermoRawFileParserDiann
+// Use different variable names to avoid conflict
+def rawfile_ch = Channel.fromPath(params.rawfile)
+    .map { file -> 
+        def file_name = file.getName()      // Changed from 'filename'
+        def file_basename = file.getBaseName()  // Changed from 'basename'
+        def file_path = file.getParent()    // Changed from 'path'
+        tuple(file_name, file_basename, file_path)
+    }
+
 def tsv_file_ch   = Channel.value(selected_tsv_file)
 def checksum_ch   = Channel.value(checksum)
 def sampletype_ch = Channel.value(qcloud_sample_type)
@@ -47,9 +57,20 @@ def sampletype_ch = Channel.value(qcloud_sample_type)
 workflow {
 
     // ----------------------------
-    // RUN DIA-NN
+    // CONVERT RAW → mzML (using ThermoRawFileParserDiann)
     // ----------------------------
-    diann_pr(rawfile_ch)
+    trfp_pr(rawfile_ch)
+
+    // ----------------------------
+    // Transform ThermoRawFileParserDiann output for diann_pr
+    // Since ThermoRawFileParserDiann outputs file("*.mzML.*"), we need to adapt it
+    // ----------------------------
+    mzml_for_diann = trfp_pr.out
+
+    // ----------------------------
+    // RUN DIA-NN (uses mzML)
+    // ----------------------------
+    diann_pr(mzml_for_diann)
 
     // ----------------------------
     // PARSE DIA-NN REPORT.TSV → JSON QC
@@ -62,18 +83,16 @@ workflow {
 
     // ----------------------------
     // GENERAL METADATA (tic, mit, ms2 scans…)
+    // Transform ThermoRawFileParserDiann output for EXTRACT_METADATA
     // ----------------------------
-    // Prepare tuple for EXTRACT_METADATA
-    rawfile_ch = Channel
-        .fromPath(params.rawfile)
-        .map { f ->
-            def filename_mzml  = f.getName()
-            def basename_mzml  = filename_mzml.replaceAll(/\.mzML$/, "")
-            def path_mzml      = f.getParent()
-            tuple(filename_mzml, basename_mzml, path_mzml, f)
-        }
+    mzml_ch = trfp_pr.out.map { f ->
+        def filename_mzml  = f.getName()
+        def basename_mzml  = filename_mzml.replaceAll(/\.mzML\..*$/, "")  // Remove .mzML.organism extension
+        def path_mzml      = f.getParent()
+        tuple(filename_mzml, basename_mzml, path_mzml, f)
+    }
 
-    EXTRACT_METADATA(rawfile_ch)
+    EXTRACT_METADATA(mzml_ch)
 
     // ----------------------------
     // COLLECT ALL JSON FILES
@@ -85,7 +104,7 @@ workflow {
         .collect()
 
     sample_info = EXTRACT_METADATA.out.qc_jsons.map { basename_mzml, jsons ->
-        basename_mzml.replaceAll(/\.mzML$/, "")
+        basename_mzml.replaceAll(/\.mzML\..*$/, "")  // Remove .mzML.organism extension
     }
 
     // ----------------------------
