@@ -1051,3 +1051,50 @@ extract_fragpipe_metrics(){
   # Return the values
   echo "$num_proteins,$num_peptides,$num_psms,$checksum,$uuid"
 }
+
+# Function: Extract DIA-NN peptide metrics (area, RT, ppm) from report.tsv
+# Inputs:
+#   $1 - DIA-NN report.tsv
+#   $2 - peptide sequence (e.g. "LVNELTEFAK")
+#   $3 - theoretical m/z (from qcloud_qc01.tsv)
+#   $4 - checksum ID
+# Output:
+#   Creates QCloud JSON files
+extract_peptide_metrics_diann_ppm(){
+    local report_tsv=$1
+    local peptide=$2
+    local mz_theoretical=$3
+    local checksum=$4
+
+    echo "[DEBUG] --- extract_peptide_metrics_diann_ppm ---"
+    echo "[DEBUG] peptide: $peptide | m/z theo: $mz_theoretical | checksum: $checksum"
+
+    # Extreure dades de la fila corresponent
+    local line=$(awk -F'\t' -v pep="$peptide" '$13 == pep {print; exit}' "$report_tsv")
+
+    if [[ -z "$line" ]]; then
+        echo "[WARNING] Peptide $peptide not found in $report_tsv"
+        return 1
+    fi
+
+    local area=$(echo "$line" | awk -F'\t' '{print $26}')
+    local rt=$(echo "$line" | awk -F'\t' '{print $29}')
+    local charge=$(echo "$line" | awk -F'\t' '{print $16}')
+    local mass_exp=$(echo "$line" | awk -F'\t' '{print $48}')
+
+    # Calcular massa teòrica a partir de m/z i càrrega
+    local proton=1.00727646688
+    local mass_theo=$(awk -v mz="$mz_theoretical" -v z="$charge" -v H="$proton" \
+        'BEGIN {printf "%.6f", (mz*z) - (z-1)*H}')
+
+    # Calcular ppm
+    local dppm=$(awk -v exp="$mass_exp" -v theo="$mass_theo" \
+        'BEGIN {printf "%.2f", ((exp-theo)/theo)*1e6}')
+
+    echo "[DEBUG] Values -> Area: $area | RT: $rt | Charge: $charge | MassExp: $mass_exp | MassTheo: $mass_theo | dppm: $dppm"
+
+    # Escriure a JSON
+    set_value_to_qcloud_json_monitored_peptides "$checksum" "$area" "QC:1001844" "$peptide"
+    set_value_to_qcloud_json_monitored_peptides "$checksum" "$rt" "QC:1000894" "$peptide"
+    set_value_to_qcloud_json_monitored_peptides "$checksum" "$dppm" "QC:1000014" "$peptide"
+}

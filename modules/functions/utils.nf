@@ -65,27 +65,27 @@ def extractQCTypeFromFilename(filename) {
     try {
         // Remove common suffixes first
         def cleanFilename = filename
-            .replaceAll(/\.raw.*$/, '')  // Remove .raw and everything after
-            .replaceAll(/\.mzML.*$/, '') // Remove .mzML and everything after
-        
+            .replaceAll(/\.raw.*$/, '')   // Remove .raw and everything after
+            .replaceAll(/\.mzML.*$/, '')  // Remove .mzML and everything after
+
         log.info "Cleaned filename: ${cleanFilename}"
-        
+
         // Reverse filename, split by "_", look for QC pattern
         def reversedFilename = cleanFilename.reverse()
         def parts = reversedFilename.split('_')
-        
+
         log.info "Reversed parts: ${parts.join(', ')}"
-        
-        // Look for QC pattern in the parts (should be "20CQ", "10CQ", etc.)
+
+        // Look for QC pattern in the parts (accept QC01, QC02, QCD1, QCD2, etc.)
         for (int i = 0; i < parts.length; i++) {
             def part = parts[i].reverse()
             log.info "Checking part ${i}: '${parts[i]}' -> '${part}'"
-            if (part.matches(/QC\d+/)) {
+            if (part.matches(/QC[D]?\d+/)) {
                 log.info "Found QC type: ${part} from filename: ${filename}"
                 return part
             }
         }
-        
+
         log.warn "No QC pattern found in filename: ${filename}"
         log.warn "Available parts were: ${parts.collect { it.reverse() }.join(', ')}"
     } catch (Exception e) {
@@ -135,4 +135,13 @@ def getQCloudSampleType(qcType, qcodeFilePath) {
     }
     
     return qcloudCode
+}
+
+def extract_checksum_from_filename(filename) {
+    try {
+        return filename.reverse().split('_')[0].reverse()
+    } catch(Exception e) {
+        log.warn "Could not extract checksum from ${filename}: ${e.message}"
+        return null
+    }
 }
