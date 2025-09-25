@@ -1,57 +1,128 @@
 process EXTRACT_DIANN_METRICS {
-
+    
     input:
     path report_tsv
-    path qcloud_tsv
+    path qcloud_tsv  
     val checksum
-
+    path config_file
+    
     output:
     tuple val(checksum), path("*_QC_*.json"), emit: diann_jsons
+    path "diann_metadata.json", emit: metadata
+    
+    shell:
+    '''
+    # Copy the parsing script
+    cp !{projectDir}/bin/parsing_qcloud.sh .
+    source parsing_qcloud.sh
+    
+    echo "Extracting DIA-NN metrics for checksum: !{checksum}"
 
-    script:
-    """
-    echo "Extracting DIA-NN metrics (QCloud format)..."
-    echo "Report file: ${report_tsv}"
-    echo "QCloud peptides TSV: ${qcloud_tsv}"
-    echo "Checksum: ${checksum}"
+    # Extract sample information
+    report_basename=$(basename !{report_tsv} .report.tsv)
+    sample_id="$report_basename"
+    checksum_extracted=$(extract_checksum_from_filename "$sample_id")
+    uuid=$(extract_uuid_from_filename "$sample_id")
+    reversed_sample_id=$(echo "$sample_id" | rev)
+    context_code_reversed=$(echo "$reversed_sample_id" | cut -d'_' -f2)
+    context_code=$(echo "$context_code_reversed" | rev)
 
-    # QC terms (fixed IDs used by QCloud)
-    qc_area="QC:1001844"
-    qc_rt="QC:1000894"
+    # Read QC parameters
+    area_qccv=$(extract_qcloud_term "!{config_file}" "area")
+    rt_qccv=$(extract_qcloud_term "!{config_file}" "rt") 
+    dppm_qccv=$(extract_qcloud_term "!{config_file}" "dppm")
 
-    # Escape for filenames
-    qc_area_file=\$(echo \$qc_area | tr ':' '_')
-    qc_rt_file=\$(echo \$qc_rt | tr ':' '_')
+    # Create JSON file names
+    area_qcode=$(echo "$area_qccv" | cut -d':' -f2)
+    rt_qcode=$(echo "$rt_qccv" | cut -d':' -f2)
+    area_json="${uuid}_${context_code}_${checksum_extracted}_QC_${area_qcode}.json"
+    rt_json="${uuid}_${context_code}_${checksum_extracted}_QC_${rt_qcode}.json"
 
-    area_json="\${checksum}_\${qc_area_file}.json"
-    rt_json="\${checksum}_\${qc_rt_file}.json"
+    # Initialize JSON files with proper structure
+    cat > "$area_json" << EOF
+{
+  "file" : {
+    "checksum" : "$checksum_extracted"
+  },
+  "data" : [ {
+    "parameter" : {
+      "qCCV" : "$area_qccv"
+    },
+    "values" : []
+  } ]
+}
+EOF
 
-    # Init JSON files
-    echo "{}" > \$area_json
-    echo "{}" > \$rt_json
+    cat > "$rt_json" << EOF
+{
+  "file" : {
+    "checksum" : "$checksum_extracted"
+  },
+  "data" : [ {
+    "parameter" : {
+      "qCCV" : "$rt_qccv"
+    },
+    "values" : []
+  } ]
+}
+EOF
 
-    # Process peptides TSV (skip header)
-    awk -F'\\t' 'NR==1 {next} {
-        short=\$1; long=\$2;
+    echo "Processing peptides with modification-aware matching..."
 
-        # Extract area (col 27) from DIA-NN report
-        cmd="grep -P \"\\t" long "\\t\" ${report_tsv} | cut -f27 | head -1"
-        cmd | getline area; close(cmd);
+    # Process each peptide and collect all values
+    tail -n +2 !{qcloud_tsv} | while IFS=$'\\t' read -r short long extra; do
+        echo "Processing peptide: $short -> $long"
+        
+        long_clean=$(echo "$long" | awk '{print $1}')
+        
+        # Try exact match first, then modified match
+        result=$(awk -F'\\t' -v peptide="$long_clean" -v pcol="14" -v acol="27" -v rcol="29" '
+            $pcol == peptide { 
+                area = ($acol == "" || $acol == "0") ? 0 : $acol
+                rt = ($rcol == "" || $rcol == "0") ? 0 : $rcol
+                print area "," rt ",EXACT"
+                exit
+            }
+            {
+                # Try modified match
+                clean_seq = $pcol
+                gsub(/\\([^)]*\\)/, "", clean_seq)
+                if (clean_seq == peptide) {
+                    area = ($acol == "" || $acol == "0") ? 0 : $acol
+                    rt = ($rcol == "" || $rcol == "0") ? 0 : $rcol
+                    print area "," rt ",MODIFIED:" $pcol
+                    exit
+                }
+            }' !{report_tsv})
+        
+        if [ -n "$result" ]; then
+            area=$(echo $result | cut -d',' -f1)
+            rt_obs=$(echo $result | cut -d',' -f2)
+            match_type=$(echo $result | cut -d',' -f3-)
+            echo "Found: $short -> area=$area, rt=$rt_obs ($match_type)"
+        else
+            echo "Peptide $long_clean not found in report"
+            area=0
+            rt_obs=0
+        fi
+        
+        # Add values to JSON files using jq
+        jq --arg contextSource "$long_clean" --arg value "$area" \\
+           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \\
+           "$area_json" > tmp_area.json && mv tmp_area.json "$area_json"
+           
+        jq --arg contextSource "$long_clean" --arg value "$rt_obs" \\
+           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \\
+           "$rt_json" > tmp_rt.json && mv tmp_rt.json "$rt_json"
+        
+    done
 
-        # Extract RT observed (col 29) from DIA-NN report
-        cmd="grep -P \"\\t" long "\\t\" ${report_tsv} | cut -f29 | head -1"
-        cmd | getline rt_obs; close(cmd);
-
-        if (area=="") area=0;
-        if (rt_obs=="") rt_obs=0;
-
-        # Print updates for jq
-        printf "jq --arg k %s --arg v %s \\".[$k] = (\$v|tonumber)\\" %s > tmp.json && mv tmp.json %s\\n", short, area, ENVIRON["area_json"], ENVIRON["area_json"];
-        printf "jq --arg k %s --arg v %s \\".[$k] = (\$v|tonumber)\\" %s > tmp.json && mv tmp.json %s\\n", short, rt_obs, ENVIRON["rt_json"], ENVIRON["rt_json"];
-    }' ${qcloud_tsv} | bash
-
-    echo "Generated QCloud JSONs:"
-    ls -l *_QC_*.json | cat
-    head -20 *_QC_*.json
-    """
+    echo '{"diann_metrics_extracted": true, "checksum": "!{checksum}"}' > diann_metadata.json
+    
+    echo "Generated DIA-NN JSON files:"
+    ls -la *_QC_*.json
+    
+    echo "Final JSON content:"
+    cat *_QC_*.json
+    '''
 }

@@ -30,16 +30,18 @@ def selected_tsv_file   = selectTsvFile(qcType, params)
 def qcodeFilePath       = "${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv"
 def qcloud_sample_type  = getQCloudSampleType(qcType, qcodeFilePath)
 def checksum            = extract_checksum_from_filename(filename)
+def config_file_path    = "${params.home_dir}/mygit/atlas-config/atlas-test/conf/tools/qcloud.config"
 
 log.info "Raw file: ${params.rawfile}"
 log.info "QC type: ${qcType}"
 log.info "Selected TSV file: ${selected_tsv_file}"
 log.info "QCloud sample type: ${qcloud_sample_type}"
 log.info "Checksum: ${checksum}"
+log.info "Config file: ${config_file_path}"
 
 // FIX: Create proper tuple structure for ThermoRawFileParserDiann
 // Use different variable names to avoid conflict
-def rawfile_ch = Channel.fromPath(params.rawfile)
+def rawfile_ch = Channel.fromPath(params.rawfile, checkIfExists: true)
     .map { file -> 
         def file_name = file.getName()      // Changed from 'filename'
         def file_basename = file.getBaseName()  // Changed from 'basename'
@@ -50,6 +52,7 @@ def rawfile_ch = Channel.fromPath(params.rawfile)
 def tsv_file_ch   = Channel.value(selected_tsv_file)
 def checksum_ch   = Channel.value(checksum)
 def sampletype_ch = Channel.value(qcloud_sample_type)
+def config_ch     = Channel.fromPath(config_file_path, checkIfExists: true)
 
 // ----------------------------
 // WORKFLOW
@@ -78,16 +81,16 @@ workflow {
     EXTRACT_DIANN_METRICS(
         diann_pr.out.report_tsv,
         tsv_file_ch,
-        checksum_ch
+        checksum_ch,
+        config_ch
     )
 
     // ----------------------------
     // GENERAL METADATA (tic, mit, ms2 scans…)
-    // Transform ThermoRawFileParserDiann output for EXTRACT_METADATA
     // ----------------------------
     mzml_ch = trfp_pr.out.map { f ->
         def filename_mzml  = f.getName()
-        def basename_mzml  = filename_mzml.replaceAll(/\.mzML\..*$/, "")  // Remove .mzML.organism extension
+        def basename_mzml  = filename_mzml.replaceAll(/\.mzML\..*$/, "")
         def path_mzml      = f.getParent()
         tuple(filename_mzml, basename_mzml, path_mzml, f)
     }
@@ -95,7 +98,7 @@ workflow {
     EXTRACT_METADATA(mzml_ch)
 
     // ----------------------------
-    // COLLECT ALL JSON FILES
+    // COLLECT ALL JSON FILES - UPDATED for new output structure
     // ----------------------------
     all_json_files = EXTRACT_METADATA.out.qc_jsons
         .map { basename, jsons -> jsons }
@@ -104,7 +107,7 @@ workflow {
         .collect()
 
     sample_info = EXTRACT_METADATA.out.qc_jsons.map { basename_mzml, jsons ->
-        basename_mzml.replaceAll(/\.mzML\..*$/, "")  // Remove .mzML.organism extension
+        basename_mzml.replaceAll(/\.mzML\..*$/, "")
     }
 
     // ----------------------------
