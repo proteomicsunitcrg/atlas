@@ -147,7 +147,7 @@ process EXTRACT_DIANN_METRICS {
 
     echo "JSON files to create:"
     echo "  Area: $area_json (using qCCV code: $area_qcode)"
-    echo "  RT: $rt_json (using qCCV code: $rt_qcode)"
+    echo "  RT: $rt_json (using qCCV code: $rt_qcode) - VALUES CONVERTED TO SECONDS"
     echo "  Points per peak: $points_per_peak_json (using context code: $points_per_peak_qcode)"
     echo "  Median FWHM: $median_fwhm_json (using context code: $median_fwhm_qcode)"
     echo "  Median mass accuracy MS1: $median_mass_acc_ms1_json (using context code: $median_mass_acc_ms1_qcode)"
@@ -285,22 +285,31 @@ EOF
         
         if [ -n "$result" ]; then
             area=$(echo $result | cut -d',' -f1)
-            rt_obs=$(echo $result | cut -d',' -f2)
+            rt_obs_minutes=$(echo $result | cut -d',' -f2)
             mass_evidence=$(echo $result | cut -d',' -f3)
             match_type=$(echo $result | cut -d',' -f4-)
+            
+            # Convert RT from minutes to seconds (multiply by 60)
+            if [ -n "$rt_obs_minutes" ] && [ "$rt_obs_minutes" != "" ] && [ "$rt_obs_minutes" != "0" ]; then
+                rt_obs=$(awk -v val="$rt_obs_minutes" 'BEGIN {printf "%.3f", val * 60}')
+                echo "DEBUG: RT conversion: $rt_obs_minutes min * 60 = $rt_obs sec"
+            else
+                rt_obs=0
+                echo "DEBUG: RT value empty or zero, setting to 0"
+            fi
             
             # Use Mass.Evidence as the dppm value (REAL individual mass accuracy)
             dppm="$mass_evidence"
             
-            echo "Found: $short -> area=$area, rt=$rt_obs, dppm=$dppm ($match_type)"
+            echo "Found: $short -> area=$area, rt=$rt_obs sec (converted from $rt_obs_minutes min), dppm=$dppm ($match_type)"
         else
             echo "Peptide $long_clean not found in report"
             area=0
-            rt_obs=0
+            rt_obs=0  # Already in seconds (0)
             dppm=0
         fi
         
-        echo "Final values for $short: area=$area, rt=$rt_obs, dppm=$dppm ppm"
+        echo "Final values for $short: area=$area, rt=$rt_obs sec (converted from minutes), dppm=$dppm ppm"
         
         # Add values to JSON files using jq (dppm processing removed as per requirements)
         jq --arg contextSource "$long_clean" --arg value "$area" \\
@@ -321,6 +330,7 @@ EOF
     echo "QC Summary:"
     echo "  Peptides processed: $(tail -n +2 !{qcloud_tsv} | wc -l)"
     echo "  Using REAL Mass.Evidence values for individual peptide mass accuracy"
+    echo "  RT values converted from minutes to seconds (column 29 * 60)"
     
     echo "Final JSON content for new metrics:"
     echo "Points per peak JSON:"
