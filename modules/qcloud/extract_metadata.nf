@@ -12,7 +12,7 @@ process EXTRACT_METADATA {
     shell:
     '''
     # Copy bash scripts to working directory
-    cp !{params.scripts_folder}/parsing_qcloud.sh .
+    cp !{projectDir}/bin/parsing_qcloud.sh .
     
     # Make scripts executable
     chmod +x parsing_qcloud.sh
@@ -26,7 +26,7 @@ process EXTRACT_METADATA {
     echo "Extracting general metrics using config-driven approach..."
     echo "Using config file: $config_file"
     
-    # FIX: Clean the filename first to remove .mzML.SP_Bovine extension
+    # Clean the filename first to remove .mzML.SP_Bovine extension
     original_filename="!{mzml_file}"
     
     # Remove .mzML.SP_Bovine to get the proper sample ID
@@ -49,25 +49,23 @@ process EXTRACT_METADATA {
     echo "Extracted checksum: $checksum_extracted"
     echo "Extracted context code: $context_code"
     
-    # Read QC parameters from config
+    # Read QC parameters from config using the same functions as extract_diann_metrics
     area_qccv=$(extract_qcloud_term "$config_file" "tic")
     mit_ms1_qccv=$(extract_qcloud_term "$config_file" "mit_ms1")
     mit_ms2_qccv=$(extract_qcloud_term "$config_file" "mit_ms2")
     ms2_count_qccv=$(extract_qcloud_term "$config_file" "ms2_scan_count")
     
-    # Read context sources from config
+    # Read context sources from config file using the same functions as extract_diann_metrics
     tic_context=$(extract_context_value "$config_file" "tic")
     mit_ms1_context=$(extract_context_value "$config_file" "mit_ms1")
     mit_ms2_context=$(extract_context_value "$config_file" "mit_ms2")
     ms2_count_context=$(extract_context_value "$config_file" "ms2_scan_count")
     
     echo "QC parameters from config:"
-    echo "  TIC: $area_qccv -> $tic_context"
-    echo "  MIT MS1: $mit_ms1_qccv -> $mit_ms1_context"
-    echo "  MIT MS2: $mit_ms2_qccv -> $mit_ms2_context"
-    echo "  MS2 count: $ms2_count_qccv -> $ms2_count_context"
-    
-    # SIMPLE AND FAST EXTRACTION
+    echo "  TIC: $area_qccv (context: $tic_context)"
+    echo "  MIT MS1: $mit_ms1_qccv (context: $mit_ms1_context)"
+    echo "  MIT MS2: $mit_ms2_qccv (context: $mit_ms2_context)"
+    echo "  MS2 count: $ms2_count_qccv (context: $ms2_count_context)"
     
     # Extract TIC using grep
     echo "Extracting TIC from large mzML file..."
@@ -77,9 +75,8 @@ process EXTRACT_METADATA {
           awk '{sum+=$1} END{printf "%.0f", sum}')
     echo "TIC: $tic"
     
-    # SIMPLE MIT EXTRACTION - Use the working approach from our manual test
+    # Extract MIT MS1
     echo "Extracting MIT MS1..."
-    # Extract all MS1 injection times in one pass
     mit_ms1=$(grep -A 20 'MS:1000511.*value="1"' "$original_filename" | \\
               grep 'MS:1000927' | \\
               grep -o 'value="[0-9.]*"' | \\
@@ -87,8 +84,8 @@ process EXTRACT_METADATA {
               awk '{sum+=$1; count++} END{if(count>0) printf "%.6f", sum/count; else print "0"}')
     echo "MIT MS1: $mit_ms1"
     
+    # Extract MIT MS2
     echo "Extracting MIT MS2..."
-    # Extract all MS2 injection times in one pass
     mit_ms2=$(grep -A 20 'MS:1000511.*value="2"' "$original_filename" | \\
               grep 'MS:1000927' | \\
               grep -o 'value="[0-9.]*"' | \\
@@ -109,17 +106,22 @@ process EXTRACT_METADATA {
     
     echo "Final values: TIC=$tic, MIT_MS1=$mit_ms1, MIT_MS2=$mit_ms2, MS2_scans=$ms2_scan_count"
     
-    # Create JSON files with CORRECT filename format and checksum
-    tic_qcode=$(echo "$area_qccv" | cut -d':' -f2)
-    mit_ms1_qcode=$(echo "$mit_ms1_qccv" | cut -d':' -f2)
-    mit_ms2_qcode=$(echo "$mit_ms2_qccv" | cut -d':' -f2)
-    ms2_count_qcode=$(echo "$ms2_count_qccv" | cut -d':' -f2)
+    # Create JSON file names using context codes (same pattern as extract_diann_metrics)
+    tic_qcode=$(echo "$tic_context" | cut -d':' -f2)
+    mit_ms1_qcode=$(echo "$mit_ms1_context" | cut -d':' -f2)
+    mit_ms2_qcode=$(echo "$mit_ms2_context" | cut -d':' -f2)
+    ms2_count_qcode=$(echo "$ms2_count_context" | cut -d':' -f2)
     
-    # Create JSON files with proper format: {uuid}_{context_code}_{checksum}_QC_{qcode}.json
     tic_json="${uuid}_${context_code}_${checksum_extracted}_QC_${tic_qcode}.json"
     mit_ms1_json="${uuid}_${context_code}_${checksum_extracted}_QC_${mit_ms1_qcode}.json"
     mit_ms2_json="${uuid}_${context_code}_${checksum_extracted}_QC_${mit_ms2_qcode}.json"
     ms2_count_json="${uuid}_${context_code}_${checksum_extracted}_QC_${ms2_count_qcode}.json"
+    
+    echo "JSON files to create:"
+    echo "  TIC: $tic_json (using context code: $tic_qcode)"
+    echo "  MIT MS1: $mit_ms1_json (using context code: $mit_ms1_qcode)"
+    echo "  MIT MS2: $mit_ms2_json (using context code: $mit_ms2_qcode)"
+    echo "  MS2 count: $ms2_count_json (using context code: $ms2_count_qcode)"
     
     # Create TIC JSON
     cat > "$tic_json" << EOF
@@ -216,5 +218,19 @@ EOF
     echo "Metadata extraction completed for $original_filename"
     echo "Generated files:"
     ls -la *_QC_*.json metadata.json
+    
+    echo "File count check:"
+    qc_file_count=$(ls -1 *_QC_*.json 2>/dev/null | wc -l)
+    echo "Number of QC JSON files created: $qc_file_count (should be 4)"
+    
+    # Verify each expected file exists
+    echo "File existence check:"
+    for expected_file in "$tic_json" "$mit_ms1_json" "$mit_ms2_json" "$ms2_count_json"; do
+        if [[ -f "$expected_file" ]]; then
+            echo "  ✓ $expected_file exists"
+        else
+            echo "  ✗ $expected_file MISSING"
+        fi
+    done
     '''
 }
