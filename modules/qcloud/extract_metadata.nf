@@ -50,7 +50,8 @@ process EXTRACT_METADATA {
     echo "Extracted context code: $context_code"
     
     # Read QC parameters from config using the same functions as extract_diann_metrics
-    area_qccv=$(extract_qcloud_term "$config_file" "tic")
+    # Use direct extraction like the working extract_diann_metrics module
+    tic_qccv=$(extract_qcloud_term "$config_file" "tic")
     mit_ms1_qccv=$(extract_qcloud_term "$config_file" "mit_ms1")
     mit_ms2_qccv=$(extract_qcloud_term "$config_file" "mit_ms2")
     ms2_count_qccv=$(extract_qcloud_term "$config_file" "ms2_scan_count")
@@ -62,7 +63,7 @@ process EXTRACT_METADATA {
     ms2_count_context=$(extract_context_value "$config_file" "ms2_scan_count")
     
     echo "QC parameters from config:"
-    echo "  TIC: $area_qccv (context: $tic_context)"
+    echo "  TIC: $tic_qccv (context: $tic_context)"
     echo "  MIT MS1: $mit_ms1_qccv (context: $mit_ms1_context)"
     echo "  MIT MS2: $mit_ms2_qccv (context: $mit_ms2_context)"
     echo "  MS2 count: $ms2_count_qccv (context: $ms2_count_context)"

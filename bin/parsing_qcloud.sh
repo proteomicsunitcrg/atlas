@@ -952,7 +952,8 @@ extract_qcloud_term() {
     local config_file=$1
     local term_key=$2
     
-    grep -A 20 "qcloud_terms.*=" "$config_file" | grep -w "$term_key" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r'
+    # Extract only from qcloud_terms section, stop at qcloud_contexts
+    grep -A 50 "qcloud_terms.*=" "$config_file" | grep -B 50 "qcloud_contexts.*=" | head -n -1 | grep -w "$term_key" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r'
 }
 
 # Helper function: Extract context values from your existing config
