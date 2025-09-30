@@ -262,7 +262,7 @@ EOF
         long_clean=$(echo "$long" | awk '{print $1}')
         
         # Extract area, RT, and REAL Mass.Evidence (column 42) for each peptide
-        result=$(awk -F'\\t' -v peptide="$long_clean" -v pcol="14" -v acol="27" -v rcol="29" -v mass_ev_col="42" '
+        result=$(awk -F'\\t' -v peptide="$long_clean" -v pcol="14" -v acol="27" -v rcol="30" -v mass_ev_col="42" '
             $pcol == peptide { 
                 area = ($acol == "" || $acol == "0") ? 0 : $acol
                 rt = ($rcol == "" || $rcol == "0") ? 0 : $rcol
@@ -330,7 +330,7 @@ EOF
     echo "QC Summary:"
     echo "  Peptides processed: $(tail -n +2 !{qcloud_tsv} | wc -l)"
     echo "  Using REAL Mass.Evidence values for individual peptide mass accuracy"
-    echo "  RT values converted from minutes to seconds (column 29 * 60)"
+    echo "  RT values converted from minutes to seconds (column 30 * 60)"
     
     echo "Final JSON content for new metrics:"
     echo "Points per peak JSON:"
