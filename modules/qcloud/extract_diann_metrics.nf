@@ -284,11 +284,20 @@ EOF
             }' !{report_tsv})
         
         if [ -n "$result" ]; then
-            area=$(echo $result | cut -d',' -f1)
+            area_raw=$(echo $result | cut -d',' -f1)
             rt_obs_minutes=$(echo $result | cut -d',' -f2)
             mass_evidence=$(echo $result | cut -d',' -f3)
             match_type=$(echo $result | cut -d',' -f4-)
             
+            # Format area value: convert from "2.2683e+08" to "2.2683E8" format (removing leading zeros)
+            if [ -n "$area_raw" ] && [ "$area_raw" != "" ] && [ "$area_raw" != "0" ]; then
+                area=$(convert_to_e_notation "$area_raw")
+                echo "DEBUG: Area formatting: $area_raw -> $area"
+            else
+                area=0
+                echo "DEBUG: Area value empty or zero, setting to 0"
+            fi
+                      
             # Convert RT from minutes to seconds (multiply by 60)
             if [ -n "$rt_obs_minutes" ] && [ "$rt_obs_minutes" != "" ] && [ "$rt_obs_minutes" != "0" ]; then
                 rt_obs=$(awk -v val="$rt_obs_minutes" 'BEGIN {printf "%.3f", val * 60}')

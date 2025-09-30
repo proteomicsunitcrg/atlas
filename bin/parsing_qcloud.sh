@@ -37,6 +37,17 @@ convert_scientific_notation(){
   echo $value | sed 's/[eE]+*/\*10\^/'
 }
 
+# Function: Convert scientific notation to E-notation format without leading zeros
+# Input: 
+#   $1 - numeric value in scientific notation (e.g., "2.2683e+08")
+# Output:
+#   Echoes the value in E-notation format without leading zeros (e.g., "2.2683E8")
+convert_to_e_notation(){
+  value=$1
+  # Convert e/E to uppercase E, remove + sign, and remove leading zeros from exponent
+  echo $value | sed 's/[eE]+\{0,1\}\([0-9]\)/E\1/g; s/[eE]-0*/E-/g; s/E0*\([1-9]\)/E\1/g; s/E0*$/E0/g'
+}
+
 # Function: Convert CSV file to JSON format for QC analysis
 # Inputs:
 #   $1 - input CSV file
