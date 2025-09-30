@@ -12,6 +12,7 @@ process diann {
 
     output:
     path "*report.tsv", emit: report_tsv
+    path "*report.stats.tsv", emit: report_stats_tsv
 
     container "${params.diann_img}"
 
@@ -87,6 +88,7 @@ process diann_bruker {
 
     output:
     path "*report.tsv", emit: report_tsv
+    path "*report.stats.tsv", emit: report_stats_tsv
     path "chromatography-data.sqlite", emit: sqlite_file    
 
     container "${params.diann_img}"
@@ -161,4 +163,5 @@ workflow diann_qcloud {
 
     emit:
     report_tsv = diann.out.report_tsv
+    report_stats_tsv = diann.out.report_stats_tsv
 }

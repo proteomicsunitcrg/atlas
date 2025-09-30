@@ -80,6 +80,7 @@ workflow {
     // ----------------------------
     EXTRACT_DIANN_METRICS(
         diann_pr.out.report_tsv,
+        diann_pr.out.report_stats_tsv,
         tsv_file_ch,
         checksum_ch,
         config_ch

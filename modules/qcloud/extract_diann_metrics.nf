@@ -2,6 +2,7 @@ process EXTRACT_DIANN_METRICS {
     
     input:
     path report_tsv
+    path report_stats_tsv
     path qcloud_tsv  
     val checksum
     path config_file
@@ -32,29 +33,104 @@ process EXTRACT_DIANN_METRICS {
     echo "  Context code: $context_code" 
     echo "  Checksum: $checksum_extracted"
 
-    # Read QC parameters
+    # Read QC parameters from config file (existing)
     area_qccv=$(extract_qcloud_term "!{config_file}" "area")
     rt_qccv=$(extract_qcloud_term "!{config_file}" "rt") 
     dppm_qccv=$(extract_qcloud_term "!{config_file}" "dppm")
+    
+    # Read new QC parameters for stats metrics from config file
+    median_mass_acc_ms1_qccv=$(extract_qcloud_term "!{config_file}" "median_mass_acc_ms1")
+    median_mass_acc_ms2_qccv=$(extract_qcloud_term "!{config_file}" "median_mass_acc_ms2")
+    points_per_peak_qccv=$(extract_qcloud_term "!{config_file}" "points_per_peak")
+    median_fwhm_qccv=$(extract_qcloud_term "!{config_file}" "median_fwhm")
+    
+    # Read context sources from config file
+    median_mass_acc_ms1_context=$(extract_context_value "!{config_file}" "median_mass_acc_ms1")
+    median_mass_acc_ms2_context=$(extract_context_value "!{config_file}" "median_mass_acc_ms2")
+    points_per_peak_context=$(extract_context_value "!{config_file}" "points_per_peak")
+    median_fwhm_context=$(extract_context_value "!{config_file}" "median_fwhm")
+    
+    # Extract metrics from report.stats.tsv
+    if [ -f "!{report_stats_tsv}" ]; then
+        echo "Processing report.stats.tsv file: !{report_stats_tsv}"
+        
+        # Extract FWHM.scans (Points per peak = FWHM.scans * 3)
+        fwhm_scans=$(awk -F'\\t' 'NR==1 {for(i=1;i<=NF;i++) if($i=="FWHM.scans") col=i} NR==2 {print $col}' !{report_stats_tsv})
+        # Use awk for calculation instead of bc, with error handling
+        if [ -n "$fwhm_scans" ] && [ "$fwhm_scans" != "" ]; then
+            points_per_peak=$(awk -v val="$fwhm_scans" 'BEGIN {printf "%.6f", val * 3}')
+        else
+            points_per_peak=0
+        fi
+        
+        # Extract FWHM.RT (Median FWHM = FWHM.RT * 60 sec)
+        fwhm_rt=$(awk -F'\\t' 'NR==1 {for(i=1;i<=NF;i++) if($i=="FWHM.RT") col=i} NR==2 {print $col}' !{report_stats_tsv})
+        # Use awk for calculation instead of bc, with error handling
+        if [ -n "$fwhm_rt" ] && [ "$fwhm_rt" != "" ]; then
+            median_fwhm=$(awk -v val="$fwhm_rt" 'BEGIN {printf "%.6f", val * 60}')
+        else
+            median_fwhm=0
+        fi
+        
+        # Extract Median.Mass.Acc.MS1
+        median_mass_acc_ms1=$(awk -F'\\t' 'NR==1 {for(i=1;i<=NF;i++) if($i=="Median.Mass.Acc.MS1") col=i} NR==2 {print $col}' !{report_stats_tsv})
+        if [ -z "$median_mass_acc_ms1" ] || [ "$median_mass_acc_ms1" = "" ]; then
+            median_mass_acc_ms1=0
+        fi
+        
+        # Extract Median.Mass.Acc.MS2
+        median_mass_acc_ms2=$(awk -F'\\t' 'NR==1 {for(i=1;i<=NF;i++) if($i=="Median.Mass.Acc.MS2") col=i} NR==2 {print $col}' !{report_stats_tsv})
+        if [ -z "$median_mass_acc_ms2" ] || [ "$median_mass_acc_ms2" = "" ]; then
+            median_mass_acc_ms2=0
+        fi
+        
+        echo "Extracted stats metrics:"
+        echo "  FWHM.scans: $fwhm_scans -> Points per peak: $points_per_peak"
+        echo "  FWHM.RT: $fwhm_rt -> Median FWHM: $median_fwhm"
+        echo "  Median.Mass.Acc.MS1: $median_mass_acc_ms1"
+        echo "  Median.Mass.Acc.MS2: $median_mass_acc_ms2"
+    else
+        echo "Warning: report.stats.tsv file not found"
+        points_per_peak=0
+        median_fwhm=0
+        median_mass_acc_ms1=0
+        median_mass_acc_ms2=0
+    fi
 
-    echo "QC parameters:"
+    echo "QC parameters from config:"
     echo "  Area: $area_qccv"
     echo "  RT: $rt_qccv" 
     echo "  dppm: $dppm_qccv"
+    echo "  Points per peak: $points_per_peak_qccv (context: $points_per_peak_context)"
+    echo "  Median FWHM: $median_fwhm_qccv (context: $median_fwhm_context)"
+    echo "  Median mass accuracy MS1: $median_mass_acc_ms1_qccv (context: $median_mass_acc_ms1_context)"
+    echo "  Median mass accuracy MS2: $median_mass_acc_ms2_qccv (context: $median_mass_acc_ms2_context)"
 
-    # Create JSON file names
+    # Create JSON file names using config values
     area_qcode=$(echo "$area_qccv" | cut -d':' -f2)
     rt_qcode=$(echo "$rt_qccv" | cut -d':' -f2)
-    dppm_qcode=$(echo "$dppm_qccv" | cut -d':' -f2)
+    points_per_peak_qcode=$(echo "$points_per_peak_qccv" | cut -d':' -f2)
+    median_fwhm_qcode=$(echo "$median_fwhm_qccv" | cut -d':' -f2)
+    median_mass_acc_ms1_qcode=$(echo "$median_mass_acc_ms1_qccv" | cut -d':' -f2)
+    median_mass_acc_ms2_qcode=$(echo "$median_mass_acc_ms2_qccv" | cut -d':' -f2)
     
     area_json="${uuid}_${context_code}_${checksum_extracted}_QC_${area_qcode}.json"
     rt_json="${uuid}_${context_code}_${checksum_extracted}_QC_${rt_qcode}.json"
-    dppm_json="${uuid}_${context_code}_${checksum_extracted}_QC_${dppm_qcode}.json"
+    
+    # New JSON files for stats metrics (using config values)
+    points_per_peak_json="${uuid}_${context_code}_${checksum_extracted}_QC_${points_per_peak_qcode}.json"
+    median_fwhm_json="${uuid}_${context_code}_${checksum_extracted}_QC_${median_fwhm_qcode}.json"
+    median_mass_acc_ms1_json="${uuid}_${context_code}_${checksum_extracted}_QC_${median_mass_acc_ms1_qcode}_MS1.json"
+    median_mass_acc_ms2_json="${uuid}_${context_code}_${checksum_extracted}_QC_${median_mass_acc_ms2_qcode}_MS2.json"
 
     echo "JSON files to create:"
     echo "  Area: $area_json"
     echo "  RT: $rt_json"
-    echo "  dppm: $dppm_json"
+    echo "  Points per peak: $points_per_peak_json"
+    echo "  Median FWHM: $median_fwhm_json"
+    echo "  Median mass accuracy MS1: $median_mass_acc_ms1_json"
+    echo "  Median mass accuracy MS2: $median_mass_acc_ms2_json"
+    echo "  Note: dppm JSON (QC:1000014) excluded as per requirements"
 
     # Initialize JSON files with proper structure
     cat > "$area_json" << EOF
@@ -85,16 +161,71 @@ EOF
 }
 EOF
 
-    cat > "$dppm_json" << EOF
+    # Initialize new JSON files for stats metrics using config values
+    cat > "$points_per_peak_json" << EOF
 {
   "file" : {
     "checksum" : "$checksum_extracted"
   },
   "data" : [ {
     "parameter" : {
-      "qCCV" : "$dppm_qccv"
+      "qCCV" : "$points_per_peak_qccv"
     },
-    "values" : []
+    "values" : [ {
+      "value" : "$points_per_peak",
+      "contextSource" : "$points_per_peak_context"
+    } ]
+  } ]
+}
+EOF
+
+    cat > "$median_fwhm_json" << EOF
+{
+  "file" : {
+    "checksum" : "$checksum_extracted"
+  },
+  "data" : [ {
+    "parameter" : {
+      "qCCV" : "$median_fwhm_qccv"
+    },
+    "values" : [ {
+      "value" : "$median_fwhm",
+      "contextSource" : "$median_fwhm_context"
+    } ]
+  } ]
+}
+EOF
+
+    cat > "$median_mass_acc_ms1_json" << EOF
+{
+  "file" : {
+    "checksum" : "$checksum_extracted"
+  },
+  "data" : [ {
+    "parameter" : {
+      "qCCV" : "$median_mass_acc_ms1_qccv"
+    },
+    "values" : [ {
+      "value" : "$median_mass_acc_ms1",
+      "contextSource" : "$median_mass_acc_ms1_context"
+    } ]
+  } ]
+}
+EOF
+
+    cat > "$median_mass_acc_ms2_json" << EOF
+{
+  "file" : {
+    "checksum" : "$checksum_extracted"
+  },
+  "data" : [ {
+    "parameter" : {
+      "qCCV" : "$median_mass_acc_ms2_qccv"
+    },
+    "values" : [ {
+      "value" : "$median_mass_acc_ms2",
+      "contextSource" : "$median_mass_acc_ms2_context"
+    } ]
   } ]
 }
 EOF
@@ -148,7 +279,7 @@ EOF
         
         echo "Final values for $short: area=$area, rt=$rt_obs, dppm=$dppm ppm"
         
-        # Add values to JSON files using jq
+        # Add values to JSON files using jq (dppm processing removed as per requirements)
         jq --arg contextSource "$long_clean" --arg value "$area" \\
            '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \\
            "$area_json" > tmp_area.json && mv tmp_area.json "$area_json"
@@ -156,10 +287,6 @@ EOF
         jq --arg contextSource "$long_clean" --arg value "$rt_obs" \\
            '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \\
            "$rt_json" > tmp_rt.json && mv tmp_rt.json "$rt_json"
-           
-        jq --arg contextSource "$long_clean" --arg value "$dppm" \\
-           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \\
-           "$dppm_json" > tmp_dppm.json && mv tmp_dppm.json "$dppm_json"
         
     done
 
@@ -172,7 +299,17 @@ EOF
     echo "  Peptides processed: $(tail -n +2 !{qcloud_tsv} | wc -l)"
     echo "  Using REAL Mass.Evidence values for individual peptide mass accuracy"
     
-    echo "Final JSON content (dppm with REAL individual values):"
-    cat "$dppm_json"
+    echo "Final JSON content for new metrics:"
+    echo "Points per peak JSON:"
+    cat "$points_per_peak_json"
+    
+    echo "Median FWHM JSON:"
+    cat "$median_fwhm_json"
+    
+    echo "Median mass accuracy MS1 JSON:"
+    cat "$median_mass_acc_ms1_json"
+    
+    echo "Median mass accuracy MS2 JSON:"
+    cat "$median_mass_acc_ms2_json"
     '''
 }

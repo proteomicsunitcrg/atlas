@@ -883,6 +883,10 @@ submit_metrics_data() {
         $(extract_qcloud_term "$config_file" "rt")
         $(extract_qcloud_term "$config_file" "dppm")
         $(extract_qcloud_term "$config_file" "fwhm")
+        $(extract_qcloud_term "$config_file" "median_mass_acc_ms1")
+        $(extract_qcloud_term "$config_file" "median_mass_acc_ms2")
+        $(extract_qcloud_term "$config_file" "points_per_peak")
+        $(extract_qcloud_term "$config_file" "median_fwhm")
     )
     
     echo "[DEBUG] QC codes to submit: ${qc_codes[*]}"
@@ -937,7 +941,7 @@ extract_qcloud_term() {
     local config_file=$1
     local term_key=$2
     
-    grep -A 10 "qcloud_terms.*=" "$config_file" | grep -w "$term_key" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r'
+    grep -A 20 "qcloud_terms.*=" "$config_file" | grep -w "$term_key" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r'
 }
 
 # Helper function: Extract context values from your existing config
@@ -945,7 +949,7 @@ extract_context_value() {
     local config_file=$1
     local context_key=$2
     
-    grep -A 10 "qcloud_contexts.*=" "$config_file" | grep -w "$context_key" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r'
+    grep -A 20 "qcloud_contexts.*=" "$config_file" | grep -w "$context_key" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r'
 }
 
 # Function: Count rows in TSV files (excluding header)
