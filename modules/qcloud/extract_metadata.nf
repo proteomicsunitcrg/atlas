@@ -132,7 +132,7 @@ process EXTRACT_METADATA {
   },
   "data" : [ {
     "parameter" : {
-      "qCCV" : "$area_qccv"
+      "qCCV" : "$tic_qccv"
     },
     "values" : [ {
       "value" : "$tic",

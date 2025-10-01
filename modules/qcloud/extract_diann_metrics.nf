@@ -50,6 +50,12 @@ process EXTRACT_DIANN_METRICS {
     points_per_peak_context=$(extract_context_value "!{config_file}" "points_per_peak")
     median_fwhm_context=$(extract_context_value "!{config_file}" "median_fwhm")
     
+    # Set QC parameters for new metrics (Proteins.identified and Precursors.identified)
+    proteins_identified_qccv="QC:9000001"
+    precursors_identified_qccv="QC:9000001"
+    proteins_identified_context="QC:0000032"
+    precursors_identified_context="QC:0000031"
+    
     # Extract metrics from report.stats.tsv
     if [ -f "!{report_stats_tsv}" ]; then
         echo "Processing report.stats.tsv file: !{report_stats_tsv}"
@@ -103,17 +109,37 @@ process EXTRACT_DIANN_METRICS {
             echo "DEBUG: Median.Mass.Acc.MS2 not found or empty, setting to 0"
         fi
         
+        # Extract Proteins.Identified (note: uppercase I)
+        proteins_identified=$(awk -F'\\t' 'NR==1 {for(i=1;i<=NF;i++) if($i=="Proteins.Identified") col=i} NR==2 {if(col) print $col; else print ""}' !{report_stats_tsv})
+        echo "DEBUG: Extracted Proteins.Identified value: '$proteins_identified'"
+        if [ -z "$proteins_identified" ] || [ "$proteins_identified" = "" ]; then
+            proteins_identified=0
+            echo "DEBUG: Proteins.Identified not found or empty, setting to 0"
+        fi
+        
+        # Extract Precursors.Identified (note: uppercase I)
+        precursors_identified=$(awk -F'\\t' 'NR==1 {for(i=1;i<=NF;i++) if($i=="Precursors.Identified") col=i} NR==2 {if(col) print $col; else print ""}' !{report_stats_tsv})
+        echo "DEBUG: Extracted Precursors.Identified value: '$precursors_identified'"
+        if [ -z "$precursors_identified" ] || [ "$precursors_identified" = "" ]; then
+            precursors_identified=0
+            echo "DEBUG: Precursors.Identified not found or empty, setting to 0"
+        fi
+        
         echo "Extracted stats metrics:"
         echo "  FWHM.scans: $fwhm_scans -> Points per peak: $points_per_peak"
         echo "  FWHM.RT: $fwhm_rt -> Median FWHM: $median_fwhm"
         echo "  Median.Mass.Acc.MS1: $median_mass_acc_ms1"
         echo "  Median.Mass.Acc.MS2: $median_mass_acc_ms2"
+        echo "  Proteins.Identified: $proteins_identified"
+        echo "  Precursors.Identified: $precursors_identified"
     else
         echo "Warning: report.stats.tsv file not found"
         points_per_peak=0
         median_fwhm=0
         median_mass_acc_ms1=0
         median_mass_acc_ms2=0
+        proteins_identified=0
+        precursors_identified=0
     fi
 
     echo "QC parameters from config:"
@@ -124,6 +150,8 @@ process EXTRACT_DIANN_METRICS {
     echo "  Median FWHM: $median_fwhm_qccv (context: $median_fwhm_context)"
     echo "  Median mass accuracy MS1: $median_mass_acc_ms1_qccv (context: $median_mass_acc_ms1_context)"
     echo "  Median mass accuracy MS2: $median_mass_acc_ms2_qccv (context: $median_mass_acc_ms2_context)"
+    echo "  Proteins identified: $proteins_identified_qccv (context: $proteins_identified_context)"
+    echo "  Precursors identified: $precursors_identified_qccv (context: $precursors_identified_context)"
 
     # Create JSON file names using config values
     # For existing metrics, use qCCV codes (qcloud_terms)
@@ -144,6 +172,12 @@ process EXTRACT_DIANN_METRICS {
     median_fwhm_json="${uuid}_${context_code}_${checksum_extracted}_QC_${median_fwhm_qcode}.json"
     median_mass_acc_ms1_json="${uuid}_${context_code}_${checksum_extracted}_QC_${median_mass_acc_ms1_qcode}.json"
     median_mass_acc_ms2_json="${uuid}_${context_code}_${checksum_extracted}_QC_${median_mass_acc_ms2_qcode}.json"
+    
+    # JSON files for new metrics (Proteins.identified and Precursors.identified)
+    proteins_identified_qcode=$(echo "$proteins_identified_context" | cut -d':' -f2)
+    precursors_identified_qcode=$(echo "$precursors_identified_context" | cut -d':' -f2)
+    proteins_identified_json="${uuid}_${context_code}_${checksum_extracted}_QC_${proteins_identified_qcode}.json"
+    precursors_identified_json="${uuid}_${context_code}_${checksum_extracted}_QC_${precursors_identified_qcode}.json"
 
     echo "JSON files to create:"
     echo "  Area: $area_json (using qCCV code: $area_qcode)"
@@ -152,6 +186,8 @@ process EXTRACT_DIANN_METRICS {
     echo "  Median FWHM: $median_fwhm_json (using context code: $median_fwhm_qcode)"
     echo "  Median mass accuracy MS1: $median_mass_acc_ms1_json (using context code: $median_mass_acc_ms1_qcode)"
     echo "  Median mass accuracy MS2: $median_mass_acc_ms2_json (using context code: $median_mass_acc_ms2_qcode)"
+    echo "  Proteins identified: $proteins_identified_json (using context code: $proteins_identified_qcode)"
+    echo "  Precursors identified: $precursors_identified_json (using context code: $precursors_identified_qcode)"
     echo "  Note: dppm JSON (QC:1000014) excluded as per requirements"
     echo "  Note: New stats metrics use context codes (qcloud_contexts) for filenames"
 
@@ -248,6 +284,40 @@ EOF
     "values" : [ {
       "value" : "$median_mass_acc_ms2",
       "contextSource" : "$median_mass_acc_ms2_context"
+    } ]
+  } ]
+}
+EOF
+
+    cat > "$proteins_identified_json" << EOF
+{
+  "file" : {
+    "checksum" : "$checksum_extracted"
+  },
+  "data" : [ {
+    "parameter" : {
+      "qCCV" : "$proteins_identified_qccv"
+    },
+    "values" : [ {
+      "value" : "$proteins_identified",
+      "contextSource" : "$proteins_identified_context"
+    } ]
+  } ]
+}
+EOF
+
+    cat > "$precursors_identified_json" << EOF
+{
+  "file" : {
+    "checksum" : "$checksum_extracted"
+  },
+  "data" : [ {
+    "parameter" : {
+      "qCCV" : "$precursors_identified_qccv"
+    },
+    "values" : [ {
+      "value" : "$precursors_identified",
+      "contextSource" : "$precursors_identified_context"
     } ]
   } ]
 }
@@ -353,5 +423,11 @@ EOF
     
     echo "Median mass accuracy MS2 JSON:"
     cat "$median_mass_acc_ms2_json"
+    
+    echo "Proteins identified JSON:"
+    cat "$proteins_identified_json"
+    
+    echo "Precursors identified JSON:"
+    cat "$precursors_identified_json"
     '''
 }
