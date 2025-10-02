@@ -136,52 +136,38 @@ process SUBMIT_TO_QCLOUD {
     filename_no_ext=$(echo "!{sample_id}" | sed 's/\\.[^.]*$//')
     echo "Filename without extension: $filename_no_ext"
     
-    # Remove timestamp pattern (YYYYMMDD_) from the beginning if present
-    filename_no_timestamp=$(echo "$filename_no_ext" | sed 's/^[0-9]\\{8\\}_//')
-    echo "Filename after removing timestamp: $filename_no_timestamp"
-    
-    # Reverse the filename to extract components from the end
-    reversed_filename=$(echo "$filename_no_timestamp" | rev)
-    echo "Reversed filename: $reversed_filename"
-    
-    # Split by underscore and count parts
-    IFS='_' read -ra PARTS <<< "$reversed_filename"
+    # Split the filename by underscores to extract components
+    IFS='_' read -ra PARTS <<< "$filename_no_ext"
     num_parts=${#PARTS[@]}
     echo "Number of parts: $num_parts"
+    echo "All parts: ${PARTS[*]}"
     
-    # Extract checksum (last part when reversed = first part originally)
-    checksum_reversed=${PARTS[0]}
-    checksum=$(echo "$checksum_reversed" | rev)
-    
-    # Extract context code (second to last part when reversed)
-    if [ $num_parts -ge 2 ]; then
-        context_reversed=${PARTS[1]}
-        context_code=$(echo "$context_reversed" | rev)
-    else
-        context_code=""
-    fi
-    
-    # Extract UUID (third to last part when reversed)
+    # Extract the last 3 components (UUID, QC code, checksum)
     if [ $num_parts -ge 3 ]; then
-        uuid_reversed=${PARTS[2]}
-        uuid=$(echo "$uuid_reversed" | rev)
-    else
-        uuid=""
-    fi
-    
-    # Reconstruct the cleaned filename (everything except UUID, context, and checksum)
-    if [ $num_parts -gt 3 ]; then
-        # Get all parts except the last 3 (checksum, context, uuid)
+        # Get the last 3 parts
+        checksum=${PARTS[$((num_parts-1))]}
+        context_code=${PARTS[$((num_parts-2))]}
+        uuid=${PARTS[$((num_parts-3))]}
+        
+        # Reconstruct the cleaned filename by taking all parts except the last 3
+        # and removing the trailing underscore
         cleaned_parts=()
-        for ((i=3; i<num_parts; i++)); do
-            part_reversed=${PARTS[i]}
-            part=$(echo "$part_reversed" | rev)
-            cleaned_parts=("$part" "${cleaned_parts[@]}")
+        for ((i=0; i<num_parts-3; i++)); do
+            cleaned_parts+=("${PARTS[i]}")
         done
-        # Join with underscores
-        cleaned_filename=$(IFS='_'; echo "${cleaned_parts[*]}")
+        
+        # Join with underscores to create cleaned filename
+        if [ ${#cleaned_parts[@]} -gt 0 ]; then
+            cleaned_filename=$(IFS='_'; echo "${cleaned_parts[*]}")
+        else
+            cleaned_filename="$filename_no_ext"
+        fi
     else
-        cleaned_filename="$filename_no_timestamp"
+        # If less than 3 parts, use the original filename
+        cleaned_filename="$filename_no_ext"
+        checksum=""
+        context_code=""
+        uuid=""
     fi
     
     echo "Cleaned filename: $cleaned_filename"
