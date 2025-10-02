@@ -3,9 +3,9 @@ process SUBMIT_TO_QCLOUD {
     tag { "${sample_id}" }
     
     input:
+    path json_files
     val sample_id
-    path diann_json_files
-    path metadata_json_files
+    val sample_type
     
     output:
     path "qcloud_submission.log", emit: log
@@ -13,7 +13,7 @@ process SUBMIT_TO_QCLOUD {
     shell:
     '''
     echo "Submitting QCloud data for sample: !{sample_id}"
-    echo "Using QCloud sample type: !{params.qcloud_sample_type}"
+    echo "Using QCloud sample type: !{sample_type}"
     
     echo "Available JSON files:"
     echo "DIA-NN JSON files:"
@@ -27,7 +27,7 @@ process SUBMIT_TO_QCLOUD {
     QCLOUD_BASE_URL="10.102.1.26"
     QCLOUD_USERNAME="!{params.qcloud_username}"
     QCLOUD_PASSWORD="!{params.qcloud_password}"
-    QCLOUD_SAMPLE_TYPE="!{params.qcloud_sample_type}"
+    QCLOUD_SAMPLE_TYPE="!{sample_type}"
     
     # QCloud API URLs
     QCLOUD_AUTH_URL="${QCLOUD_BASE_URL}/api/auth"

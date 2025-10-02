@@ -22,6 +22,12 @@ include { SUBMIT_TO_QCLOUD } from './modules/qcloud/submit_qcloud'
 // ----------------------------
 // CHANNELS & INPUT PARSING
 // ----------------------------
+// Add parameter validation
+if (!params.rawfile) {
+    log.error "ERROR: --rawfile parameter is required"
+    exit 1
+}
+
 def rawfilePath         = params.rawfile
 def filename            = new File(rawfilePath).getName()
 
@@ -109,7 +115,7 @@ workflow {
 
     sample_info = EXTRACT_METADATA.out.qc_jsons.map { basename_mzml, jsons ->
         basename_mzml.replaceAll(/\.mzML\..*$/, "")
-    }
+    }.first()
 
     // ----------------------------
     // SUBMIT TO QCLOUD
