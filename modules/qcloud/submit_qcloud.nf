@@ -24,15 +24,14 @@ process SUBMIT_TO_QCLOUD {
     ls -la *.json
     
     # QCloud API configuration
-    QCLOUD_BASE_URL="10.102.1.26"
     QCLOUD_USERNAME="!{params.url_api_qcloud_user}"
     QCLOUD_PASSWORD="!{params.url_api_qcloud_pass}"
     QCLOUD_SAMPLE_TYPE="!{sample_type}"
     
-    # QCloud API URLs
-    QCLOUD_AUTH_URL="${QCLOUD_BASE_URL}/api/auth"
-    QCLOUD_DATA_URL="${QCLOUD_BASE_URL}/api/data/pipeline"
-    QCLOUD_FILE_URL="${QCLOUD_BASE_URL}/api/file"
+    # QCloud API URLs - using direct URLs from config
+    QCLOUD_AUTH_URL="!{params.url_api_qcloud_signin}"
+    QCLOUD_DATA_URL="!{params.url_api_qcloud_insert_data}"
+    QCLOUD_FILE_URL="!{params.url_api_qcloud_insert_file}"
     
     # Validate required parameters
     if [ -z "$QCLOUD_USERNAME" ] || [ "$QCLOUD_USERNAME" = "null" ]; then
@@ -55,37 +54,80 @@ process SUBMIT_TO_QCLOUD {
     echo "  Insert Data: ${QCLOUD_DATA_URL}"
     echo "  Insert File: ${QCLOUD_FILE_URL}"
     
+    # Validate API URLs are not empty
+    if [ -z "$QCLOUD_AUTH_URL" ] || [ "$QCLOUD_AUTH_URL" = "null" ]; then
+        echo "ERROR: QCLOUD_AUTH_URL is not set or empty"
+        exit 14
+    fi
+    
+    if [ -z "$QCLOUD_DATA_URL" ] || [ "$QCLOUD_DATA_URL" = "null" ]; then
+        echo "ERROR: QCLOUD_DATA_URL is not set or empty"
+        exit 15
+    fi
+    
+    if [ -z "$QCLOUD_FILE_URL" ] || [ "$QCLOUD_FILE_URL" = "null" ]; then
+        echo "ERROR: QCLOUD_FILE_URL is not set or empty"
+        exit 16
+    fi
+    
     # Get access token with timeout and retry
-    echo "Getting access token..."
+    echo "========================================="
+    echo "STEP 1: AUTHENTICATION"
+    echo "========================================="
+    echo "Attempting to authenticate with QCloud API..."
+    echo "Auth URL: ${QCLOUD_AUTH_URL}"
+    echo "Username: ${QCLOUD_USERNAME}"
+    echo "Password: [HIDDEN]"
+    
+    # Prepare authentication payload
+    AUTH_PAYLOAD="{\\"username\\": \\"${QCLOUD_USERNAME}\\", \\"password\\": \\"${QCLOUD_PASSWORD}\\"}"
+    echo "Auth payload: {\\"username\\": \\"${QCLOUD_USERNAME}\\", \\"password\\": \\"[HIDDEN]\\"}"
     
     # Add timeout and connection settings to curl
+    echo "Sending authentication request..."
     TOKEN_RESPONSE=$(curl -s --connect-timeout 30 --max-time 60 -X POST "${QCLOUD_AUTH_URL}" \\
         -H "Content-Type: application/json" \\
-        -d "{\\"username\\": \\"${QCLOUD_USERNAME}\\", \\"password\\": \\"${QCLOUD_PASSWORD}\\"}")
+        -d "$AUTH_PAYLOAD")
     
     CURL_EXIT_CODE=$?
+    echo "Authentication curl exit code: $CURL_EXIT_CODE"
     
     if [ $CURL_EXIT_CODE -ne 0 ]; then
         echo "ERROR: Failed to get access token (curl exit code: $CURL_EXIT_CODE)"
         case $CURL_EXIT_CODE in
-            6) echo "  - Could not resolve host" ;;
-            7) echo "  - Failed to connect to host" ;;
-            28) echo "  - Operation timeout" ;;
+            6) echo "  - Could not resolve host: ${QCLOUD_AUTH_URL}" ;;
+            7) echo "  - Failed to connect to host: ${QCLOUD_AUTH_URL}" ;;
+            28) echo "  - Operation timeout (30s connect, 60s total)" ;;
             35) echo "  - SSL connect error" ;;
-            *) echo "  - Unknown curl error" ;;
+            52) echo "  - Empty reply from server" ;;
+            56) echo "  - Failure in receiving network data" ;;
+            *) echo "  - Unknown curl error: $CURL_EXIT_CODE" ;;
         esac
+        echo "Raw response: $TOKEN_RESPONSE"
         exit 1
     fi
     
-    ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
+    echo "Authentication response received successfully"
+    echo "Raw token response: $TOKEN_RESPONSE"
+    
+    # FIXED: Use the same token extraction method as working template (grep/sed instead of jq)
+    ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | grep -Po '"token" : *\\K"[^"]*"' | sed 's/"//g')
     
     if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
         echo "ERROR: Invalid access token received"
         echo "Token response: $TOKEN_RESPONSE"
+        
+        # Try to extract error message if present
+        ERROR_MSG=$(echo "$TOKEN_RESPONSE" | jq -r '.error // .message // empty')
+        if [ -n "$ERROR_MSG" ] && [ "$ERROR_MSG" != "null" ]; then
+            echo "API Error: $ERROR_MSG"
+        fi
         exit 2
     fi
     
-    echo "Access token obtained successfully"
+    echo "SUCCESS: Access token obtained successfully"
+    echo "Token length: ${#ACCESS_TOKEN} characters"
+    echo "Token preview: ${ACCESS_TOKEN:0:20}..."
     
     # Extract metadata from sample_id
     echo "Original sample_id: !{sample_id}"
@@ -155,92 +197,146 @@ process SUBMIT_TO_QCLOUD {
     echo "  Creation Date: $creation_date"
     
     # Insert file metadata to QCloud
-    echo "Inserting file metadata to QCloud..."
+    echo ""
+    echo "========================================="
+    echo "STEP 2: FILE REGISTRATION"
+    echo "========================================="
+    echo "Registering file metadata with QCloud..."
     
     FILE_URL="${QCLOUD_FILE_URL}/${QCLOUD_SAMPLE_TYPE}/${uuid}"
-    echo "DEBUG: Using URL: $FILE_URL"
+    echo "File registration URL: $FILE_URL"
+    echo "Sample type: ${QCLOUD_SAMPLE_TYPE}"
+    echo "UUID: ${uuid}"
     
     FILE_JSON="{\\"creationDate\\": \\"${creation_date}\\",\\"filename\\": \\"${cleaned_filename}\\",\\"checksum\\": \\"${checksum}\\"}"
-    echo "DEBUG: File registration JSON:"
+    echo "File registration payload:"
     echo "$FILE_JSON"
     
-    FILE_RESPONSE=$(curl -s --connect-timeout 30 --max-time 60 -X POST "$FILE_URL" \\
+    echo "Sending file registration request..."
+    # FIXED: Use same authorization format and HTTP status capture as working template
+    FILE_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" --connect-timeout 30 --max-time 60 -X POST "$FILE_URL" \\
         -H "Content-Type: application/json" \\
-        -H "Authorization: Bearer ${ACCESS_TOKEN}" \\
+        -H "Authorization: ${ACCESS_TOKEN}" \\
         -d "$FILE_JSON")
     
     FILE_STATUS=$?
-    echo "DEBUG: File registration curl exit code: $FILE_STATUS"
-    echo "DEBUG: File registration response: $FILE_RESPONSE"
+    FILE_HTTP_CODE=$(echo $FILE_RESPONSE | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')
+    FILE_BODY=$(echo $FILE_RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+    echo "File registration curl exit code: $FILE_STATUS"
+    echo "File registration HTTP status: $FILE_HTTP_CODE"
     
     if [ $FILE_STATUS -ne 0 ]; then
         echo "ERROR: Failed to register file (curl error: $FILE_STATUS)"
         case $FILE_STATUS in
-            6) echo "  - Could not resolve host" ;;
-            7) echo "  - Failed to connect to host" ;;
-            28) echo "  - Operation timeout" ;;
+            6) echo "  - Could not resolve host: $FILE_URL" ;;
+            7) echo "  - Failed to connect to host: $FILE_URL" ;;
+            28) echo "  - Operation timeout (30s connect, 60s total)" ;;
             35) echo "  - SSL connect error" ;;
-            *) echo "  - Unknown curl error" ;;
+            52) echo "  - Empty reply from server" ;;
+            56) echo "  - Failure in receiving network data" ;;
+            *) echo "  - Unknown curl error: $FILE_STATUS" ;;
         esac
+        echo "Raw response: $FILE_BODY"
         exit 3
     fi
     
-    # Check if response indicates success
-    if echo "$FILE_RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
-        echo "ERROR: File registration failed with API error"
-        echo "Response: $FILE_RESPONSE"
+    echo "File registration response received successfully"
+    echo "Raw file registration response: $FILE_BODY"
+    
+    # FIXED: Use HTTP status code for success/failure determination like working template
+    if [[ $FILE_HTTP_CODE -ne 200 && $FILE_HTTP_CODE -ne 201 ]]; then
+        echo "ERROR: Failed to register file (HTTP $FILE_HTTP_CODE)"
+        echo "Response: $FILE_BODY"
         exit 4
     fi
     
-    echo "File registered successfully"
+    echo "SUCCESS: File registered successfully (HTTP $FILE_HTTP_CODE)"
     
     # Submit each JSON file
-    echo "Submitting QC data files..."
+    echo ""
+    echo "========================================="
+    echo "STEP 3: QC DATA SUBMISSION"
+    echo "========================================="
+    echo "Submitting QC data files to QCloud..."
     
     success_count=0
     total_files=0
     
+    # Count total JSON files first
     for json_file in *.json; do
         if [ -f "$json_file" ]; then
             total_files=$((total_files + 1))
-            echo "Processing: $json_file"
+        fi
+    done
+    
+    echo "Found $total_files JSON files to submit"
+    echo "Data submission URL: ${QCLOUD_DATA_URL}"
+    echo ""
+    
+    for json_file in *.json; do
+        if [ -f "$json_file" ]; then
+            echo "----------------------------------------"
+            echo "Processing file: $json_file"
+            echo "File size: $(wc -c < "$json_file") bytes"
             
             # Read JSON content
             json_content=$(cat "$json_file")
             
-            # Submit to QCloud
-            DATA_URL="${QCLOUD_DATA_URL}"
+            # Validate JSON content
+            if ! echo "$json_content" | jq . > /dev/null 2>&1; then
+                echo "WARNING: $json_file contains invalid JSON"
+                echo "Content preview: ${json_content:0:200}..."
+            else
+                echo "JSON validation: PASSED"
+                # Show a preview of the JSON structure
+                echo "JSON structure preview:"
+                echo "$json_content" | jq -r 'keys[]' 2>/dev/null | head -5 | sed 's/^/  - /'
+            fi
             
-            echo "DEBUG: Submitting to: $DATA_URL"
-            echo "DEBUG: JSON content: $json_content"
+            echo "Submitting to: $DATA_URL"
+            echo "Payload size: ${#json_content} characters"
             
-            RESPONSE=$(curl -s --connect-timeout 30 --max-time 60 -X POST "$DATA_URL" \\
+            # FIXED: Use same authorization format and HTTP status capture as working template
+            RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" --connect-timeout 30 --max-time 60 -X POST "$DATA_URL" \\
                 -H "Content-Type: application/json" \\
-                -H "Authorization: Bearer ${ACCESS_TOKEN}" \\
+                -H "Authorization: ${ACCESS_TOKEN}" \\
                 -d "$json_content")
             
             CURL_STATUS=$?
-            echo "DEBUG: Curl exit code: $CURL_STATUS"
-            echo "DEBUG: Response: $RESPONSE"
+            HTTP_CODE=$(echo $RESPONSE | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')
+            BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+            
+            echo "Curl exit code: $CURL_STATUS"
+            echo "HTTP status: $HTTP_CODE"
             
             if [ $CURL_STATUS -eq 0 ]; then
-                # Check if response indicates success
-                if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
-                    echo "WARNING: API returned error for $json_file: $RESPONSE"
-                else
-                    echo "SUCCESS: $json_file submitted successfully"
+                echo "HTTP request completed successfully"
+                echo "Response received: ${#BODY} characters"
+                echo "Raw response: $BODY"
+                
+                # FIXED: Use HTTP status code for success/failure determination like working template
+                if [[ $HTTP_CODE -eq 200 || $HTTP_CODE -eq 201 ]]; then
+                    echo "RESULT: SUCCESS (HTTP $HTTP_CODE)"
                     success_count=$((success_count + 1))
+                else
+                    echo "RESULT: API ERROR (HTTP $HTTP_CODE)"
+                    echo "Error response: $BODY"
                 fi
             else
-                echo "ERROR: Failed to submit $json_file (curl error: $CURL_STATUS)"
+                echo "RESULT: CURL ERROR"
                 case $CURL_STATUS in
-                    6) echo "  - Could not resolve host" ;;
-                    7) echo "  - Failed to connect to host" ;;
-                    28) echo "  - Operation timeout" ;;
+                    6) echo "  - Could not resolve host: $DATA_URL" ;;
+                    7) echo "  - Failed to connect to host: $DATA_URL" ;;
+                    28) echo "  - Operation timeout (30s connect, 60s total)" ;;
                     35) echo "  - SSL connect error" ;;
-                    *) echo "  - Unknown curl error" ;;
+                    52) echo "  - Empty reply from server" ;;
+                    56) echo "  - Failure in receiving network data" ;;
+                    *) echo "  - Unknown curl error: $CURL_STATUS" ;;
                 esac
+                echo "Raw response: $BODY"
             fi
+            
+            echo "File $json_file processing completed"
         fi
     done
     
