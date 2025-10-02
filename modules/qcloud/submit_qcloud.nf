@@ -25,8 +25,8 @@ process SUBMIT_TO_QCLOUD {
     
     # QCloud API configuration
     QCLOUD_BASE_URL="10.102.1.26"
-    QCLOUD_USERNAME="!{params.qcloud_username}"
-    QCLOUD_PASSWORD="!{params.qcloud_password}"
+    QCLOUD_USERNAME="!{params.url_api_qcloud_user}"
+    QCLOUD_PASSWORD="!{params.url_api_qcloud_pass}"
     QCLOUD_SAMPLE_TYPE="!{sample_type}"
     
     # QCloud API URLs
