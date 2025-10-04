@@ -363,20 +363,24 @@ EOF
     tail -n +2 !{qcloud_tsv} | while IFS=$'\\t' read -r short long extra; do
         echo "Processing peptide: $short -> $long"
         
-        # Use automated peptide mapping function to get correct contextSource
-        # Pass the qcode.tsv path explicitly to avoid bash substitution errors
+        # SEPARATE: contextSource for JSON vs peptide for DIA-NN matching
+        # 1. Get contextSource from config mapping (for JSON)
         long_clean=$(get_openms_peptide_name "!{config_file}" "$short" "$sample_id" "!{params.qcode_file}")
-        echo "DEBUG: Mapped $short -> $long_clean using automated function"
+        echo "DEBUG: contextSource for JSON: $long_clean (from config mapping)"
+        
+        # 2. Get peptide identifier directly from TSV for DIA-NN report matching
+        peptide_for_matching="$long"  # Read directly from TSV column 2
+        echo "DEBUG: Peptide for DIA-NN matching: $peptide_for_matching (from TSV)"
         
         # Extract area, RT, and REAL Mass.Evidence (column 42) for each peptide
-        # Handle peptides with trailing underscores by trying both with and without underscore
-        peptide_for_search="$long_clean"
+        # Use the TSV peptide name for matching (NO config transformation)
+        peptide_for_search="$peptide_for_matching"
         peptide_alt=""
         
         # If peptide ends with underscore, create alternative without underscore for DIA-NN report search
-        if [[ "$long_clean" == *"_" ]]; then
-            peptide_alt="${long_clean%_}"  # Remove trailing underscore
-            echo "DEBUG: Peptide has trailing underscore. Searching for both '$long_clean' and '$peptide_alt' in report"
+        if [[ "$peptide_for_matching" == *"_" ]]; then
+            peptide_alt="${peptide_for_matching%_}"  # Remove trailing underscore
+            echo "DEBUG: Peptide has trailing underscore. Searching for both '$peptide_for_matching' and '$peptide_alt' in report"
         fi
 
         # Use column number from config for peptide matching              
@@ -441,7 +445,7 @@ EOF
             
             echo "Found: $short -> area=$area, rt=$rt_obs sec (converted from $rt_obs_minutes min), dppm=$dppm ($match_type)"
         else
-            echo "Peptide $long_clean not found in report"
+            echo "WARNING: Peptide $peptide_for_matching not found in DIA-NN report (contextSource: $long_clean)"
             area=0
             rt_obs=0  # Already in seconds (0)
             dppm=0
