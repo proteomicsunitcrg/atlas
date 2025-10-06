@@ -1,357 +1,175 @@
 process SUBMIT_TO_QCLOUD {
-    label 'clitools'
+
     tag { "${sample_id}" }
-    
+
     input:
     path json_files
     val sample_id
-    val sample_type
+    val qcloud_sample_type
     
     output:
-    path "qcloud_submission.log", emit: log
+    path "qcloud_submission_*.log"
     
-    shell:
-    '''
-    echo "Submitting QCloud data for sample: !{sample_id}"
-    echo "Using QCloud sample type: !{sample_type}"
+    script:
+    """
+    # Copy the api.sh script to get the authentication function
+    cp ${projectDir}/bin/api.sh .
+    chmod +x api.sh
     
+    echo "Submitting QCloud data for sample: ${sample_id}"
+    echo "Using QCloud sample type: ${qcloud_sample_type}"
     echo "Available JSON files:"
-    echo "DIA-NN JSON files:"
-    ls -la *_QC_*.json 2>/dev/null || echo "No DIA-NN JSON files found"
-    echo "Metadata JSON files:"
-    ls -la *.json | grep -v "_QC_" 2>/dev/null || echo "No metadata JSON files found"
-    echo "All JSON files:"
-    ls -la *.json
+    ls -la *.json || echo "No JSON files found"
     
-    # QCloud API configuration
-    QCLOUD_USERNAME="!{params.url_api_qcloud_user}"
-    QCLOUD_PASSWORD="!{params.url_api_qcloud_pass}"
-    QCLOUD_SAMPLE_TYPE="!{sample_type}"
-    
-    # QCloud API URLs - using direct URLs from config
-    QCLOUD_AUTH_URL="!{params.url_api_qcloud_signin}"
-    QCLOUD_DATA_URL="!{params.url_api_qcloud_insert_data}"
-    QCLOUD_FILE_URL="!{params.url_api_qcloud_insert_file}"
-    
-    # Validate required parameters
-    if [ -z "$QCLOUD_USERNAME" ] || [ "$QCLOUD_USERNAME" = "null" ]; then
-        echo "ERROR: QCLOUD_USERNAME is not set"
-        exit 11
-    fi
-    
-    if [ -z "$QCLOUD_PASSWORD" ] || [ "$QCLOUD_PASSWORD" = "null" ]; then
-        echo "ERROR: QCLOUD_PASSWORD is not set"
-        exit 12
-    fi
-    
-    if [ -z "$QCLOUD_SAMPLE_TYPE" ] || [ "$QCLOUD_SAMPLE_TYPE" = "null" ]; then
-        echo "ERROR: QCLOUD_SAMPLE_TYPE is not set"
-        exit 13
-    fi
+    # API endpoints and credentials from config
+    SIGNIN_URL="${params.url_api_qcloud_signin}"
+    INSERT_DATA_URL="${params.url_api_qcloud_insert_data}"
+    INSERT_FILE_URL="${params.url_api_qcloud_insert_file}"
+    API_USER="${params.url_api_qcloud_user}"
+    API_PASS="${params.url_api_qcloud_pass}"
     
     echo "API URLs:"
-    echo "  Signin: ${QCLOUD_AUTH_URL}"
-    echo "  Insert Data: ${QCLOUD_DATA_URL}"
-    echo "  Insert File: ${QCLOUD_FILE_URL}"
+    echo "  Signin: \$SIGNIN_URL"
+    echo "  Insert Data: \$INSERT_DATA_URL" 
+    echo "  Insert File: \$INSERT_FILE_URL"
     
-    # Validate API URLs are not empty
-    if [ -z "$QCLOUD_AUTH_URL" ] || [ "$QCLOUD_AUTH_URL" = "null" ]; then
-        echo "ERROR: QCLOUD_AUTH_URL is not set or empty"
-        exit 14
-    fi
-    
-    if [ -z "$QCLOUD_DATA_URL" ] || [ "$QCLOUD_DATA_URL" = "null" ]; then
-        echo "ERROR: QCLOUD_DATA_URL is not set or empty"
-        exit 15
-    fi
-    
-    if [ -z "$QCLOUD_FILE_URL" ] || [ "$QCLOUD_FILE_URL" = "null" ]; then
-        echo "ERROR: QCLOUD_FILE_URL is not set or empty"
-        exit 16
-    fi
-    
-    # Get access token with timeout and retry
-    echo "========================================="
-    echo "STEP 1: AUTHENTICATION"
-    echo "========================================="
-    echo "Attempting to authenticate with QCloud API..."
-    echo "Auth URL: ${QCLOUD_AUTH_URL}"
-    echo "Username: ${QCLOUD_USERNAME}"
-    echo "Password: [HIDDEN]"
-    
-    # Prepare authentication payload
-    AUTH_PAYLOAD="{\\"username\\": \\"${QCLOUD_USERNAME}\\", \\"password\\": \\"${QCLOUD_PASSWORD}\\"}"
-    echo "Auth payload: {\\"username\\": \\"${QCLOUD_USERNAME}\\", \\"password\\": \\"[HIDDEN]\\"}"
-    
-    # Add timeout and connection settings to curl
-    echo "Sending authentication request..."
-    TOKEN_RESPONSE=$(curl -s --connect-timeout 30 --max-time 60 -X POST "${QCLOUD_AUTH_URL}" \\
-        -H "Content-Type: application/json" \\
-        -d "$AUTH_PAYLOAD")
-    
-    CURL_EXIT_CODE=$?
-    echo "Authentication curl exit code: $CURL_EXIT_CODE"
-    
-    if [ $CURL_EXIT_CODE -ne 0 ]; then
-        echo "ERROR: Failed to get access token (curl exit code: $CURL_EXIT_CODE)"
-        case $CURL_EXIT_CODE in
-            6) echo "  - Could not resolve host: ${QCLOUD_AUTH_URL}" ;;
-            7) echo "  - Failed to connect to host: ${QCLOUD_AUTH_URL}" ;;
-            28) echo "  - Operation timeout (30s connect, 60s total)" ;;
-            35) echo "  - SSL connect error" ;;
-            52) echo "  - Empty reply from server" ;;
-            56) echo "  - Failure in receiving network data" ;;
-            *) echo "  - Unknown curl error: $CURL_EXIT_CODE" ;;
-        esac
-        echo "Raw response: $TOKEN_RESPONSE"
+    # Get access token
+    echo "Getting access token..."
+    if ! access_token=\$(source ./api.sh; get_api_access_token_qcloud "\$SIGNIN_URL" "\$API_USER" "\$API_PASS"); then
+        echo "ERROR: Failed to get access token"
         exit 1
     fi
     
-    echo "Authentication response received successfully"
-    echo "Raw token response: $TOKEN_RESPONSE"
+    echo "Access token obtained successfully"
     
-    # FIXED: Use the same token extraction method as working template (grep/sed instead of jq)
-    ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | grep -Po '"token" : *\\K"[^"]*"' | sed 's/"//g')
+    # Extract file metadata from sample_id for file registration
+    # Parse sample_id: 2019_QC01_ref_6583a564-93dd-4500-a101-b2fe56496b25_QC01_93d2a97b9d0b35c9668663223bdef998.raw
+    reversed_sample_id=\$(echo "${sample_id}" | rev)
+    checksum_reversed=\$(echo "\$reversed_sample_id" | cut -d'_' -f1)
+    context_code_reversed=\$(echo "\$reversed_sample_id" | cut -d'_' -f2)
+    uuid_reversed=\$(echo "\$reversed_sample_id" | cut -d'_' -f3)
     
-    if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
-        echo "ERROR: Invalid access token received"
-        echo "Token response: $TOKEN_RESPONSE"
+    # Reverse them back
+    checksum=\$(echo "\$checksum_reversed" | rev | sed 's/\\.raw\$//')
+    context_code=\$(echo "\$context_code_reversed" | rev)
+    uuid=\$(echo "\$uuid_reversed" | rev)
+    labsysid="\$uuid"
+    
+    # Clean filename by removing timestamp, UUID, QC code, and checksum
+    # Original: 20250729_C39321_001_autoQC01___20250729170452_f96990c5-5d2a-42ac-8b38-31d341be673d_QC01_e1033c0c2b8f753d87113e72577e4141.raw
+    # Desired: 20250729_C39321_001_autoQC01
+
+    echo "Original sample_id: ${sample_id}"
+
+    # Remove .raw extension first
+    filename_no_ext=\$(echo "${sample_id}" | sed 's/\\.raw\$//')
+    echo "Filename without extension: \$filename_no_ext"
+
+    # First, remove the ___timestamp pattern if it exists
+    # Pattern: ___YYYYMMDDHHMMSS (e.g., ___20250729170452)
+    filename_no_timestamp=\$(echo "\$filename_no_ext" | sed 's/___[0-9]\\{14\\}//')
+    echo "Filename after removing timestamp: \$filename_no_timestamp"
+
+    # Now apply the existing reverse parsing logic to remove UUID, QC code, and checksum
+    # Reverse filename, split by "_", remove first 3 elements, reverse back
+    reversed_filename=\$(echo "\$filename_no_timestamp" | rev)
+    echo "Reversed filename: \$reversed_filename"
+
+    # Split by underscore and convert to array
+    IFS='_' read -ra parts <<< "\$reversed_filename"
+    echo "Number of parts: \${#parts[@]}"
+
+    # Check if we have enough parts to remove (need at least 4 parts)
+    if [ \${#parts[@]} -gt 3 ]; then
+        # Remove first 3 elements (checksum, QC code, UUID)
+        cleaned_parts=("\${parts[@]:3}")
         
-        # Try to extract error message if present
-        ERROR_MSG=$(echo "$TOKEN_RESPONSE" | jq -r '.error // .message // empty')
-        if [ -n "$ERROR_MSG" ] && [ "$ERROR_MSG" != "null" ]; then
-            echo "API Error: $ERROR_MSG"
-        fi
-        exit 2
-    fi
-    
-    echo "SUCCESS: Access token obtained successfully"
-    echo "Token length: ${#ACCESS_TOKEN} characters"
-    echo "Token preview: ${ACCESS_TOKEN:0:20}..."
-    
-    # Extract metadata from sample_id
-    echo "Original sample_id: !{sample_id}"
-    
-    # Remove file extension if present
-    filename_no_ext=$(echo "!{sample_id}" | sed 's/\\.[^.]*$//')
-    echo "Filename without extension: $filename_no_ext"
-    
-    # Split the filename by underscores to extract components
-    IFS='_' read -ra PARTS <<< "$filename_no_ext"
-    num_parts=${#PARTS[@]}
-    echo "Number of parts: $num_parts"
-    echo "All parts: ${PARTS[*]}"
-    
-    # Extract the last 3 components (UUID, QC code, checksum)
-    if [ $num_parts -ge 3 ]; then
-        # Get the last 3 parts
-        checksum=${PARTS[$((num_parts-1))]}
-        context_code=${PARTS[$((num_parts-2))]}
-        uuid=${PARTS[$((num_parts-3))]}
+        # Join remaining parts and reverse back
+        cleaned_reversed=\$(IFS='_'; echo "\${cleaned_parts[*]}")
+        cleaned_filename=\$(echo "\$cleaned_reversed" | rev)
         
-        # Reconstruct the cleaned filename by taking all parts except the last 3
-        # and removing the trailing underscore
-        cleaned_parts=()
-        for ((i=0; i<num_parts-3; i++)); do
-            cleaned_parts+=("${PARTS[i]}")
-        done
-        
-        # Join with underscores to create cleaned filename
-        if [ ${#cleaned_parts[@]} -gt 0 ]; then
-            cleaned_filename=$(IFS='_'; echo "${cleaned_parts[*]}")
-        else
-            cleaned_filename="$filename_no_ext"
-        fi
+        echo "Cleaned filename: \$cleaned_filename"
     else
-        # If less than 3 parts, use the original filename
-        cleaned_filename="$filename_no_ext"
-        checksum=""
-        context_code=""
-        uuid=""
+        # Fallback: use filename without timestamp if not enough parts
+        cleaned_filename="\$filename_no_timestamp"
+        echo "Warning: Not enough parts for cleaning, using filename without timestamp: \$cleaned_filename"
     fi
-    
-    echo "Cleaned filename: $cleaned_filename"
-    
-    # Get file creation date (use current date as fallback)
-    creation_date=$(date -Iseconds | cut -d'T' -f1,2 | tr 'T' ' ')
-    
+
+    # Use cleaned filename for API
+    reversed_rest_of_filename="\$cleaned_filename"
+        
+    # Get current date in the correct format for QCloud API
+    creation_date=\$(date -u +"%Y-%m-%d %H:%M:%S")
+
     echo "File metadata:"
-    echo "  Original filename: !{sample_id}"
-    echo "  Cleaned filename: $cleaned_filename"
-    echo "  Checksum: $checksum"
-    echo "  LabSysID: $uuid"
-    echo "  Creation Date: $creation_date"
+    echo "  Original filename: ${sample_id}"
+    echo "  Cleaned filename: \$reversed_rest_of_filename"
+    echo "  Checksum: \$checksum"
+    echo "  LabSysID: \$labsysid"
+    echo "  Creation Date: \$creation_date"
     
-    # Insert file metadata to QCloud
-    echo ""
-    echo "========================================="
-    echo "STEP 2: FILE REGISTRATION"
-    echo "========================================="
-    echo "Registering file metadata with QCloud..."
+    # Create file registration JSON
+    insert_file_string='{"creationDate": "'\$creation_date'","filename": "'\$reversed_rest_of_filename'","checksum": "'\$checksum'"}'
+    echo \$insert_file_string > insert_file_string
     
-    FILE_URL="${QCLOUD_FILE_URL}/${QCLOUD_SAMPLE_TYPE}/${uuid}"
-    echo "File registration URL: $FILE_URL"
-    echo "Sample type: ${QCLOUD_SAMPLE_TYPE}"
-    echo "UUID: ${uuid}"
+    echo "Inserting file metadata to QCloud..."
+    echo "DEBUG: Using URL: \${INSERT_FILE_URL}/${qcloud_sample_type}/\$labsysid"
+    echo "DEBUG: File registration JSON:"
+    cat insert_file_string
     
-    FILE_JSON="{\\"creationDate\\": \\"${creation_date}\\",\\"filename\\": \\"${cleaned_filename}\\",\\"checksum\\": \\"${checksum}\\"}"
-    echo "File registration payload:"
-    echo "$FILE_JSON"
-    
-    echo "Sending file registration request..."
-    # FIXED: Use same authorization format and HTTP status capture as working template
-    FILE_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" --connect-timeout 30 --max-time 60 -X POST "$FILE_URL" \\
+    # Register the file first
+    response=\$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \\
+        -H "Authorization: \$access_token" \\
         -H "Content-Type: application/json" \\
-        -H "Authorization: ${ACCESS_TOKEN}" \\
-        -d "$FILE_JSON")
+        "\${INSERT_FILE_URL}/${qcloud_sample_type}/\$labsysid" \\
+        --data @insert_file_string)
     
-    FILE_STATUS=$?
-    FILE_HTTP_CODE=$(echo $FILE_RESPONSE | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')
-    FILE_BODY=$(echo $FILE_RESPONSE | sed -e 's/HTTPSTATUS:.*//')
-    echo "File registration curl exit code: $FILE_STATUS"
-    echo "File registration HTTP status: $FILE_HTTP_CODE"
+    http_code=\$(echo \$response | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')
+    body=\$(echo \$response | sed -e 's/HTTPSTATUS:.*//')
     
-    if [ $FILE_STATUS -ne 0 ]; then
-        echo "ERROR: Failed to register file (curl error: $FILE_STATUS)"
-        case $FILE_STATUS in
-            6) echo "  - Could not resolve host: $FILE_URL" ;;
-            7) echo "  - Failed to connect to host: $FILE_URL" ;;
-            28) echo "  - Operation timeout (30s connect, 60s total)" ;;
-            35) echo "  - SSL connect error" ;;
-            52) echo "  - Empty reply from server" ;;
-            56) echo "  - Failure in receiving network data" ;;
-            *) echo "  - Unknown curl error: $FILE_STATUS" ;;
-        esac
-        echo "Raw response: $FILE_BODY"
-        exit 3
+    echo "File registration - HTTP Status: \$http_code"
+    echo "File registration - Response: \$body"
+    
+    if [[ \$http_code -ne 200 && \$http_code -ne 201 ]]; then
+        echo "ERROR: Failed to insert file metadata (HTTP \$http_code)"
+        echo "Response: \$body"
+        exit 1
     fi
     
-    echo "File registration response received successfully"
-    echo "Raw file registration response: $FILE_BODY"
+    echo "File metadata inserted successfully"
     
-    # FIXED: Use HTTP status code for success/failure determination like working template
-    if [[ $FILE_HTTP_CODE -ne 200 && $FILE_HTTP_CODE -ne 201 ]]; then
-        echo "ERROR: Failed to register file (HTTP $FILE_HTTP_CODE)"
-        echo "Response: $FILE_BODY"
-        exit 4
-    fi
-    
-    echo "SUCCESS: File registered successfully (HTTP $FILE_HTTP_CODE)"
-    
-    # Submit each JSON file
-    echo ""
-    echo "========================================="
-    echo "STEP 3: QC DATA SUBMISSION"
-    echo "========================================="
-    echo "Submitting QC data files to QCloud..."
-    
-    success_count=0
-    total_files=0
-    
-    # Count total JSON files first
+    # Now submit each QC data JSON file
+    echo "Inserting QC data to QCloud..."
     for json_file in *.json; do
-        if [ -f "$json_file" ]; then
-            total_files=$((total_files + 1))
-        fi
-    done
-    
-    echo "Found $total_files JSON files to submit"
-    echo "Data submission URL: ${QCLOUD_DATA_URL}"
-    echo ""
-    
-    for json_file in *.json; do
-        if [ -f "$json_file" ]; then
-            echo "----------------------------------------"
-            echo "Processing file: $json_file"
-            echo "File size: $(wc -c < "$json_file") bytes"
+        if [[ -f "\$json_file" ]]; then
+            echo "Submitting \$json_file..."
             
-            # Read JSON content
-            json_content=$(cat "$json_file")
+            # Show JSON content for debugging
+            echo "DEBUG: Content of \$json_file:"
+            head -5 "\$json_file"
             
-            # Validate JSON content
-            if ! echo "$json_content" | jq . > /dev/null 2>&1; then
-                echo "WARNING: $json_file contains invalid JSON"
-                echo "Content preview: ${json_content:0:200}..."
-            else
-                echo "JSON validation: PASSED"
-                # Show a preview of the JSON structure
-                echo "JSON structure preview:"
-                echo "$json_content" | jq -r 'keys[]' 2>/dev/null | head -5 | sed 's/^/  - /'
-            fi
-            
-            echo "Submitting to: $DATA_URL"
-            echo "Payload size: ${#json_content} characters"
-            
-            # FIXED: Use same authorization format and HTTP status capture as working template
-            RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" --connect-timeout 30 --max-time 60 -X POST "$DATA_URL" \\
+            # API call with authentication
+            response=\$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \\
+                -H "Authorization: \$access_token" \\
                 -H "Content-Type: application/json" \\
-                -H "Authorization: ${ACCESS_TOKEN}" \\
-                -d "$json_content")
+                "\$INSERT_DATA_URL" \\
+                --data @"\$json_file")
             
-            CURL_STATUS=$?
-            HTTP_CODE=$(echo $RESPONSE | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')
-            BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+            http_code=\$(echo \$response | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')
+            body=\$(echo \$response | sed -e 's/HTTPSTATUS:.*//')
             
-            echo "Curl exit code: $CURL_STATUS"
-            echo "HTTP status: $HTTP_CODE"
+            echo "HTTP Status: \$http_code"
+            echo "Response: \$body"
             
-            if [ $CURL_STATUS -eq 0 ]; then
-                echo "HTTP request completed successfully"
-                echo "Response received: ${#BODY} characters"
-                echo "Raw response: $BODY"
-                
-                # FIXED: Use HTTP status code for success/failure determination like working template
-                if [[ $HTTP_CODE -eq 200 || $HTTP_CODE -eq 201 ]]; then
-                    echo "RESULT: SUCCESS (HTTP $HTTP_CODE)"
-                    success_count=$((success_count + 1))
-                else
-                    echo "RESULT: API ERROR (HTTP $HTTP_CODE)"
-                    echo "Error response: $BODY"
-                fi
+            if [[ \$http_code -ne 200 && \$http_code -ne 201 ]]; then
+                echo "WARNING: Failed to post \$json_file (HTTP \$http_code)"
+                echo "Response: \$body"
             else
-                echo "RESULT: CURL ERROR"
-                case $CURL_STATUS in
-                    6) echo "  - Could not resolve host: $DATA_URL" ;;
-                    7) echo "  - Failed to connect to host: $DATA_URL" ;;
-                    28) echo "  - Operation timeout (30s connect, 60s total)" ;;
-                    35) echo "  - SSL connect error" ;;
-                    52) echo "  - Empty reply from server" ;;
-                    56) echo "  - Failure in receiving network data" ;;
-                    *) echo "  - Unknown curl error: $CURL_STATUS" ;;
-                esac
-                echo "Raw response: $BODY"
+                echo "Successfully posted \$json_file"
             fi
-            
-            echo "File $json_file processing completed"
         fi
     done
     
-    echo "Submission summary:"
-    echo "  Total files: $total_files"
-    echo "  Successful submissions: $success_count"
-    echo "  Failed submissions: $((total_files - success_count))"
-    
-    # Create log file
-    cat > qcloud_submission.log << EOF
-{
-  "sample_id": "!{sample_id}",
-  "cleaned_filename": "$cleaned_filename",
-  "checksum": "$checksum",
-  "uuid": "$uuid",
-  "creation_date": "$creation_date",
-  "total_files": $total_files,
-  "successful_submissions": $success_count,
-  "failed_submissions": $((total_files - success_count)),
-  "submission_status": "$([ $success_count -eq $total_files ] && echo "complete" || echo "partial")"
-}
-EOF
-    
-    # Exit with error if not all files were submitted successfully
-    if [ $success_count -ne $total_files ]; then
-        echo "ERROR: Not all files were submitted successfully"
-        exit 5
-    fi
-    
-    echo "All QCloud submissions completed successfully"
-    '''
+    echo "QCloud submission completed for ${sample_id}" > qcloud_submission_${sample_id}.log
+    """
 }
