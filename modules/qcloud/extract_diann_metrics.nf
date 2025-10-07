@@ -331,8 +331,7 @@ EOF
         
         # Use automated peptide mapping function to get correct contextSource
         # Pass the qcode.tsv path explicitly to avoid bash substitution errors
-        qcode_tsv_path="${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv"
-        long_clean=$(get_openms_peptide_name "!{config_file}" "$short" "$sample_id" "$qcode_tsv_path")
+        long_clean=$(get_openms_peptide_name "!{config_file}" "$short" "$sample_id" "!{params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv")
         echo "DEBUG: Mapped $short -> $long_clean using automated function"
         
         # Extract area, RT, and REAL Mass.Evidence (column 42) for each peptide
