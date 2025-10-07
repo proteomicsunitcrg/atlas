@@ -117,10 +117,10 @@ workflow {
         basename_mzml.replaceAll(/\.mzML\..*$/, "")
     }.first()
 
-    // Combine all files including metadata.json
+    // Collect all files including metadata.json using a simpler approach
     all_files_with_metadata = all_json_files
-        .combine(EXTRACT_METADATA.out.metadata_json)
-        .map { qc_jsons, metadata -> qc_jsons + [metadata] }
+        .mix(EXTRACT_METADATA.out.metadata_json)
+        .collect()
 
     // ----------------------------
     // SUBMIT TO QCLOUD
