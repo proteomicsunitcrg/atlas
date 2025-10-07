@@ -21,6 +21,14 @@ process SUBMIT_TO_QCLOUD {
     echo "Available JSON files:"
     ls -la *.json || echo "No JSON files found"
     
+    # Debug: Show metadata.json content if available
+    if [ -f "metadata.json" ]; then
+        echo "DEBUG: metadata.json found, content:"
+        cat metadata.json
+    else
+        echo "DEBUG: metadata.json not found in working directory"
+    fi
+    
     # API endpoints and credentials from config
     SIGNIN_URL="${params.url_api_qcloud_signin}"
     INSERT_DATA_URL="${params.url_api_qcloud_insert_data}"
@@ -98,8 +106,20 @@ process SUBMIT_TO_QCLOUD {
     # Use cleaned filename for API
     reversed_rest_of_filename="\$cleaned_filename"
         
-    # Get current date in the correct format for QCloud API
-    creation_date=\$(date -u +"%Y-%m-%d %H:%M:%S")
+    # Extract creation date from metadata.json if available, otherwise use current date
+    if [ -f "metadata.json" ]; then
+        echo "Found metadata.json, extracting creation date..."
+        creation_date=\$(jq -r '.creation_date // empty' metadata.json)
+        if [ -z "\$creation_date" ] || [ "\$creation_date" = "null" ]; then
+            echo "Warning: No creation_date found in metadata.json, using current date"
+            creation_date=\$(date -u +"%Y-%m-%d %H:%M:%S")
+        else
+            echo "Using creation date from metadata: \$creation_date"
+        fi
+    else
+        echo "Warning: metadata.json not found, using current date"
+        creation_date=\$(date -u +"%Y-%m-%d %H:%M:%S")
+    fi
 
     echo "File metadata:"
     echo "  Original filename: ${sample_id}"
