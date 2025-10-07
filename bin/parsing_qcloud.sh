@@ -384,7 +384,7 @@ extract_peptide_metrics_qcsummary() {
     echo "[DEBUG] Output file: $output_file"
     
     # Get the OpenMS notation name from config mapping
-    local long_name=$(get_openms_peptide_name "$config_file" "$peptide_short_name")
+    local long_name=$(get_openms_peptide_name "$config_file" "$peptide_short_name" "$sample_id")
     
     echo "[DEBUG] OpenMS name for $peptide_short_name: $long_name"
     
@@ -756,27 +756,123 @@ read_peptides_from_tsv() {
     tail -n +2 "$tsv_file" | awk -F'\t' '{print $1 ":" $3 ":" $7}'
 }
 
-# Function: Get OpenMS notation peptide name from config mapping
+# FULLY AUTOMATED: Get OpenMS notation peptide name from config mapping
 get_openms_peptide_name() {
     local config_file=$1
     local simple_name=$2
+    local sample_id=$3  # sample_id parameter to detect sample type
+    local qcode_tsv_file="${4:-${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv}"  # Default path to qcode.tsv
     
     echo "[DEBUG] Looking up OpenMS name for: $simple_name" >&2
+    echo "[DEBUG] Sample ID: $sample_id" >&2
+    echo "[DEBUG] Config file: $config_file" >&2
+    echo "[DEBUG] QCode TSV file: $qcode_tsv_file" >&2
     
-    # Extract the OpenMS name from config mapping
-    local openms_name=$(grep -A 20 "peptide_name_mapping_openms_notation" "$config_file" | grep "\"$simple_name\":" | sed 's/.*: *"\([^"]*\)".*/\1/')
-    
-    if [[ -z "$openms_name" ]]; then
-        echo "[WARNING] No OpenMS mapping found for $simple_name, using simple name" >&2
-        echo "$simple_name"
+    # AUTOMATED: Extract all available QC types from qcode.tsv
+    local available_qc_types=()
+    if [[ -f "$qcode_tsv_file" ]]; then
+        # Read all QC types from qcode.tsv (skip header)
+        while IFS=$'\t' read -r qc_type sample_name qcloud_code description; do
+            if [[ "$qc_type" != "qc_type" && -n "$qc_type" ]]; then  # Skip header and empty lines
+                available_qc_types+=("$qc_type")
+            fi
+        done < "$qcode_tsv_file"
+        
+        echo "[DEBUG] Available QC types from qcode.tsv: ${available_qc_types[*]}" >&2
     else
-        echo "[DEBUG] Found OpenMS name: $openms_name" >&2
-        echo "$openms_name"
+        echo "[WARNING] qcode.tsv file not found: $qcode_tsv_file" >&2
+        echo "[WARNING] Falling back to hardcoded QC types" >&2
+        available_qc_types=("QC01" "QC02" "QCD1")  # Fallback
     fi
+    
+    # AUTOMATED: Detect QC type from sample_id by checking against all available types
+    local detected_qc_type=""
+    for qc_type in "${available_qc_types[@]}"; do
+        if [[ "$sample_id" == *"$qc_type"* ]]; then
+            detected_qc_type="$qc_type"
+            echo "[DEBUG] Detected QC type: $detected_qc_type (matched against available types)" >&2
+            break
+        fi
+    done
+    
+    # If no match found, set as unknown
+    if [[ -z "$detected_qc_type" ]]; then
+        echo "[WARNING] Cannot determine QC type from sample_id: $sample_id" >&2
+        echo "[WARNING] Available QC types: ${available_qc_types[*]}" >&2
+        detected_qc_type="UNKNOWN"
+    fi
+    
+    # Validate detected QC type exists in qcode.tsv
+    local qc_type_validated=""
+    if [[ -f "$qcode_tsv_file" && "$detected_qc_type" != "UNKNOWN" ]]; then
+        qc_type_validated=$(awk -F'\t' -v qc_type="$detected_qc_type" 'NR>1 && $1==qc_type {print $1; exit}' "$qcode_tsv_file")
+        if [[ -n "$qc_type_validated" ]]; then
+            echo "[DEBUG] QC type '$detected_qc_type' validated against qcode.tsv" >&2
+            
+            # Get additional info from qcode.tsv for debugging
+            local qc_info=$(awk -F'\t' -v qc_type="$detected_qc_type" 'NR>1 && $1==qc_type {print "Sample: " $2 ", QCloud Code: " $3 ", Description: " $4; exit}' "$qcode_tsv_file")
+            echo "[DEBUG] QC type info: $qc_info" >&2
+        else
+            echo "[WARNING] QC type '$detected_qc_type' not found in qcode.tsv, using fallback" >&2
+            detected_qc_type="UNKNOWN"
+        fi
+    fi
+    
+    # AUTOMATED: Determine mapping suffix based on QC type
+    local mapping_suffix=""
+    if [[ "$detected_qc_type" == "QC01" ]]; then
+        mapping_suffix=""  # Default mapping (peptide_name_mapping_openms_notation)
+    elif [[ "$detected_qc_type" == "UNKNOWN" ]]; then
+        mapping_suffix=""  # Fallback to default
+        echo "[DEBUG] Using fallback mapping for unknown QC type" >&2
+    else
+        # AUTOMATED: For any other QC type, construct suffix dynamically
+        # QC02 -> _qc02 (special case for existing naming)
+        # QCD1 -> _QCD1, QCD2 -> _QCD2, etc. (generic pattern)
+        if [[ "$detected_qc_type" == "QC02" ]]; then
+            mapping_suffix="_qc02"  # Special case for existing QC02 naming
+        else
+            mapping_suffix="_${detected_qc_type}"  # Generic pattern: _QCD1, _QCD2, etc.
+        fi
+    fi
+    
+    # Construct mapping section name
+    local mapping_section="peptide_name_mapping_openms_notation${mapping_suffix}"
+    echo "[DEBUG] Using mapping section: $mapping_section" >&2
+    
+    # Extract the OpenMS name from the appropriate config mapping
+    local openms_name=""
+    if [[ -f "$config_file" ]]; then
+        openms_name=$(grep -A 20 "$mapping_section" "$config_file" | grep "\"$simple_name\":" | sed 's/.*: *"\([^"]*\)".*/\1/')
+        
+        if [[ -n "$openms_name" ]]; then
+            echo "[DEBUG] Found OpenMS name from config section '$mapping_section': $openms_name" >&2
+        else
+            echo "[DEBUG] No mapping found in config section '$mapping_section' for peptide '$simple_name'" >&2
+            
+            # Show available peptides in this section for debugging
+            echo "[DEBUG] Available peptides in section '$mapping_section':" >&2
+            local available_peptides=$(grep -A 20 "$mapping_section" "$config_file" | grep "\".*\":" | sed 's/.*"\([^"]*\)".*/\1/' | head -5)
+            if [[ -n "$available_peptides" ]]; then
+                echo "$available_peptides" | sed 's/^/  /' >&2
+            else
+                echo "  (no peptides found in this section)" >&2
+            fi
+        fi
+    else
+        echo "[WARNING] Config file not found: $config_file" >&2
+    fi
+    
+    # Fallback logic if no mapping found
+    if [[ -z "$openms_name" ]]; then
+        echo "[WARNING] No OpenMS mapping found for $simple_name in $mapping_section, using simple name" >&2
+        openms_name="$simple_name"
+    fi
+    
+    echo "[DEBUG] Final OpenMS name: $openms_name" >&2
+    echo "$openms_name"
 }
 
-
-#!/bin/bash
 
 # Function: Submit all QCloud data (file metadata + metrics data)
 submit_all_qcloud_data() {

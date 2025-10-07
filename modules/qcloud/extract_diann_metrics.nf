@@ -329,7 +329,10 @@ EOF
     tail -n +2 !{qcloud_tsv} | while IFS=$'\\t' read -r short long extra; do
         echo "Processing peptide: $short -> $long"
         
-        long_clean=$(echo "$long" | awk '{print $1}')
+        # Use automated peptide mapping function to get correct contextSource
+        long_clean=$(get_openms_peptide_name "!{config_file}" "$short" "$sample_id")
+
+        echo "DEBUG: Mapped $short -> $long_clean using automated function"
         
         # Extract area, RT, and REAL Mass.Evidence (column 42) for each peptide
         result=$(awk -F'\\t' -v peptide="$long_clean" -v pcol="14" -v acol="27" -v rcol="30" -v mass_ev_col="42" '
