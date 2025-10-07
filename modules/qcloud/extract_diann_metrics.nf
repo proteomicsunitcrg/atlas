@@ -335,19 +335,38 @@ EOF
         echo "DEBUG: Mapped $short -> $long_clean using automated function"
         
         # Extract area, RT, and REAL Mass.Evidence (column 42) for each peptide
-        result=$(awk -F'\\t' -v peptide="$long_clean" -v pcol="14" -v acol="27" -v rcol="30" -v mass_ev_col="42" '
+        # Handle peptides with trailing underscores by trying both with and without underscore
+        peptide_for_search="$long_clean"
+        peptide_alt=""
+        
+        # If peptide ends with underscore, create alternative without underscore for DIA-NN report search
+        if [[ "$long_clean" == *"_" ]]; then
+            peptide_alt="${long_clean%_}"  # Remove trailing underscore
+            echo "DEBUG: Peptide has trailing underscore. Searching for both '$long_clean' and '$peptide_alt' in report"
+        fi
+        
+        result=$(awk -F'\\t' -v peptide="$peptide_for_search" -v peptide_alt="$peptide_alt" -v pcol="14" -v acol="27" -v rcol="30" -v mass_ev_col="42" '
+            # Try exact match first
             $pcol == peptide { 
                 area = ($acol == "" || $acol == "0") ? 0 : $acol
                 rt = ($rcol == "" || $rcol == "0") ? 0 : $rcol
                 mass_evidence = ($mass_ev_col == "" || $mass_ev_col == "0") ? 0 : $mass_ev_col
-                print area "," rt "," mass_evidence ",EXACT"
+                print area "," rt "," mass_evidence ",EXACT:" $pcol
+                exit
+            }
+            # Try alternative match (without trailing underscore)
+            peptide_alt != "" && $pcol == peptide_alt { 
+                area = ($acol == "" || $acol == "0") ? 0 : $acol
+                rt = ($rcol == "" || $rcol == "0") ? 0 : $rcol
+                mass_evidence = ($mass_ev_col == "" || $mass_ev_col == "0") ? 0 : $mass_ev_col
+                print area "," rt "," mass_evidence ",ALT_MATCH:" $pcol
                 exit
             }
             {
-                # Try modified match
+                # Try modified match (remove modifications)
                 clean_seq = $pcol
                 gsub(/\\([^)]*\\)/, "", clean_seq)
-                if (clean_seq == peptide) {
+                if (clean_seq == peptide || (peptide_alt != "" && clean_seq == peptide_alt)) {
                     area = ($acol == "" || $acol == "0") ? 0 : $acol
                     rt = ($rcol == "" || $rcol == "0") ? 0 : $rcol
                     mass_evidence = ($mass_ev_col == "" || $mass_ev_col == "0") ? 0 : $mass_ev_col
