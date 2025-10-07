@@ -761,7 +761,7 @@ get_openms_peptide_name() {
     local config_file=$1
     local simple_name=$2
     local sample_id=$3  # sample_id parameter to detect sample type
-    local qcode_tsv_file="${4:-${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv}"  # Default path to qcode.tsv
+    local qcode_tsv_file=$4  # qcode.tsv file path (no default to avoid bash substitution error)
     
     echo "[DEBUG] Looking up OpenMS name for: $simple_name" >&2
     echo "[DEBUG] Sample ID: $sample_id" >&2
