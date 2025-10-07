@@ -197,7 +197,44 @@ EOF
 EOF
 
     # Get creation date
-    creation_date=$(stat -c %y "$original_filename" | cut -d'.' -f1 | sed 's/ /T/')
+    # Extract creation date from mzML XML metadata using xmllint
+    echo "Extracting creation date from mzML startTimeStamp..."
+
+    # Method 1: Try to extract startTimeStamp from run element
+    start_timestamp=$(xmllint --xpath 'string(//run/@startTimeStamp)' "$original_filename" 2>/dev/null)
+
+    if [[ -n "$start_timestamp" && "$start_timestamp" != "" ]]; then
+        echo "Found startTimeStamp in mzML: $start_timestamp"
+        
+        # Convert from ISO format (2025-09-23T17:24:10.119059Z) to standard format (2025-09-23 17:24:10)
+        creation_date=$(echo "$start_timestamp" | sed 's/T/ /g; s/Z$//g; s/\.[0-9]*$//g')
+        echo "Converted to standard format: $creation_date"
+    else
+        echo "Warning: startTimeStamp not found in mzML, trying alternative methods..."
+        
+        # Method 2: Try to extract from any element with startTimeStamp attribute
+        start_timestamp=$(xmllint --xpath 'string(//*[@startTimeStamp]/@startTimeStamp)' "$original_filename" 2>/dev/null)
+        
+        if [[ -n "$start_timestamp" && "$start_timestamp" != "" ]]; then
+            echo "Found startTimeStamp attribute: $start_timestamp"
+            creation_date=$(echo "$start_timestamp" | sed 's/T/ /g; s/Z$//g; s/\.[0-9]*$//g')
+            echo "Converted to standard format: $creation_date"
+        else
+            echo "Warning: No startTimeStamp found in mzML metadata"
+            
+            # Method 3: Try to extract date from filename as fallback
+            filename=$(basename "$original_filename")
+            if [[ "$filename" =~ 20[0-9]{6} ]]; then
+                date_str="${BASH_REMATCH[0]}"
+                echo "Found date pattern in filename: $date_str"
+                creation_date="${date_str:0:4}-${date_str:4:2}-${date_str:6:2} 00:00:00"
+                echo "Extracted date from filename: $creation_date"
+            else
+                echo "Warning: Could not extract date from mzML or filename, using file modification time"
+                creation_date=$(stat -c %y "$original_filename" | cut -d'.' -f1 | sed 's/ / /g')
+            fi
+        fi
+    fi
     
     # Create metadata JSON
     cat > metadata.json << EOF
