@@ -81,7 +81,7 @@ process diann {
 // =========================
 process diann_bruker {
     label 'diann_bruker'
-    tag  { "${folder}" }
+    tag { "${d_folder}" }
 
     input:
     path d_folder
@@ -89,7 +89,7 @@ process diann_bruker {
     output:
     path "*report.tsv", emit: report_tsv
     path "*report.stats.tsv", emit: report_stats_tsv
-    path "chromatography-data.sqlite", emit: sqlite_file    
+    path "chromatography-data.sqlite", emit: sqlite_file
 
     container "${params.diann_img}"
 
@@ -114,12 +114,19 @@ process diann_bruker {
     databases_folder_sh=!{params.databases_folder}
 
     # Extract filename info:
-    basename_sh=$(basename "$bruker_folder_sh" .d)
+    # Get the base name without .d.SP_Bovine suffix  
+    basename_sh=$(basename "$bruker_folder_sh")
+    basename_sh=${basename_sh%%.d.*}
     extension_sh="d"
 
-    # Extract the organism taking into account the file type:
+    # Extract the organism from Bruker folder name (everything after .d.)
     organism_sh=${bruker_folder_sh##*.d.}
     echo "Extracted organism: $organism_sh"
+    
+    # Create a properly named .d folder for DIA-NN (it expects .d extension)
+    diann_folder="${basename_sh}.d"
+    echo "Creating DIA-NN compatible folder: $diann_folder"
+    ln -sf "$bruker_folder_sh" "$diann_folder"
 
     # Load fasta file:
     fastafile=$(basename ${databases_folder_sh}/${organism_sh}/current/*.fasta)
@@ -133,7 +140,7 @@ process diann_bruker {
     echo "Output TSV report: $output_file"
 
     # Copy the SQLite file to the current working directory
-    cp $bruker_folder_sh/chromatography-data.sqlite .
+    cp $diann_folder/chromatography-data.sqlite .
 
     # Check for existing predicted spectral libraries
     existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
@@ -142,7 +149,7 @@ process diann_bruker {
       echo "Running DIA-NN Bruker with existing spectral library..."
       "$diann_exec_cmd_bruker_sh" \
         --cfg "$diann_cfg_bruker_sh" \
-        --f "$bruker_folder_sh" \
+        --f "$diann_folder" \
         --out "$output_file" \
         --lib "$existing_spec_lib" \
         --fasta "$fastafile" \
@@ -151,7 +158,7 @@ process diann_bruker {
       echo "Running DIA-NN Bruker with library prediction..."
       "$diann_exec_cmd_bruker_sh" \
         --cfg "$diann_cfg_bruker_sh" \
-        --f "$bruker_folder_sh" \
+        --f "$diann_folder" \
         --out "$output_file" \
         --fasta "$fastafile" \
         --fasta-search \
