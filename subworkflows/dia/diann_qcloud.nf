@@ -118,7 +118,8 @@ process diann_bruker {
     extension_sh="d"
 
     # Extract the organism taking into account the file type:
-    organism_sh=$(echo "$bruker_folder_sh" | cut -d'.' -f2)
+    organism_sh=${bruker_folder_sh##*.d.}
+    echo "Extracted organism: $organism_sh"
 
     # Load fasta file:
     fastafile=$(basename ${databases_folder_sh}/${organism_sh}/current/*.fasta)
