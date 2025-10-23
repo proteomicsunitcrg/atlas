@@ -46,15 +46,36 @@ def extractQCType(filename) {
 def selectTsvFile(qcType, params) {
     def selected_tsv_file
     
-    if (qcType == 'QC01') {
+    // Use the qc_tsv_mapping from params if available
+    if (params.qc_tsv_mapping && params.qc_tsv_mapping.containsKey(qcType)) {
+        def mappingKey = params.qc_tsv_mapping[qcType]
+        selected_tsv_file = params[mappingKey]
+        log.info "Detected ${qcType} pattern - using ${mappingKey} TSV file: ${selected_tsv_file}"
+    } 
+    // Fallback to pattern-based matching if direct mapping not found
+    else if (params.qc_tsv_pattern_mapping) {
+        def matchedPattern = params.qc_tsv_pattern_mapping.keySet().find { pattern ->
+            qcType?.matches(pattern)
+        }
+        if (matchedPattern) {
+            def mappingKey = params.qc_tsv_pattern_mapping[matchedPattern]
+            selected_tsv_file = params[mappingKey]
+            log.info "Detected ${qcType} pattern matching '${matchedPattern}' - using ${mappingKey} TSV file"
+        } else {
+            selected_tsv_file = params.peptides_tsv_file
+            log.warn "No pattern match found for QC type '${qcType}', using default TSV file"
+        }
+    }
+    // Legacy fallback for backward compatibility
+    else if (qcType == 'QC01' || qcType == 'QCD1' || qcType == 'QCB1') {
         selected_tsv_file = params.peptides_tsv_qc01
-        log.info "Detected QC01 pattern - using QC01 TSV file"
-    } else if (qcType == 'QC02') {
+        log.info "Detected ${qcType} pattern - using QC01 TSV file"
+    } else if (qcType == 'QC02' || qcType == 'QCD2' || qcType == 'QCB2') {
         selected_tsv_file = params.peptides_tsv_qc02
-        log.info "Detected QC02 pattern - using QC02 TSV file"
+        log.info "Detected ${qcType} pattern - using QC02 TSV file"
     } else {
         selected_tsv_file = params.peptides_tsv_file
-        log.warn "No QC01 or QC02 pattern detected (extracted: '${qcType}'), using default TSV file"
+        log.warn "No QC pattern match detected (extracted: '${qcType}'), using default TSV file"
     }
     
     return selected_tsv_file
@@ -67,6 +88,7 @@ def extractQCTypeFromFilename(filename) {
         def cleanFilename = filename
             .replaceAll(/\.raw.*$/, '')   // Remove .raw and everything after
             .replaceAll(/\.mzML.*$/, '')  // Remove .mzML and everything after
+            .replaceAll(/\.d\..*$/, '')   // Remove .d. and everything after (Bruker pattern)
 
         log.info "Cleaned filename: ${cleanFilename}"
 
@@ -76,11 +98,11 @@ def extractQCTypeFromFilename(filename) {
 
         log.info "Reversed parts: ${parts.join(', ')}"
 
-        // Look for QC pattern in the parts (accept QC01, QC02, QCD1, QCD2, etc.)
+        // Look for QC pattern in the parts (accept QC01, QC02, QCD1, QCD2, QCB1, QCB2, etc.)
         for (int i = 0; i < parts.length; i++) {
             def part = parts[i].reverse()
             log.info "Checking part ${i}: '${parts[i]}' -> '${part}'"
-            if (part.matches(/QC[D]?\d+/)) {
+            if (part.matches(/QC[D|B]?\d+/)) {
                 log.info "Found QC type: ${part} from filename: ${filename}"
                 return part
             }

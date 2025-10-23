@@ -339,43 +339,68 @@ extract_qccode_and_request() {
     local filename
     local filename_core
     local reversed
-    local part1 part2 part3
-    local checksum uuid_candidate qccode_candidate
 
     filename=$(basename "$file_path")
 
-    # 1. Strip file extension (.raw, .mzML, etc.)
-    filename_core="${filename%%.raw*}"  # adjust if needed for .mzML
+    # 1. Strip file extensions (.raw.*, .d.*, .mzML.*)
+    filename_core="${filename%%.raw*}"     # Remove .raw and everything after
+    filename_core="${filename_core%%.d.*}" # Remove .d. and everything after (Bruker)
+    filename_core="${filename_core%%.mzML*}" # Remove .mzML and everything after
+
+    echo "[DEBUG] Original filename: $filename"
+    echo "[DEBUG] After extension stripping: $filename_core"
 
     # 2. Reverse filename to process from the end
     reversed=$(echo "$filename_core" | rev)
+    echo "[DEBUG] Reversed: $reversed"
 
-    # 3. Split reversed string by "_" to isolate last fields
-    IFS='_' read -r part1 part2 part3 _ <<< "$reversed"
+    # 3. Split reversed string by "_" and search for QC codes
+    IFS='_' read -ra parts <<< "$reversed"
+    
+    # 4. Look for QC patterns with Bruker precedence
+    local qccode_regex='^QC[BD]?[0-9]+$'  # Matches QC01, QC02, QCB1, QCB2, QCD1, QCD2
+    local found_qc=""
+    local checksum=""
+    local uuid_candidate=""
+    
+    echo "[DEBUG] Searching through parts for QC codes..."
+    for i in "${!parts[@]}"; do
+        part_normal=$(echo "${parts[$i]}" | rev)
+        echo "[DEBUG] Part $i: ${parts[$i]} -> $part_normal"
+        
+        if [[ "$part_normal" =~ $qccode_regex ]]; then
+            echo "[DEBUG] Found QC code: $part_normal"
+            # Prioritize Bruker codes (QCB*) over regular codes
+            if [[ "$part_normal" == QCB* ]]; then
+                echo "[DEBUG] Bruker QC code found, taking precedence: $part_normal"
+                found_qc="$part_normal"
+                break
+            elif [[ -z "$found_qc" ]]; then
+                found_qc="$part_normal"
+            fi
+        fi
+    done
 
-    # 4. Reverse each back to get actual values
-    checksum=$(echo "$part1" | rev)
-    qccode_candidate=$(echo "$part2" | rev)
-    uuid_candidate=$(echo "$part3" | rev)
+    # 5. Extract checksum (first part when reversed)
+    if [[ ${#parts[@]} -gt 0 ]]; then
+        checksum=$(echo "${parts[0]}" | rev)
+    fi
 
-    # 5. Validation patterns
-    local uuid_regex='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
-    local qccode_regex='^QC[0-9]+$'
-    local checksum_regex='^[0-9a-f]{32}$'
-
-    if [[ "$uuid_candidate" =~ $uuid_regex && "$qccode_candidate" =~ $qccode_regex && "$checksum" =~ $checksum_regex ]]; then
-        QCCODE="$qccode_candidate"
+    # 6. Set results
+    if [[ -n "$found_qc" ]]; then
+        QCCODE="$found_qc"
         REQUEST=""  # Can be extracted if needed
         echo "[INFO] Detected QCloud filename structure → QCCODE: $QCCODE"
+        echo "[INFO] Extracted checksum: $checksum"
     else
         # Fallback to classic extraction from the start
+        echo "[DEBUG] No QC code found in reverse parsing, trying classic method"
         local file_arr=($(echo "$filename" | tr "_" "\n"))
         REQUEST="${file_arr[0]}"
         QCCODE="${file_arr[1]}"
         echo "[INFO] Using QSample filename parsing → REQUEST: $REQUEST | QCCODE: $QCCODE"
     fi
 }
-
 
 ################FUNCTIONS END
 
@@ -393,7 +418,7 @@ FILE_TO_PROCESS=""
 NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
 if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
     echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-    FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" -o -type d -iname "*.d" \) -mtime $MTIME_VAR -print | sort -r | head -n1)
+    FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" -o -type d -iname "*.d.*" \) -mtime $MTIME_VAR -print | sort -r | head -n1)
 else
     echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
 fi

@@ -10,6 +10,7 @@ include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSamp
 // SUBWORKFLOWS
 // ----------------------------
 include { diann_qcloud as diann_pr } from './subworkflows/dia/diann_qcloud.nf'
+include { diann_bruker_qcloud as diann_bruker_pr } from './subworkflows/dia/diann_qcloud.nf'
 include { ThermoRawFileParserDiann as trfp_pr } from './subworkflows/conversion/conversion'
 
 // ----------------------------
@@ -31,6 +32,15 @@ if (!params.rawfile) {
 def rawfilePath         = params.rawfile
 def filename            = new File(rawfilePath).getName()
 
+// ----------------------------
+// INSTRUMENT TYPE DETECTION
+// ----------------------------
+def is_bruker           = rawfilePath.toLowerCase().contains('.d.')
+def is_thermo           = rawfilePath.toLowerCase().endsWith('.raw') || rawfilePath.toLowerCase().contains('.raw.')
+
+log.info "Raw file/folder: ${params.rawfile}"
+log.info "Detected instrument type: ${is_bruker ? 'Bruker (.d folder)' : 'Thermo (.raw file)'}"
+
 def qcType              = extractQCTypeFromFilename(filename)
 def selected_tsv_file   = selectTsvFile(qcType, params)
 def qcodeFilePath       = "${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv"
@@ -38,21 +48,21 @@ def qcloud_sample_type  = getQCloudSampleType(qcType, qcodeFilePath)
 def checksum            = extract_checksum_from_filename(filename)
 def config_file_path    = "${params.home_dir}/mygit/atlas-config/atlas-test/conf/tools/qcloud.config"
 
-log.info "Raw file: ${params.rawfile}"
 log.info "QC type: ${qcType}"
 log.info "Selected TSV file: ${selected_tsv_file}"
 log.info "QCloud sample type: ${qcloud_sample_type}"
 log.info "Checksum: ${checksum}"
 log.info "Config file: ${config_file_path}"
 
-// FIX: Create proper tuple structure for ThermoRawFileParserDiann
-// Use different variable names to avoid conflict
-def rawfile_ch = Channel.fromPath(params.rawfile, checkIfExists: true)
-    .map { file -> 
-        def file_name = file.getName()      // Changed from 'filename'
-        def file_basename = file.getBaseName()  // Changed from 'basename'
-        def file_path = file.getParent()    // Changed from 'path'
-        tuple(file_name, file_basename, file_path)
+// ----------------------------
+// CHANNEL CREATION - HANDLES BOTH FILES AND FOLDERS
+// ----------------------------
+def input_ch = Channel.fromPath(params.rawfile, checkIfExists: true, type: is_bruker ? 'dir' : 'file')
+    .map { input -> 
+        def input_name = input.getName()      
+        def input_basename = input.getBaseName()  
+        def input_path = input.getParent()    
+        tuple(input_name, input_basename, input_path, input)
     }
 
 def tsv_file_ch   = Channel.value(selected_tsv_file)
@@ -65,62 +75,109 @@ def config_ch     = Channel.fromPath(config_file_path, checkIfExists: true)
 // ----------------------------
 workflow {
 
-    // ----------------------------
-    // CONVERT RAW → mzML (using ThermoRawFileParserDiann)
-    // ----------------------------
-    trfp_pr(rawfile_ch)
+    if (is_thermo) {
+        // ----------------------------
+        // THERMO WORKFLOW: RAW → mzML → DIA-NN
+        // ----------------------------
+        log.info "Processing Thermo RAW file..."
+        
+        // Convert tuple for Thermo workflow (extract first 3 elements)
+        thermo_ch = input_ch.map { name, basename, path, file -> tuple(name, basename, path) }
+        
+        // Convert RAW → mzML
+        trfp_pr(thermo_ch)
+
+        // Run DIA-NN on mzML
+        diann_pr(trfp_pr.out)
+
+        // Extract metadata from mzML
+        mzml_ch = trfp_pr.out.map { f ->
+            def filename_mzml  = f.getName()
+            def basename_mzml  = filename_mzml.replaceAll(/\.mzML\..*$/, "")
+            def path_mzml      = f.getParent()
+            tuple(filename_mzml, basename_mzml, path_mzml, f)
+        }
+        EXTRACT_METADATA(mzml_ch)
+
+        // Set up channels for downstream processing
+        report_tsv_ch = diann_pr.out.report_tsv
+        report_stats_tsv_ch = diann_pr.out.report_stats_tsv
+        metadata_ch = EXTRACT_METADATA.out
+        
+    } else if (is_bruker) {
+        // ----------------------------
+        // BRUKER WORKFLOW: .d folder → DIA-NN directly
+        // ----------------------------
+        log.info "Processing Bruker .d folder..."
+        
+        // Extract just the folder path for Bruker workflow
+        bruker_ch = input_ch.map { name, basename, path, folder -> folder }
+        
+        // Run DIA-NN directly on .d folder
+        diann_bruker_pr(bruker_ch)
+
+        // For Bruker, we don't have mzML files, so create a mock metadata channel
+        // or extract metadata from the original .d folder if needed
+        mock_metadata_ch = input_ch.map { name, basename, path, folder ->
+            // Create a structure similar to EXTRACT_METADATA output
+            def mock_qc_jsons = []  // Empty for now, could be populated if needed
+            def mock_metadata_json = null  // Could extract from .d folder if needed
+            [qc_jsons: mock_qc_jsons, metadata_json: mock_metadata_json]
+        }
+
+        // Set up channels for downstream processing
+        report_tsv_ch = diann_bruker_pr.out.report_tsv
+        report_stats_tsv_ch = diann_bruker_pr.out.report_stats_tsv
+        metadata_ch = mock_metadata_ch
+        
+    } else {
+        error "ERROR: Unable to determine instrument type. Expected .raw file or .d folder."
+    }
 
     // ----------------------------
-    // Transform ThermoRawFileParserDiann output for diann_pr
-    // Since ThermoRawFileParserDiann outputs file("*.mzML.*"), we need to adapt it
-    // ----------------------------
-    mzml_for_diann = trfp_pr.out
-
-    // ----------------------------
-    // RUN DIA-NN (uses mzML)
-    // ----------------------------
-    diann_pr(mzml_for_diann)
-
-    // ----------------------------
-    // PARSE DIA-NN REPORT.TSV → JSON QC
+    // PARSE DIA-NN REPORT.TSV → JSON QC (Common for both instruments)
     // ----------------------------
     EXTRACT_DIANN_METRICS(
-        diann_pr.out.report_tsv,
-        diann_pr.out.report_stats_tsv,
+        report_tsv_ch,
+        report_stats_tsv_ch,
         tsv_file_ch,
         checksum_ch,
         config_ch
     )
 
     // ----------------------------
-    // GENERAL METADATA (tic, mit, ms2 scans…)
+    // COLLECT ALL JSON FILES - UPDATED for both instrument types
     // ----------------------------
-    mzml_ch = trfp_pr.out.map { f ->
-        def filename_mzml  = f.getName()
-        def basename_mzml  = filename_mzml.replaceAll(/\.mzML\..*$/, "")
-        def path_mzml      = f.getParent()
-        tuple(filename_mzml, basename_mzml, path_mzml, f)
+    if (is_thermo) {
+        all_json_files = metadata_ch.qc_jsons
+            .map { basename, jsons -> jsons }
+            .mix(EXTRACT_DIANN_METRICS.out.diann_jsons.map { cs, jsons -> jsons })
+            .flatten()
+            .collect()
+
+        sample_info = metadata_ch.qc_jsons.map { basename_mzml, jsons ->
+            basename_mzml.replaceAll(/\.mzML\..*$/, "")
+        }.first()
+
+        // Collect all files including metadata.json
+        all_files_with_metadata = all_json_files
+            .mix(metadata_ch.metadata_json)
+            .collect()
+            
+    } else if (is_bruker) {
+        // For Bruker, we only have DIA-NN metrics
+        all_json_files = EXTRACT_DIANN_METRICS.out.diann_jsons
+            .map { cs, jsons -> jsons }
+            .flatten()
+            .collect()
+
+        sample_info = input_ch.map { name, basename, path, folder ->
+            basename.replaceAll(/\.d$/, "")
+        }.first()
+
+        // For Bruker, no metadata.json from mzML
+        all_files_with_metadata = all_json_files.collect()
     }
-
-    EXTRACT_METADATA(mzml_ch)
-
-    // ----------------------------
-    // COLLECT ALL JSON FILES - UPDATED for new output structure
-    // ----------------------------
-    all_json_files = EXTRACT_METADATA.out.qc_jsons
-        .map { basename, jsons -> jsons }
-        .mix(EXTRACT_DIANN_METRICS.out.diann_jsons.map { cs, jsons -> jsons })
-        .flatten()
-        .collect()
-
-    sample_info = EXTRACT_METADATA.out.qc_jsons.map { basename_mzml, jsons ->
-        basename_mzml.replaceAll(/\.mzML\..*$/, "")
-    }.first()
-
-    // Collect all files including metadata.json using a simpler approach
-    all_files_with_metadata = all_json_files
-        .mix(EXTRACT_METADATA.out.metadata_json)
-        .collect()
 
     // ----------------------------
     // SUBMIT TO QCLOUD

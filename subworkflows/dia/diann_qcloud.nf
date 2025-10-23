@@ -97,10 +97,19 @@ process diann_bruker {
     '''
     bruker_folder_sh="!{d_folder}"
     echo "Bruker folder: $bruker_folder_sh"
-    diann_cfg_bruker_sh=!{params.diann_cfg_bruker}
+    
+    # Use Bruker-specific configuration if available, otherwise fall back to regular config
+    if [ -n "!{params.diann_cfg_bruker}" ] && [ -f "!{params.diann_cfg_bruker}" ]; then
+        diann_cfg_bruker_sh=!{params.diann_cfg_bruker}
+        echo "Using Bruker-specific CFG file: $diann_cfg_bruker_sh"
+    else
+        # Fallback to default Bruker config path
+        diann_cfg_bruker_sh="!{params.home_dir}/mygit/atlas-config/atlas-test/assets/diann_192_bruker.cfg"
+        echo "Using default Bruker CFG file: $diann_cfg_bruker_sh"
+    fi
+    
     diann_speclib_folder_sh=!{params.diann_speclib_folder}
-    echo "CFG file: $diann_cfg_bruker_sh"
-    diann_exec_cmd_bruker_sh=!{params.diann_exec_cmd_bruker}
+    diann_exec_cmd_bruker_sh=!{params.diann_exec_cmd}
     diann_name_speclib_filter_sh=!{params.diann_name_speclib_filter}
     databases_folder_sh=!{params.databases_folder}
 
@@ -164,4 +173,20 @@ workflow diann_qcloud {
     emit:
     report_tsv = diann.out.report_tsv
     report_stats_tsv = diann.out.report_stats_tsv
+}
+
+// =========================
+// Wrapper workflow for QCloud - Bruker
+// =========================
+workflow diann_bruker_qcloud {
+    take:
+    bruker_folder_ch
+
+    main:
+    diann_bruker(bruker_folder_ch)
+
+    emit:
+    report_tsv = diann_bruker.out.report_tsv
+    report_stats_tsv = diann_bruker.out.report_stats_tsv
+    sqlite_file = diann_bruker.out.sqlite_file
 }
