@@ -771,13 +771,7 @@ get_openms_peptide_name() {
     local detected_qc_type=""
     
     # Manual detection for QC types
-    if [[ "$sample_id" == *"QCB1"* ]]; then
-        detected_qc_type="QCB1"
-        echo "[DEBUG] Detected QC type: QCB1" >&2
-    elif [[ "$sample_id" == *"QCB2"* ]]; then
-        detected_qc_type="QCB2"
-        echo "[DEBUG] Detected QC type: QCB2" >&2
-    elif [[ "$sample_id" == *"QCD1"* ]]; then
+    if [[ "$sample_id" == *"QCD1"* ]]; then
         detected_qc_type="QCD1"
         echo "[DEBUG] Detected QC type: QCD1" >&2
     elif [[ "$sample_id" == *"QCD2"* ]]; then

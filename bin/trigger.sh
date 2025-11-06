@@ -357,8 +357,8 @@ extract_qccode_and_request() {
     # 3. Split reversed string by "_" and search for QC codes
     IFS='_' read -ra parts <<< "$reversed"
     
-    # 4. Look for QC patterns with Bruker precedence
-    local qccode_regex='^QC[BD]?[0-9]+$'  # Matches QC01, QC02, QCB1, QCB2, QCD1, QCD2
+    # 4. Look for QC patterns
+    local qccode_regex='^QCD?[0-9]+$'  # Matches QC01, QC02, QCD1, QCD2
     local found_qc=""
     local checksum=""
     local uuid_candidate=""
@@ -370,14 +370,8 @@ extract_qccode_and_request() {
         
         if [[ "$part_normal" =~ $qccode_regex ]]; then
             echo "[DEBUG] Found QC code: $part_normal"
-            # Prioritize Bruker codes (QCB*) over regular codes
-            if [[ "$part_normal" == QCB* ]]; then
-                echo "[DEBUG] Bruker QC code found, taking precedence: $part_normal"
-                found_qc="$part_normal"
-                break
-            elif [[ -z "$found_qc" ]]; then
-                found_qc="$part_normal"
-            fi
+            found_qc="$part_normal"
+            break
         fi
     done
 

@@ -67,7 +67,7 @@ def selectTsvFile(qcType, params) {
         }
     }
     // Legacy fallback for backward compatibility
-    else if (qcType == 'QC01' || qcType == 'QCD1' || qcType == 'QCB1') {
+    else if (qcType == 'QC01' || qcType == 'QCD1') {
         selected_tsv_file = params.peptides_tsv_qc01
         log.info "Detected ${qcType} pattern - using QC01 TSV file"
     } else if (qcType == 'QC02' || qcType == 'QCD2' || qcType == 'QCB2') {
@@ -98,11 +98,11 @@ def extractQCTypeFromFilename(filename) {
 
         log.info "Reversed parts: ${parts.join(', ')}"
 
-        // Look for QC pattern in the parts (accept QC01, QC02, QCD1, QCD2, QCB1, QCB2, etc.)
+       // Look for QC pattern in the parts (accept QC01, QC02, QCD1, QCD2, etc.)
         for (int i = 0; i < parts.length; i++) {
             def part = parts[i].reverse()
             log.info "Checking part ${i}: '${parts[i]}' -> '${part}'"
-            if (part.matches(/QC[D|B]?\d+/)) {
+            if (part.matches(/QCD?\d+/)) {
                 log.info "Found QC type: ${part} from filename: ${filename}"
                 return part
             }
