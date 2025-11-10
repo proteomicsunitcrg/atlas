@@ -52,8 +52,17 @@ process create_decoy {
     '''
     filename_sh=!{filename}
     echo $filename_sh > filename_sh
-    organism=$(echo ${filename_sh##*.})
+    
+    # Extract organism: for .d files, remove .d first, then extract last component
+    if [[ $filename_sh == *.d ]]; then
+        organism=$(echo ${filename_sh%.d} | rev | cut -d'.' -f1 | rev)
+    else
+        organism=$(echo ${filename_sh##*.})
+    fi
+    
     echo $organism > organism
+    echo "[INFO] Extracted organism: $organism from $filename_sh"
+
     fastafile=$(basename !{databases_folder}/${organism}/current/*.fasta)
     echo $fastafile > fastafile
     fastafilename=$(echo ${fastafile%.*})
@@ -124,10 +133,19 @@ process fragpipe_prep {
 
     shell:
     '''
-    # Append contaminants and rename fasta file:
+        # Append contaminants and rename fasta file:
     filename_sh=!{filename}
-    organism_sh=$(echo ${filename_sh##*.})
+    
+    # Extract organism: for .d files, remove .d first, then extract last component
+    if [[ $filename_sh == *.d ]]; then
+        organism_sh=$(echo ${filename_sh%.d} | rev | cut -d'.' -f1 | rev)
+    else
+        organism_sh=$(echo ${filename_sh##*.})
+    fi
+    
+    echo "[INFO] Extracted organism for FragPipe: $organism_sh from $filename_sh"
     rename_fasta_file=${organism_sh}"_decoy.fasta"
+
     fastafile_decoy_sh=!{fastafile_decoy}
     cp ${fastafile_decoy_sh} ${rename_fasta_file}
     cat !{contaminants_file} >> ${rename_fasta_file}
