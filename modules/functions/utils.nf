@@ -167,3 +167,28 @@ def extract_checksum_from_filename(filename) {
         return null
     }
 }
+
+// Function to get database name from QC type and mapping file
+def getDatabaseName(qcType, qcodeFilePath) {
+    def databaseName = null
+    
+    try {
+        new File(qcodeFilePath).eachLine { line ->
+            if (!line.startsWith('qc_type') && !line.trim().isEmpty()) {
+                def parts = line.split('\t')
+                if (parts.length >= 4) {  // Now we expect 4+ columns
+                    if (parts[0] == qcType) {
+                        databaseName = parts[3]  // 4th column is database
+                        log.info "Found database ${databaseName} for QC type ${qcType}"
+                        return true // break from eachLine
+                    }
+                }
+            }
+        }
+    } catch (Exception e) {
+        log.error "Could not read database mapping from ${qcodeFilePath}: ${e.message}"
+        log.warn "Will try to extract database from filename"
+    }
+    
+    return databaseName
+}

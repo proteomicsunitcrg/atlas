@@ -3,8 +3,7 @@
 nextflow.enable.dsl=2
 
 // Import utility functions
-include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSampleType } from './modules/functions/utils'
-
+include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSampleType; getDatabaseName } from './modules/functions/utils'
 include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
 include { msnbasexic as msnbasexic_pr } from './subworkflows/quantification/quantification'
 include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/report/report_qcloud'
@@ -21,6 +20,10 @@ workflow {
     def rawfilePath = params.rawfile
     def filename = new File(rawfilePath).getName()
     
+    // Instrument type detection - handles both .d and .d.checksum patterns
+    def is_bruker = rawfilePath.toLowerCase().endsWith('.d') || rawfilePath.toLowerCase().contains('.d.')
+    def is_thermo = rawfilePath.toLowerCase().endsWith('.raw') || rawfilePath.toLowerCase().contains('.raw.')
+    
     // Extract QC type using proper reverse parsing
     def qcType = extractQCTypeFromFilename(filename)
     def selected_tsv_file = selectTsvFile(qcType, params)
@@ -29,18 +32,33 @@ workflow {
     def qcodeFilePath = "${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv"
     def qcloud_sample_type = getQCloudSampleType(qcType, qcodeFilePath)
 
-    log.info "Raw file: ${params.rawfile}"
+    // Get database name from mapping file
+    def database_name = getDatabaseName(qcType, qcodeFilePath)
+
+    log.info "Raw file/folder: ${params.rawfile}"
+    log.info "Detected instrument type: ${is_bruker ? 'Bruker (.d folder)' : 'Thermo (.raw file)'}"
     log.info "Filename: ${filename}"
     log.info "Extracted QC type: ${qcType}"
     log.info "Selected TSV file: ${selected_tsv_file}"
     log.info "QCloud sample type code: ${qcloud_sample_type}"
 
+    // Channel creation - handles both files and folders
     Channel
-    .fromPath(params.rawfile)
+    .fromPath(params.rawfile, checkIfExists: true, type: is_bruker ? 'dir' : 'file')
     .map {
         def file = it.getName()
         def base = it.getBaseName()
         def path = it.getParent()
+        
+        // For Bruker files, append database name if not already in filename
+        if (is_bruker && database_name && !file.contains(".${database_name}.")) {
+            // Rename the file/folder to include database
+            def newName = file.replaceAll(/\.d$/, ".${database_name}.d")
+            log.info "Renaming ${file} to ${newName} for database detection"
+            file = newName
+            base = base + ".${database_name}"
+        }
+        
         [file, base, path]
     }
     .set { rawfile_ch }
@@ -72,31 +90,70 @@ workflow {
         tuple(meta, data)
     }
 
-    // File conversion
-    trfp_pr(rawfile_ch)
-    cdecoy_pr(rawfile_ch)
+    if (is_thermo) {
+        // THERMO WORKFLOW: RAW → mzML → FragPipe
+        log.info "Processing Thermo RAW file..."
+        
+        // File conversion
+        trfp_pr(rawfile_ch)
+        cdecoy_pr(rawfile_ch)
 
-    // Extract instrument information from mzML files
-    EXTRACT_INSTRUMENT_INFO(trfp_pr.out)
+        // Extract instrument information from mzML files
+        EXTRACT_INSTRUMENT_INFO(trfp_pr.out)
 
-    // Extract instrument info and modify FragPipe workflow based on instrument type
-    MODIFY_FRAGPIPE_WORKFLOW(
-        EXTRACT_INSTRUMENT_INFO.out.instrument_info,  // [basename, instrument_accession]
-        Channel.fromPath(params.fp_workflow.replaceAll("'", "")),
-        Channel.fromPath("${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcloud_instruments_ot.tsv")
-    )
+        // Extract instrument info and modify FragPipe workflow based on instrument type
+        MODIFY_FRAGPIPE_WORKFLOW(
+            EXTRACT_INSTRUMENT_INFO.out.instrument_info,  // [basename, instrument_accession]
+            Channel.fromPath(params.fp_workflow.replaceAll("'", "")),
+            Channel.fromPath("${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcloud_instruments_ot.tsv")
+        )
 
-    // Search engine preparation and execution
-    // Search engine preparation and execution
-    fragpipe_prep_pr(rawfile_ch, cdecoy_pr.out)
+        // Search engine preparation and execution
+        fragpipe_prep_pr(rawfile_ch, cdecoy_pr.out)
 
-    // Combine channels: use modified workflow + manifest and fasta from fragpipe_prep
-    fragpipe_main_pr(
-        rawfile_ch,
-        MODIFY_FRAGPIPE_WORKFLOW.out.modified_workflow.map { sample_id, workflow -> workflow },
-        fragpipe_prep_pr.out[1],
-        fragpipe_prep_pr.out[2]
-    )
+        // Combine channels: use modified workflow + manifest and fasta from fragpipe_prep
+        fragpipe_main_pr(
+            rawfile_ch,
+            MODIFY_FRAGPIPE_WORKFLOW.out.modified_workflow.map { sample_id, workflow -> workflow },
+            fragpipe_prep_pr.out[1],
+            fragpipe_prep_pr.out[2]
+        )
+
+        // Set channels for downstream processing
+        conversion_output_ch = trfp_pr.out
+        
+    } else if (is_bruker) {
+        // BRUKER WORKFLOW: .d folder → FragPipe directly
+        log.info "Processing Bruker .d folder..."
+        
+        // Create decoy database (still needed for FragPipe)
+        cdecoy_pr(rawfile_ch)
+
+        // For Bruker, we'll use a default workflow since we can't extract instrument info from .d folders
+        // without conversion. We'll use the original workflow file directly.
+        default_workflow_ch = Channel.fromPath(params.fp_workflow.replaceAll("'", ""))
+
+        // Search engine preparation and execution (using .d folder directly)
+        fragpipe_prep_pr(rawfile_ch, cdecoy_pr.out)
+
+        // Run FragPipe with .d folder input (FragPipe can handle .d folders natively)
+        fragpipe_main_pr(
+            rawfile_ch,
+            default_workflow_ch,
+            fragpipe_prep_pr.out[1],
+            fragpipe_prep_pr.out[2]
+        )
+
+        // For Bruker, we don't have mzML conversion output, so create a mock channel
+        // that matches the structure expected by downstream processes
+        conversion_output_ch = rawfile_ch.map { file, base, path -> 
+            // Create a file object that represents the .d folder for consistency
+            new File("${path}/${file}")
+        }
+        
+    } else {
+        error "ERROR: Unable to determine instrument type. Expected .raw file or .d folder."
+    }
 
     combined_ion_ch = fragpipe_main_pr.out[5]
 
@@ -105,38 +162,50 @@ workflow {
         combined_ion_ch
     )
 
-    // Quantification using MSnbaseXIC
-    msnbasexic_script_ch = Channel.fromPath("${baseDir}/tools/msnbase/msnbasexic.R")
-    msnbasexic_pr(
-        trfp_pr.out,
-        msnbasexic_script_ch,
-        extract_apex_rt_pr.out,
-        output_dir_ch, 
-        analyte_name_ch,
-        rt_tol_sec_ch,
-        mz_tol_ppm_ch,
-        ms_level_ch,
-        plot_xic_ms1_ch,
-        plot_xic_ms2_ch,
-        plot_output_path_ch,
-        overwrite_tsv_ch
-    )
+    if (is_thermo) {
+        // Quantification using MSnbaseXIC (only for Thermo files with mzML conversion)
+        msnbasexic_script_ch = Channel.fromPath("${baseDir}/tools/msnbase/msnbasexic.R")
+        msnbasexic_pr(
+            conversion_output_ch,
+            msnbasexic_script_ch,
+            extract_apex_rt_pr.out,
+            output_dir_ch, 
+            analyte_name_ch,
+            rt_tol_sec_ch,
+            mz_tol_ppm_ch,
+            ms_level_ch,
+            plot_xic_ms1_ch,
+            plot_xic_ms2_ch,
+            plot_output_path_ch,
+            overwrite_tsv_ch
+        )
 
-    //Extract area, rt, dppm, and fwhm
-    PROCESS_PEPTIDES(
-        trfp_pr.out,
-        msnbasexic_pr.out,
-        Channel.value(selected_tsv_file)
-    )
+        //Extract area, rt, dppm, and fwhm
+        PROCESS_PEPTIDES(
+            conversion_output_ch,
+            msnbasexic_pr.out,
+            Channel.value(selected_tsv_file)
+        )
 
-    //Extract mit ms1 and ms2, tic, ms2 scan count
-    EXTRACT_METADATA(trfp_pr.out)
+        //Extract mit ms1 and ms2, tic, ms2 scan count
+        EXTRACT_METADATA(conversion_output_ch)
+        
+    } else if (is_bruker) {
+        // For Bruker .d folders, skip MSnbaseXIC quantification as it requires mzML
+        // We'll rely on FragPipe's built-in quantification instead
+        log.info "Skipping MSnbaseXIC quantification for Bruker .d folder (using FragPipe quantification)"
+    }
 
     // Extract FragPipe metrics using actual TSV files
     EXTRACT_FRAGPIPE_METRICS(
         rawfile_ch.map { file, base, path -> 
-            // Fix: Remove .raw from the end (not .raw.SOMETHING)
-            def sample_id = base.replaceAll(/\.raw$/, '')
+            // Handle both .raw files and .d folders
+            def sample_id
+            if (is_bruker) {
+                sample_id = base.replaceAll(/\.d$/, '')
+            } else {
+                sample_id = base.replaceAll(/\.raw$/, '')
+            }
             [sample_id, file, base, path]
         }
         .combine(fragpipe_main_pr.out[1])  // protein.tsv (index 1)
@@ -147,16 +216,32 @@ workflow {
         }
     )
 
-    all_json_files = EXTRACT_METADATA.out.qc_jsons
-        .map { basename, jsons -> jsons }
-        .mix(PROCESS_PEPTIDES.out.peptide_jsons.map { basename, jsons -> jsons })
-        .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
-        .flatten()
-        .collect()
+    // Collect JSON files based on instrument type
+    if (is_thermo) {
+        // Collect JSON files from all sources (Thermo workflow)
+        all_json_files = EXTRACT_METADATA.out.qc_jsons
+            .map { basename, jsons -> jsons }
+            .mix(PROCESS_PEPTIDES.out.peptide_jsons.map { basename, jsons -> jsons })
+            .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
+            .flatten()
+            .collect()
 
-    sample_info = EXTRACT_METADATA.out.qc_jsons.map { basename_mzml, jsons -> 
-        // Remove .mzML extension to get the base sample name
-        basename_mzml.replaceAll(/\.mzML$/, '')
+        sample_info = EXTRACT_METADATA.out.qc_jsons.map { basename_mzml, jsons -> 
+            // Remove .mzML extension to get the base sample name
+            basename_mzml.replaceAll(/\.mzML$/, '')
+        }
+        
+    } else if (is_bruker) {
+        // For Bruker, only collect FragPipe metrics (no mzML-based metrics)
+        all_json_files = EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons
+            .map { sample_id, jsons -> jsons }
+            .flatten()
+            .collect()
+
+        sample_info = rawfile_ch.map { file, base, path -> 
+            // Remove .d extension to get the base sample name
+            base.replaceAll(/\.d$/, '')
+        }
     }
 
     // Submit to QCloud API with correct sample info
