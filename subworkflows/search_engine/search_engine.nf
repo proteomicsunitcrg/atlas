@@ -129,11 +129,11 @@ process fragpipe_prep {
     output:
     file("*.workflow")
     file("*.manifest")
-    file("*.fasta")
+    file("*_formatted.fasta")
 
     shell:
     '''
-        # Append contaminants and rename fasta file:
+    # Append contaminants and rename fasta file:
     filename_sh=!{filename}
     
     # Extract organism: for .d files, remove .d first, then extract last component
@@ -178,16 +178,15 @@ process fragpipe_prep {
     echo -e "/home/tmp/${raw_filename}\t1\t1\tDDA" > ${PWD}/fragpipe-220.manifest
     echo "[INFO] New manifest file: (print delimiters mode)"
     cat -A ${PWD}/fragpipe-220.manifest
-   '''
+    '''
 }
 
 process fragpipe_main {
     label 'fragpipe'
     tag { "${filename}" }
 
-    containerOptions { 
-        "--bind ${task.workDir}:/home/tmp" 
-    }
+    beforeScript "mkdir -p ${task.workDir}/fragpipe_cache"
+    
 
     input:
     tuple val(filename), val(basename), val(path)
@@ -207,22 +206,74 @@ process fragpipe_main {
     shell:
     '''
     #Prepare Fragpipe input files: 
+
     filename_sh=!{filename}
-    raw_filename=$(echo ${filename_sh%.*})
+    basename_sh=!{basename}
+
+    # Remove database suffix from basename (e.g., .SP_Bovine, .HP_Human, etc.)
+    clean_basename=$(echo "$basename_sh" | sed 's/\.[A-Z][A-Z]_[^.]*$//')
+
+    # For .d files, add the .d extension to the clean basename
+    if [[ "$filename_sh" == *.d ]]; then
+        raw_filename="${clean_basename}.d"
+    else
+        # For other files, use the clean basename as-is
+        raw_filename="$clean_basename"
+    fi
+
     echo "[INFO] Copying raw file..."
     echo "[INFO] Path: "!{path}
     echo "[INFO] Filename: "$filename_sh
+    echo "[INFO] Original basename: "$basename_sh
+    echo "[INFO] Clean basename: "$clean_basename
     echo "[INFO] Target filename: "$raw_filename
-    cp !{path}/$filename_sh ./$raw_filename
+
+    # Find the actual file (may have database suffix in original name)
+    if [ -e "!{path}/$filename_sh" ]; then
+        actual_file="!{path}/$filename_sh"
+        echo "[INFO] Using file as specified: $actual_file"
+    else
+        # Try without database suffix (e.g., filename.SP_Bovine.d -> filename.d)
+        original_filename=$(echo "$filename_sh" | sed 's/\\.[A-Z][A-Z]_[^.]*\\.d$/.d/')
+        if [ -e "!{path}/$original_filename" ]; then
+            actual_file="!{path}/$original_filename"
+            echo "[INFO] Using original file: $actual_file"
+        else
+            echo "[ERROR] Cannot find raw file: !{path}/$filename_sh or !{path}/$original_filename"
+            exit 1
+        fi
+    fi
+
+    echo "[INFO] Actual file: $actual_file"
+    echo "[INFO] Target filename: "$raw_filename
+    echo "[INFO] Copying to working directory..."
+    cp -r "$actual_file" ./$raw_filename
+    echo "[INFO] Copy complete"
     echo "[INFO] Running FragPipe..."
     echo "[INFO] Tools folder: "!{fp_tools}
     echo "[INFO] Workflow file: "!{fp_workflow}
     echo "[INFO] Manifest file: "!{fp_manifest}
+    echo "[INFO] FASTA file: "!{fp_fasta}
+    echo "[INFO] FragPipe cache will be at: /fragpipe_bin/fragPipe-22.0/fragpipe/cache (bind-mounted)"
+
+    # Update workflow file to use local FASTA file (resolve symlink issue)
+    FASTA_FILE=$(pwd)/!{fp_fasta}
+    echo "[INFO] Updating workflow file with FASTA path: $FASTA_FILE"
+    sed -i "s|database.db-path=.*|database.db-path=$FASTA_FILE|g" !{fp_workflow}
+    echo "[INFO] Workflow database path updated"
+    grep "database.db-path" !{fp_workflow}
+
+    # Set temp directory for Java
+    FRAGPIPE_TMP=$(pwd)/tmp
+    mkdir -p $FRAGPIPE_TMP
+    export JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=$FRAGPIPE_TMP"
+    echo "[INFO] Java temp directory: $FRAGPIPE_TMP"
+
     mkdir ./output
 
     #Run Fragpipe: 
     /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --ram !{fp_jvm_ram} --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir ./output
-    
+
     #Prepare Fragpipe output: 
     find . -name "peptide.tsv" -exec cp {} . \\;
     find . -name "protein.tsv" -exec cp {} . \\;
@@ -230,7 +281,7 @@ process fragpipe_main {
     find . -name "combined_protein.tsv" -exec cp {} . \\;
     find . -name "global.modsummary.tsv" -exec cp {} . \\;
     find . -name "combined_ion.tsv" -exec cp {} . \\;
-    find . -name "psm.tsv" -exec cp {} . \\;  # 
+    find . -name "psm.tsv" -exec cp {} . \\;
     '''
 }
 
@@ -260,4 +311,3 @@ process extract_apex_rt {
     """
 
 }
-
