@@ -174,8 +174,15 @@ process fragpipe_prep {
     
     # Create manifest: 
     echo "[INFO] Creating manifest file..."
-    raw_filename=$(echo ${filename_sh%.*})
-    echo -e "/home/tmp/${raw_filename}\t1\t1\tDDA" > ${PWD}/fragpipe-220.manifest
+    # Remove database suffix - match what fragpipe_main does
+    basename_no_db="${filename_sh%%.[A-Z][A-Z]_*}"
+    if [[ $filename_sh == *.d ]]; then
+        manifest_basename="${basename_no_db}.d"
+    else
+        manifest_basename="${basename_no_db}"
+    fi
+    echo -e "/home/tmp/${manifest_basename}\t1\t1\tDDA" > ${PWD}/fragpipe-220.manifest
+
     echo "[INFO] New manifest file: (print delimiters mode)"
     cat -A ${PWD}/fragpipe-220.manifest
     '''
