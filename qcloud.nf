@@ -204,25 +204,29 @@ workflow {
     }
 
     // Extract FragPipe metrics using actual TSV files
-    EXTRACT_FRAGPIPE_METRICS(
-        rawfile_ch.map { file, base, path -> 
-            // Handle both .raw files and .d folders
-            def sample_id
-            if (is_bruker) {
-                sample_id = base.replaceAll(/\.d$/, '')
-            } else {
-                sample_id = base.replaceAll(/\.raw$/, '')
-            }
-            [sample_id, file, base, path]
+    // For Bruker, we need to get the sample_id from the mzML basename (which has UUID+checksum)
+    // For Thermo, we can use the rawfile basename
+    def fragpipe_sample_id_ch
+    if (is_bruker) {
+        fragpipe_sample_id_ch = conversion_output_ch.map { mzml_filename, mzml_basename, mzml_path, mzml -> 
+            [mzml_basename]  // Use mzML basename which has full UUID+context+checksum
         }
+    } else {
+        fragpipe_sample_id_ch = rawfile_ch.map { file, base, path -> 
+            [base.replaceAll(/\.raw$/, '')]
+        }
+    }
+    
+    EXTRACT_FRAGPIPE_METRICS(
+        fragpipe_sample_id_ch
         .combine(fragpipe_main_pr.out[1])  // protein.tsv (index 1)
         .combine(fragpipe_main_pr.out[0])  // peptide.tsv (index 0)  
         .combine(fragpipe_main_pr.out[6])  // psm.tsv (index 6)
-        .map { sample_id, file, base, path, protein_tsv, peptide_tsv, psm_tsv ->
+        .map { sample_id, protein_tsv, peptide_tsv, psm_tsv ->
             [sample_id, protein_tsv, peptide_tsv, psm_tsv]
         }
     )
-
+    
     // Collect JSON files based on instrument type
     if (is_thermo) {
         // Collect JSON files from all sources (Thermo workflow)
