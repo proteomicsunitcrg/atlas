@@ -187,7 +187,10 @@ process fragpipe_main {
 
     beforeScript "mkdir -p ${task.workDir}/fragpipe_cache"
     
-
+    containerOptions { 
+        "--bind ${task.workDir}:/home/tmp --bind ${task.workDir}/fragpipe_cache:/fragpipe_bin/fragPipe-22.0/fragpipe/cache" 
+    }
+    
     input:
     tuple val(filename), val(basename), val(path)
     file(fp_workflow)
@@ -211,7 +214,7 @@ process fragpipe_main {
     basename_sh=!{basename}
 
     # Remove database suffix from basename (e.g., .SP_Bovine, .HP_Human, etc.)
-    clean_basename=$(echo "$basename_sh" | sed 's/\.[A-Z][A-Z]_[^.]*$//')
+    clean_basename="${basename_sh%%.[A-Z][A-Z]_*}"
 
     # For .d files, add the .d extension to the clean basename
     if [[ "$filename_sh" == *.d ]]; then
