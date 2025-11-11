@@ -144,12 +144,19 @@ workflow {
             fragpipe_prep_pr.out[2]
         )
 
-        // For Bruker, we don't have mzML conversion output, so create a mock channel
-        // that matches the structure expected by downstream processes
-        conversion_output_ch = rawfile_ch.map { file, base, path -> 
-            // Create a file object that represents the .d folder for consistency
-            new File("${path}/${file}")
-        }
+        // FragPipe now outputs calibrated mzML - use it for metadata extraction
+        conversion_output_ch = fragpipe_main_pr.out[7]  // mzML files from FragPipe
+            .flatten()
+            .filter { it.name.endsWith('_calibrated.mzML') }
+            .map { mzml -> 
+                def mzml_filename = mzml.name
+                def mzml_basename = mzml.name.replaceAll(/_calibrated\.mzML$/, '')
+                def mzml_path = mzml.parent
+                [mzml_filename, mzml_basename, mzml_path, mzml]
+            }
+        
+        // Extract metadata from calibrated mzML
+        EXTRACT_METADATA(conversion_output_ch)
         
     } else {
         error "ERROR: Unable to determine instrument type. Expected .raw file or .d folder."
@@ -232,15 +239,16 @@ workflow {
         }
         
     } else if (is_bruker) {
-        // For Bruker, only collect FragPipe metrics (no mzML-based metrics)
-        all_json_files = EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons
-            .map { sample_id, jsons -> jsons }
+        // For Bruker, collect FragPipe metrics AND metadata from mzML
+        all_json_files = EXTRACT_METADATA.out.qc_jsons
+            .map { basename, jsons -> jsons }
+            .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
             .flatten()
             .collect()
 
-        sample_info = rawfile_ch.map { file, base, path -> 
-            // Remove .d extension to get the base sample name
-            base.replaceAll(/\.d$/, '')
+        sample_info = EXTRACT_METADATA.out.qc_jsons.map { basename_mzml, jsons -> 
+            // Remove .mzML extension to get the base sample name
+            basename_mzml.toString().replaceAll(/_calibrated\.mzML$/, '')
         }
     }
 

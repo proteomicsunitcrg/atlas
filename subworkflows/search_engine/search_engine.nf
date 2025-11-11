@@ -206,13 +206,14 @@ process fragpipe_main {
     file(fp_fasta)
 
     output: 
-    file("peptide.tsv")
-    file("protein.tsv")
-    file("ion.tsv")
-    file("combined_protein.tsv")
-    file("global.modsummary.tsv")
-    file("combined_ion.tsv")
-    file("psm.tsv")  
+    path("peptide.tsv")
+    path("protein.tsv")
+    path("ion.tsv")
+    path("combined_protein.tsv")
+    path("global.modsummary.tsv")
+    path("combined_ion.tsv")
+    path("psm.tsv")
+    path("*.mzML"), optional: true
 
     shell:
     '''
@@ -302,6 +303,8 @@ process fragpipe_main {
     find . -name "global.modsummary.tsv" -exec cp {} . \\;
     find . -name "combined_ion.tsv" -exec cp {} . \\;
     find . -name "psm.tsv" -exec cp {} . \\;
+    # Only copy calibrated mzML files (not uncalibrated)
+    find . -name "*_calibrated.mzML" ! -name "*_uncalibrated.mzML" -exec cp {} . \\;
     '''
 }
 
