@@ -32,7 +32,8 @@ debug_code               = params.debug_code
 //FragPipe engine: 
 fp_workflow              = params.fp_workflow
 fp_tools                 = params.fp_tools
-fp_jvm_ram               = params.fp_jvm_ram
+fp_jvm_ram_thermo        = params.fp_jvm_ram_thermo
+fp_jvm_ram_bruker        = params.fp_jvm_ram_bruker
 
 //Bash scripts folder:                                                                  
 binfolder                = "$baseDir/bin"
@@ -216,9 +217,17 @@ process fragpipe_main {
     shell:
     '''
     #Prepare Fragpipe input files: 
-
     filename_sh=!{filename}
     basename_sh=!{basename}
+
+    # Set RAM based on file type
+    if [[ "$filename_sh" == *.d ]]; then
+        FP_RAM=!{fp_jvm_ram_bruker}
+    else
+        FP_RAM=!{fp_jvm_ram_thermo}
+    fi
+
+    echo "[INFO] Using ${FP_RAM}GB RAM for FragPipe"
 
     # Remove database suffix from basename (e.g., .SP_Bovine, .HP_Human, etc.)
     clean_basename="${basename_sh%%.[A-Z][A-Z]_*}"
@@ -282,8 +291,9 @@ process fragpipe_main {
     mkdir ./output
 
     #Run Fragpipe: 
-    /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --ram !{fp_jvm_ram} --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir ./output
-
+    #Run Fragpipe: 
+    /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --ram ${FP_RAM} --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir ./output
+    
     #Prepare Fragpipe output: 
     find . -name "peptide.tsv" -exec cp {} . \\;
     find . -name "protein.tsv" -exec cp {} . \\;
