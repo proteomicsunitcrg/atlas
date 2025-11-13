@@ -213,7 +213,7 @@ process fragpipe_main {
     path("global.modsummary.tsv")
     path("combined_ion.tsv")
     path("psm.tsv")
-    path("*.mzML"), optional: true
+    tuple val(filename), val(basename), val(path), path("*_calibrated.mzML"), emit: mzml_output
 
     shell:
     '''
@@ -296,15 +296,15 @@ process fragpipe_main {
     /fragpipe_bin/fragPipe-22.0/fragpipe/bin/fragpipe --headless --ram ${FP_RAM} --config-tools-folder !{fp_tools} --workflow !{fp_workflow} --manifest !{fp_manifest} --workdir ./output
     
     #Prepare Fragpipe output: 
-    find . -name "peptide.tsv" -exec cp {} . \\;
-    find . -name "protein.tsv" -exec cp {} . \\;
-    find . -name "ion.tsv" -exec cp {} . \\;
-    find . -name "combined_protein.tsv" -exec cp {} . \\;
-    find . -name "global.modsummary.tsv" -exec cp {} . \\;
-    find . -name "combined_ion.tsv" -exec cp {} . \\;
-    find . -name "psm.tsv" -exec cp {} . \\;
+    find ./output -name "peptide.tsv" -exec cp {} . \\;
+    find ./output -name "protein.tsv" -exec cp {} . \\;
+    find ./output -name "ion.tsv" -exec cp {} . \\;
+    find ./output -name "combined_protein.tsv" -exec cp {} . \\;
+    find ./output -name "global.modsummary.tsv" -exec cp {} . \\;
+    find ./output -name "combined_ion.tsv" -exec cp {} . \\;
+    find ./output -name "psm.tsv" -exec cp {} . \\;
     # Only copy calibrated mzML files (not uncalibrated)
-    find . -name "*_calibrated.mzML" ! -name "*_uncalibrated.mzML" -exec cp {} . \\;
+    find ./output -name "*_calibrated.mzML" ! -name "*_uncalibrated.mzML" -exec cp {} . \\;
     '''
 }
 

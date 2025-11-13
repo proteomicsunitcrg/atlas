@@ -5,9 +5,9 @@ nextflow.enable.dsl=2
 // Import utility functions
 include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSampleType; getDatabaseName } from './modules/functions/utils'
 include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
-include { msnbasexic as msnbasexic_pr } from './subworkflows/quantification/quantification'
 include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/report/report_qcloud'
 include { create_decoy as cdecoy_pr; fragpipe_prep as fragpipe_prep_pr; fragpipe_main as fragpipe_main_pr; extract_apex_rt as extract_apex_rt_pr } from './subworkflows/search_engine/search_engine.nf'
+include { msnbasexic as msnbasexic_pr } from './subworkflows/quantification/quantification'
 include { PROCESS_PEPTIDES } from './modules/qcloud/process_peptides'
 include { EXTRACT_METADATA } from './modules/qcloud/extract_metadata'
 include { EXTRACT_FRAGPIPE_METRICS } from './modules/qcloud/extract_fragpipe_metrics'
@@ -144,16 +144,8 @@ workflow {
             fragpipe_prep_pr.out[2]
         )
 
-        // FragPipe now outputs calibrated mzML - use it for metadata extraction
-        conversion_output_ch = fragpipe_main_pr.out[7]  // mzML files from FragPipe
-            .flatten()
-            .filter { it.name.endsWith('_calibrated.mzML') }
-            .map { mzml -> 
-                def mzml_filename = mzml.name
-                def mzml_basename = mzml.name.replaceAll(/_calibrated\.mzML$/, '')
-                def mzml_path = mzml.parent
-                [mzml_filename, mzml_basename, mzml_path, mzml]
-            }
+        // FragPipe now outputs calibrated mzML - use it for both metadata and XIC
+        conversion_output_ch = fragpipe_main_pr.out.mzml_output
         
         // Extract metadata from calibrated mzML
         EXTRACT_METADATA(conversion_output_ch)
@@ -162,45 +154,31 @@ workflow {
         error "ERROR: Unable to determine instrument type. Expected .raw file or .d folder."
     }
 
+    // Extract apex RT from FragPipe output - MUST run before msnbasexic
     combined_ion_ch = fragpipe_main_pr.out[5]
-
     extract_apex_rt_pr(
-        Channel.fromPath(selected_tsv_file),  // Use the selected TSV file
+        Channel.fromPath(selected_tsv_file),
         combined_ion_ch
     )
 
+    // Quantification using MSnbaseXIC (for both Thermo and Bruker after extract_apex_rt)
+    msnbasexic_script_ch = Channel.fromPath("${baseDir}/tools/msnbase/msnbasexic.R")
+    msnbasexic_pr(
+        conversion_output_ch,
+        msnbasexic_script_ch,
+        extract_apex_rt_pr.out
+    )
+
+    // Extract area, rt, dppm, and fwhm
+    PROCESS_PEPTIDES(
+        conversion_output_ch,
+        msnbasexic_pr.out,
+        Channel.value(selected_tsv_file)
+    )
+
     if (is_thermo) {
-        // Quantification using MSnbaseXIC (only for Thermo files with mzML conversion)
-        msnbasexic_script_ch = Channel.fromPath("${baseDir}/tools/msnbase/msnbasexic.R")
-        msnbasexic_pr(
-            conversion_output_ch,
-            msnbasexic_script_ch,
-            extract_apex_rt_pr.out,
-            output_dir_ch, 
-            analyte_name_ch,
-            rt_tol_sec_ch,
-            mz_tol_ppm_ch,
-            ms_level_ch,
-            plot_xic_ms1_ch,
-            plot_xic_ms2_ch,
-            plot_output_path_ch,
-            overwrite_tsv_ch
-        )
-
-        //Extract area, rt, dppm, and fwhm
-        PROCESS_PEPTIDES(
-            conversion_output_ch,
-            msnbasexic_pr.out,
-            Channel.value(selected_tsv_file)
-        )
-
-        //Extract mit ms1 and ms2, tic, ms2 scan count
+        // Extract mit ms1 and ms2, tic, ms2 scan count (only for Thermo - already done for Bruker)
         EXTRACT_METADATA(conversion_output_ch)
-        
-    } else if (is_bruker) {
-        // For Bruker .d folders, skip MSnbaseXIC quantification as it requires mzML
-        // We'll rely on FragPipe's built-in quantification instead
-        log.info "Skipping MSnbaseXIC quantification for Bruker .d folder (using FragPipe quantification)"
     }
 
     // Extract FragPipe metrics using actual TSV files
@@ -243,9 +221,10 @@ workflow {
         }
         
     } else if (is_bruker) {
-        // For Bruker, collect FragPipe metrics AND metadata from mzML
+        // For Bruker, collect all metrics: metadata, peptides, and FragPipe
         all_json_files = EXTRACT_METADATA.out.qc_jsons
             .map { basename, jsons -> jsons }
+            .mix(PROCESS_PEPTIDES.out.peptide_jsons.map { basename, jsons -> jsons })
             .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
             .flatten()
             .collect()

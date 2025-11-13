@@ -63,40 +63,25 @@ process ProteinQuantifier {
 }
 
 process msnbasexic {
-
-    label 'msnbase'
+    label 'process_single'
     tag { "${basename}" }
+
+    container "community.wave.seqera.io/library/bioconductor-msnbase_r-ggplot2_r-optparse_r-pracma_r-readr:83cd263d3bfd0c9e"
 
     input:
     tuple val(filename), val(basename), val(path), file(mzML_file)
-    file(msnbasexic_script) 
-    val(tsv_file)
-    val(output_dir)
-    val(analyte_name)
-    val(rt_tol_sec)
-    val(mz_tol_ppm)
-    val(msLevel)
-    val(plot_xic_ms1)
-    val(plot_xic_ms2)
-    val(plot_output_path)
-    val(overwrite_tsv)
+    path(msnbasexic_script)
+    path(tsv_file)
 
     output:
-    file("*.json")
+    file("*_mqc.json")
 
     script:
+    def args = task.ext.args ?: ''
     """
     Rscript ${msnbasexic_script} \\
       --file_name ${mzML_file} \\
       --tsv_name ${tsv_file} \\
-      --output_dir ${output_dir} \\
-      --analyte_name ${analyte_name} \\
-      --rt_tol_sec ${rt_tol_sec} \\
-      --mz_tol_ppm ${mz_tol_ppm} \\
-      --msLevel ${msLevel} \\
-      --plot_xic_ms1 ${plot_xic_ms1} \\
-      --plot_xic_ms2 ${plot_xic_ms2} \\
-      --plot_output_path ${plot_output_path} \\
-      --overwrite_tsv ${overwrite_tsv}
+      ${args}
     """
 }
