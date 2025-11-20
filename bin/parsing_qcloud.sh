@@ -1164,3 +1164,188 @@ extract_peptide_metrics_diann_ppm(){
     set_value_to_qcloud_json_monitored_peptides "$checksum" "$rt" "QC:1000894" "$peptide"
     set_value_to_qcloud_json_monitored_peptides "$checksum" "$dppm" "QC:1000014" "$peptide"
 }
+
+# Function: Extract peptide metrics from FragPipe combined_ion.tsv and psm.tsv
+# Inputs:
+#   $1 - combined_ion.tsv file from FragPipe
+#   $2 - psm.tsv file from FragPipe
+#   $3 - peptides TSV file (qcloud_qc01.tsv or similar)
+#   $4 - config file path
+#   $5 - sample_id
+# Output:
+#   Creates QCloud JSON files for area, RT, and dppm
+extract_peptide_metrics_from_fragpipe() {
+    local combined_ion_tsv=$1
+    local psm_tsv=$2
+    local peptides_file=$3
+    local config_file=$4
+    local sample_id=$5
+    
+    echo "[DEBUG] --- extract_peptide_metrics_from_fragpipe ---"
+    echo "[DEBUG] Combined ion TSV: $combined_ion_tsv"
+    echo "[DEBUG] PSM TSV: $psm_tsv"
+    echo "[DEBUG] Peptides file: $peptides_file"
+    echo "[DEBUG] Config: $config_file"
+    echo "[DEBUG] Sample ID: $sample_id"
+    
+    # Extract sample information
+    local checksum=$(extract_checksum_from_filename "$sample_id")
+    local uuid=$(extract_uuid_from_filename "$sample_id")
+    local reversed_sample_id=$(echo "$sample_id" | rev)
+    local context_code_reversed=$(echo "$reversed_sample_id" | cut -d'_' -f2)
+    local context_code=$(echo "$context_code_reversed" | rev)
+    
+    echo "[DEBUG] Sample info - UUID: $uuid, Context: $context_code, Checksum: $checksum"
+    
+    # Parse QC term IDs from config
+    local area_qccv=$(grep "\barea\b.*:" "$config_file" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local rt_qccv=$(grep "\brt\b.*:" "$config_file" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    local dppm_qccv=$(grep "\bdppm\b.*:" "$config_file" | sed "s/.*['\"]\\([^'\"]*\\)['\"].*/\\1/" | tr -d '\n\r')
+    
+    echo "[DEBUG] QC codes - Area: $area_qccv, RT: $rt_qccv, dppm: $dppm_qccv"
+    
+    # Initialize JSON files
+    local area_qcode=$(echo "$area_qccv" | cut -d':' -f2)
+    local rt_qcode=$(echo "$rt_qccv" | cut -d':' -f2)
+    local dppm_qcode=$(echo "$dppm_qccv" | cut -d':' -f2)
+    
+    local area_json="${uuid}_${context_code}_${checksum}_QC_${area_qcode}.json"
+    local rt_json="${uuid}_${context_code}_${checksum}_QC_${rt_qcode}.json"
+    local dppm_json="${uuid}_${context_code}_${checksum}_QC_${dppm_qcode}.json"
+    
+    # Create initial JSON structure
+    cat > "$area_json" << EOF
+{
+  "file": {
+    "checksum": "$checksum"
+  },
+  "data": [
+    {
+      "parameter": {
+        "qCCV": "$area_qccv"
+      },
+      "values": []
+    }
+  ]
+}
+EOF
+
+    cat > "$rt_json" << EOF
+{
+  "file": {
+    "checksum": "$checksum"
+  },
+  "data": [
+    {
+      "parameter": {
+        "qCCV": "$rt_qccv"
+      },
+      "values": []
+    }
+  ]
+}
+EOF
+
+    cat > "$dppm_json" << EOF
+{
+  "file": {
+    "checksum": "$checksum"
+  },
+  "data": [
+    {
+      "parameter": {
+        "qCCV": "$dppm_qccv"
+      },
+      "values": []
+    }
+  ]
+}
+EOF
+    
+    # Process each peptide from the TSV file
+    while IFS=$'\t' read -r short_name long_name mz_M0 mz_M1 mz_M2 ms2_mz rt_teoretical; do
+        # Skip header
+        if [[ "$short_name" == "short_name" ]]; then
+            continue
+        fi
+        
+        echo "[DEBUG] Processing peptide: $short_name ($long_name)"
+        
+        # Get OpenMS notation name from config
+        local openms_name=$(get_openms_peptide_name "$config_file" "$short_name" "$sample_id" "")
+        
+        echo "[DEBUG] OpenMS name: $openms_name"
+        
+        # Extract area and apex RT from combined_ion.tsv (highest intensity match)
+        local ion_data=$(grep -P "^${long_name}\t" "$combined_ion_tsv" | sort -k22,22nr | head -1)
+        
+        if [[ -z "$ion_data" ]]; then
+            echo "[WARNING] Peptide $long_name not found in combined_ion.tsv"
+            continue
+        fi
+        
+        # Extract from combined_ion.tsv:
+        # Column 20: 1_1 Apex Retention Time
+        # Column 22: 1_1 Intensity (area proxy)
+        local apex_rt=$(echo "$ion_data" | awk -F'\t' '{print $20}')
+        local intensity=$(echo "$ion_data" | awk -F'\t' '{print $22}')
+        
+        # Convert scientific notation for intensity
+        local area=$(convert_to_e_notation "$intensity")
+        
+        echo "[DEBUG] From combined_ion - Area: $area, Apex RT: $apex_rt"
+        
+        # Extract observed m/z from psm.tsv (best PSM = highest hyperscore or lowest delta mass)
+        # Need to find columns for: Peptide, Observed M/Z, Delta Mass
+        local psm_data=$(grep -P "\t${long_name}\t" "$psm_tsv" | sort -k1,1nr | head -1)
+        
+        if [[ -z "$psm_data" ]]; then
+            echo "[WARNING] Peptide $long_name not found in psm.tsv, cannot calculate dppm"
+            # Still add area and RT, but skip dppm
+            local temp_file=$(mktemp)
+            
+            jq --arg contextSource "$openms_name" --arg value "$area" \
+               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               "$area_json" > "$temp_file" && mv "$temp_file" "$area_json"
+            
+            jq --arg contextSource "$openms_name" --arg value "$apex_rt" \
+               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               "$rt_json" > "$temp_file" && mv "$temp_file" "$rt_json"
+            
+            continue
+        fi
+        
+        # Extract observed m/z from PSM file (column will depend on PSM structure)
+        # Typically: Observed M/Z or Calculated M/Z + Delta Mass
+        # We'll need to identify the correct columns from the PSM file
+        local observed_mz=$(echo "$psm_data" | awk -F'\t' '{print $11}')  # Adjust column number based on actual PSM structure
+        
+        # Calculate dppm: ((observed - theoretical) / theoretical) * 1e6
+        local dppm=$(awk -v obs="$observed_mz" -v theo="$mz_M0" 'BEGIN {printf "%.2f", ((obs-theo)/theo)*1e6}')
+        
+        echo "[DEBUG] From psm.tsv - Observed m/z: $observed_mz, dppm: $dppm"
+        
+        # Add to JSON files
+        local temp_file=$(mktemp)
+        
+        # Area
+        jq --arg contextSource "$openms_name" --arg value "$area" \
+           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+           "$area_json" > "$temp_file" && mv "$temp_file" "$area_json"
+        
+        # RT
+        jq --arg contextSource "$openms_name" --arg value "$apex_rt" \
+           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+           "$rt_json" > "$temp_file" && mv "$temp_file" "$rt_json"
+        
+        # dppm
+        jq --arg contextSource "$openms_name" --arg value "$dppm" \
+           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+           "$dppm_json" > "$temp_file" && mv "$temp_file" "$dppm_json"
+        
+    done < "$peptides_file"
+    
+    echo "[DEBUG] Peptide JSON files created:"
+    ls -la *_QC_*.json
+    echo "[DEBUG] --- extract_peptide_metrics_from_fragpipe DONE ---"
+}

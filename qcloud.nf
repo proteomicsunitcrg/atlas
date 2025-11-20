@@ -14,6 +14,7 @@ include { EXTRACT_FRAGPIPE_METRICS } from './modules/qcloud/extract_fragpipe_met
 include { SUBMIT_TO_QCLOUD } from './modules/qcloud/submit_qcloud' 
 include { MODIFY_FRAGPIPE_WORKFLOW } from './modules/qcloud/modify_workflow'
 include { EXTRACT_INSTRUMENT_INFO } from './modules/qcloud/extract_instrument'
+include { PROCESS_FRAGPIPE_PEPTIDES } from './modules/qcloud/process_fragpipe_peptides'
 
 workflow {
     // Extract filename from the full path for parsing
@@ -144,8 +145,16 @@ workflow {
             fragpipe_prep_pr.out[2]
         )
 
-        // FragPipe now outputs calibrated mzML - use it for both metadata and XIC
-        conversion_output_ch = fragpipe_main_pr.out.mzml_output
+        // FragPipe outputs calibrated mzML - use it for metadata extraction
+        conversion_output_ch = fragpipe_main_pr.out[7]  // mzML files from FragPipe
+            .flatten()
+            .filter { it.name.endsWith('_calibrated.mzML') }
+            .map { mzml -> 
+                def mzml_filename = mzml.name
+                def mzml_basename = mzml.name.replaceAll(/_calibrated\.mzML$/, '')
+                def mzml_path = mzml.parent
+                [mzml_filename, mzml_basename, mzml_path, mzml]
+            }
         
         // Extract metadata from calibrated mzML
         EXTRACT_METADATA(conversion_output_ch)
@@ -161,24 +170,48 @@ workflow {
         combined_ion_ch
     )
 
-    // Quantification using MSnbaseXIC (for both Thermo and Bruker after extract_apex_rt)
-    msnbasexic_script_ch = Channel.fromPath("${baseDir}/tools/msnbase/msnbasexic.R")
-    msnbasexic_pr(
-        conversion_output_ch,
-        msnbasexic_script_ch,
-        extract_apex_rt_pr.out
-    )
-
-    // Extract area, rt, dppm, and fwhm
-    PROCESS_PEPTIDES(
-        conversion_output_ch,
-        msnbasexic_pr.out,
-        Channel.value(selected_tsv_file)
-    )
-
     if (is_thermo) {
-        // Extract mit ms1 and ms2, tic, ms2 scan count (only for Thermo - already done for Bruker)
+        // Quantification using MSnbaseXIC (only for Thermo files with mzML conversion)
+        msnbasexic_script_ch = Channel.fromPath("${baseDir}/tools/msnbase/msnbasexic.R")
+        msnbasexic_pr(
+            conversion_output_ch,
+            msnbasexic_script_ch,
+            extract_apex_rt_pr.out,
+            output_dir_ch, 
+            analyte_name_ch,
+            rt_tol_sec_ch,
+            mz_tol_ppm_ch,
+            ms_level_ch,
+            plot_xic_ms1_ch,
+            plot_xic_ms2_ch,
+            plot_output_path_ch,
+            overwrite_tsv_ch
+        )
+
+        // Extract area, rt, dppm, and fwhm from MSnbaseXIC output
+        PROCESS_PEPTIDES(
+            conversion_output_ch,
+            msnbasexic_pr.out,
+            Channel.value(selected_tsv_file)
+        )
+
+        // Extract mit ms1 and ms2, tic, ms2 scan count
         EXTRACT_METADATA(conversion_output_ch)
+        
+    } else if (is_bruker) {
+        // For Bruker .d folders, extract peptide metrics from FragPipe output instead of MSnbaseXIC
+        log.info "Extracting peptide metrics from FragPipe combined_ion.tsv and psm.tsv for Bruker .d folder"
+        
+        // Combine sample_id with combined_ion and psm outputs
+        def fragpipe_peptide_input = conversion_output_ch
+            .map { mzml_filename, mzml_basename, mzml_path, mzml -> mzml_basename }
+            .combine(fragpipe_main_pr.out[5])  // combined_ion.tsv
+            .combine(fragpipe_main_pr.out[6])  // psm.tsv
+        
+        PROCESS_FRAGPIPE_PEPTIDES(
+            fragpipe_peptide_input,
+            Channel.value(selected_tsv_file)
+        )
     }
 
     // Extract FragPipe metrics using actual TSV files
@@ -221,11 +254,11 @@ workflow {
         }
         
     } else if (is_bruker) {
-        // For Bruker, collect all metrics: metadata, peptides, and FragPipe
+        // For Bruker, collect FragPipe metrics + metadata from mzML + peptide metrics from FragPipe
         all_json_files = EXTRACT_METADATA.out.qc_jsons
             .map { basename, jsons -> jsons }
-            .mix(PROCESS_PEPTIDES.out.peptide_jsons.map { basename, jsons -> jsons })
             .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
+            .mix(PROCESS_FRAGPIPE_PEPTIDES.out.peptide_jsons.map { sample_id, jsons -> jsons })
             .flatten()
             .collect()
 
