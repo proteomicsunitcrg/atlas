@@ -1315,15 +1315,62 @@ EOF
             continue
         fi
         
-        # Extract observed m/z from PSM file (column will depend on PSM structure)
-        # Typically: Observed M/Z or Calculated M/Z + Delta Mass
-        # We'll need to identify the correct columns from the PSM file
-        local observed_mz=$(echo "$psm_data" | awk -F'\t' '{print $11}')  # Adjust column number based on actual PSM structure
+        # Extract observed m/z from psm.tsv
+        # Match by unmodified peptide sequence (column 3), then select best PSM by Hyperscore (column 19)
+        # Sort by Hyperscore descending to get the best identification
+        local psm_count=$(grep -c -P "\t${long_name}\t" "$psm_tsv" || echo "0")
+        echo "[DEBUG] Found $psm_count PSMs for peptide $long_name"
         
-        # Calculate dppm: ((observed - theoretical) / theoretical) * 1e6
-        local dppm=$(awk -v obs="$observed_mz" -v theo="$mz_M0" 'BEGIN {printf "%.2f", ((obs-theo)/theo)*1e6}')
+        local psm_data=$(grep -P "\t${long_name}\t" "$psm_tsv" | sort -t$'\t' -k19,19nr | head -1)
         
-        echo "[DEBUG] From psm.tsv - Observed m/z: $observed_mz, dppm: $dppm"
+        if [[ -z "$psm_data" ]]; then
+            echo "[WARNING] Peptide $long_name not found in psm.tsv, cannot calculate dppm"
+            # Still add area and RT, but skip dppm
+            local temp_file=$(mktemp)
+            
+            jq --arg contextSource "$openms_name" --arg value "$area" \
+               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               "$area_json" > "$temp_file" && mv "$temp_file" "$area_json"
+            
+            jq --arg contextSource "$openms_name" --arg value "$apex_rt" \
+               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               "$rt_json" > "$temp_file" && mv "$temp_file" "$rt_json"
+            
+            continue
+        fi
+        
+        # Extract m/z values from PSM file (FragPipe format verified)
+        # Column 14: Calibrated Observed M/Z (what was actually measured, calibrated)
+        # Column 16: Calculated M/Z (theoretical m/z accounting for charge state)
+        local observed_mz=$(echo "$psm_data" | awk -F'\t' '{print $14}')
+        local calculated_mz=$(echo "$psm_data" | awk -F'\t' '{print $16}')
+        local charge=$(echo "$psm_data" | awk -F'\t' '{print $9}')
+        local hyperscore=$(echo "$psm_data" | awk -F'\t' '{print $19}')
+        
+        echo "[DEBUG] Selected PSM: charge=$charge, hyperscore=$hyperscore"
+        
+        # Validate that we have numeric values
+        if [[ ! "$observed_mz" =~ ^[0-9.eE+-]+$ ]] || [[ ! "$calculated_mz" =~ ^[0-9.eE+-]+$ ]]; then
+            echo "[WARNING] Invalid m/z values for $long_name - observed: '$observed_mz', calculated: '$calculated_mz'"
+            # Still add area and RT, but skip dppm
+            local temp_file=$(mktemp)
+            
+            jq --arg contextSource "$openms_name" --arg value "$area" \
+               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               "$area_json" > "$temp_file" && mv "$temp_file" "$area_json"
+            
+            jq --arg contextSource "$openms_name" --arg value "$apex_rt" \
+               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               "$rt_json" > "$temp_file" && mv "$temp_file" "$rt_json"
+            
+            continue
+        fi
+        
+        # Calculate dppm: ((observed - calculated) / calculated) * 1e6
+        # Using Calibrated Observed M/Z vs Calculated M/Z (both charge-corrected)
+        local dppm=$(awk -v obs="$observed_mz" -v theo="$calculated_mz" 'BEGIN {printf "%.2f", ((obs-theo)/theo)*1e6}')
+        
+        echo "[DEBUG] From psm.tsv - Observed m/z: $observed_mz, Calculated m/z: $calculated_mz, dppm: $dppm"
         
         # Add to JSON files
         local temp_file=$(mktemp)
