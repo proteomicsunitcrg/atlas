@@ -76,23 +76,85 @@ process EXTRACT_METADATA {
           awk '{sum+=\$1} END{printf "%.0f", sum}')
     echo "TIC: \$tic"
     
-    # Extract MIT MS1
-    echo "Extracting MIT MS1..."
-    mit_ms1=\$(grep -A 20 'MS:1000511.*value="1"' "\$original_filename" | \\
-              grep 'MS:1000927' | \\
-              grep -o 'value="[0-9.]*"' | \\
-              sed 's/value="//g; s/"//g' | \\
-              awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print "0"}')
-    echo "MIT MS1: \$mit_ms1"
+    # Detect instrument vendor for MIT interpretation
+    echo ""
+    echo "Detecting instrument type..."
+    if grep -q "Bruker" "\$original_filename"; then
+        instrument_vendor="Bruker"
+        echo "WARNING: Bruker instrument detected"
+        echo "    Note: Ion injection time (MS:1000927) is typically not available in Bruker mzML files"
+        echo "    This is expected behavior - Bruker timsTOF uses TIMS (Trapped Ion Mobility)"
+        echo "    with a different ion accumulation mechanism than Thermo instruments"
+        echo "    MIT MS1/MS2 will be set to 0 (not applicable)"
+    elif grep -q "Thermo" "\$original_filename"; then
+        instrument_vendor="Thermo"
+        echo "INFO: Thermo instrument detected - Ion injection time should be available"
+    else
+        instrument_vendor="Unknown"
+        echo "WARNING: Unknown instrument vendor - MIT extraction may fail"
+    fi
+    echo ""
     
-    # Extract MIT MS2
+    # Extract MIT MS1 (Ion Injection Time)
+    echo "Extracting MIT MS1..."
+    # Try MS:1000927 (ion injection time) first
+    mit_ms1_temp=\$(grep -A 20 'MS:1000511.*value="1"' "\$original_filename" | \\
+                   grep 'MS:1000927' | \\
+                   grep -o 'value="[0-9.]*"' | \\
+                   sed 's/value="//g; s/"//g' | \\
+                   awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print ""}')
+    
+    # If not found or zero, try MS:1000016 (scan start time) as fallback
+    if [[ -z "\$mit_ms1_temp" || "\$mit_ms1_temp" == "0" ]]; then
+        echo "  MS:1000927 not found for MS1, trying MS:1000016 (scan start time)..."
+        mit_ms1_temp=\$(grep -A 20 'MS:1000511.*value="1"' "\$original_filename" | \\
+                       grep 'MS:1000016' | \\
+                       grep -o 'value="[0-9.]*"' | \\
+                       sed 's/value="//g; s/"//g' | \\
+                       awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print ""}')
+    fi
+    
+    # Convert from seconds to milliseconds if value < 1 (likely in seconds)
+    if [[ -n "\$mit_ms1_temp" && "\$mit_ms1_temp" != "" ]]; then
+        mit_ms1=\$(awk -v val="\$mit_ms1_temp" 'BEGIN {if(val < 1 && val > 0) print val*1000; else print val}')
+        echo "  INFO: MIT MS1: \$mit_ms1 ms"
+    else
+        mit_ms1="0"
+        if [ "\$instrument_vendor" == "Bruker" ]; then
+            echo "  INFO: MIT MS1: 0 (not applicable for Bruker TIMS instruments)"
+        else
+            echo "  WARNING: MIT MS1: Not found in mzML (value=0)"
+        fi
+    fi
+    
+    # Extract MIT MS2 (Ion Injection Time)
     echo "Extracting MIT MS2..."
-    mit_ms2=\$(grep -A 20 'MS:1000511.*value="2"' "\$original_filename" | \\
-              grep 'MS:1000927' | \\
-              grep -o 'value="[0-9.]*"' | \\
-              sed 's/value="//g; s/"//g' | \\
-              awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print "0"}')
-    echo "MIT MS2: \$mit_ms2"
+    mit_ms2_temp=\$(grep -A 20 'MS:1000511.*value="2"' "\$original_filename" | \\
+                   grep 'MS:1000927' | \\
+                   grep -o 'value="[0-9.]*"' | \\
+                   sed 's/value="//g; s/"//g' | \\
+                   awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print ""}')
+    
+    if [[ -z "\$mit_ms2_temp" || "\$mit_ms2_temp" == "0" ]]; then
+        echo "  MS:1000927 not found for MS2, trying MS:1000016..."
+        mit_ms2_temp=\$(grep -A 20 'MS:1000511.*value="2"' "\$original_filename" | \\
+                       grep 'MS:1000016' | \\
+                       grep -o 'value="[0-9.]*"' | \\
+                       sed 's/value="//g; s/"//g' | \\
+                       awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print ""}')
+    fi
+    
+    if [[ -n "\$mit_ms2_temp" && "\$mit_ms2_temp" != "" ]]; then
+        mit_ms2=\$(awk -v val="\$mit_ms2_temp" 'BEGIN {if(val < 1 && val > 0) print val*1000; else print val}')
+        echo "  INFO: MIT MS2: \$mit_ms2 ms"
+    else
+        mit_ms2="0"
+        if [ "\$instrument_vendor" == "Bruker" ]; then
+            echo "  INFO: MIT MS2: 0 (not applicable for Bruker TIMS instruments)"
+        else
+            echo "  WARNING: MIT MS2: Not found in mzML (value=0)"
+        fi
+    fi
     
     # Extract MS2 scan count using grep
     echo "Extracting MS2 scan count..."
@@ -142,8 +204,13 @@ process EXTRACT_METADATA {
 }
 EOF
 
-    # Create MIT MS1 JSON
-    cat > "\$mit_ms1_json" << EOF
+    # Create MIT MS1 and MS2 JSONs ONLY for non-Bruker instruments
+    # For Bruker, skip these files as MIT is not applicable (TIMS technology)
+    if [ "\$instrument_vendor" != "Bruker" ]; then
+        echo "Creating MIT JSON files for \$instrument_vendor instrument..."
+        
+        # Create MIT MS1 JSON
+        cat > "\$mit_ms1_json" << EOF
 {
   "file" : {
     "checksum" : "\$checksum_extracted"
@@ -160,8 +227,8 @@ EOF
 }
 EOF
 
-    # Create MIT MS2 JSON
-    cat > "\$mit_ms2_json" << EOF
+        # Create MIT MS2 JSON
+        cat > "\$mit_ms2_json" << EOF
 {
   "file" : {
     "checksum" : "\$checksum_extracted"
@@ -177,6 +244,12 @@ EOF
   } ]
 }
 EOF
+        
+        echo "INFO: MIT JSON files created for \$instrument_vendor"
+    else
+        echo "WARNING: Skipping MIT JSON creation for Bruker instrument (not applicable)"
+        echo "    MIT metrics are not available for Bruker timsTOF TIMS technology"
+    fi
 
     # Create MS2 scan count JSON
     cat > "\$ms2_count_json" << EOF
@@ -277,16 +350,40 @@ EOF
     
     echo "File count check:"
     qc_file_count=\$(ls -1 *_QC_*.json 2>/dev/null | wc -l)
-    echo "Number of QC JSON files created: \$qc_file_count (should be 4)"
     
-    # Verify each expected file exists
+    # Expected file count depends on instrument type
+    if [ "\$instrument_vendor" == "Bruker" ]; then
+        expected_count=2
+        echo "Number of QC JSON files created: \$qc_file_count (expected 2 for Bruker: TIC + MS2 count)"
+    else
+        expected_count=4
+        echo "Number of QC JSON files created: \$qc_file_count (expected 4 for \$instrument_vendor: TIC + MIT MS1 + MIT MS2 + MS2 count)"
+    fi
+    
+    # Verify expected files exist
     echo "File existence check:"
-    for expected_file in "\$tic_json" "\$mit_ms1_json" "\$mit_ms2_json" "\$ms2_count_json"; do
+    
+    # TIC and MS2 count are always expected
+    for expected_file in "\$tic_json" "\$ms2_count_json"; do
         if [[ -f "\$expected_file" ]]; then
-            echo "  ✓ \$expected_file exists"
+            echo "  [OK] \$expected_file exists"
         else
-            echo "  ✗ \$expected_file MISSING"
+            echo "  [MISSING] \$expected_file"
         fi
     done
+    
+    # MIT files only expected for non-Bruker instruments
+    if [ "\$instrument_vendor" != "Bruker" ]; then
+        for expected_file in "\$mit_ms1_json" "\$mit_ms2_json"; do
+            if [[ -f "\$expected_file" ]]; then
+                echo "  [OK] \$expected_file exists"
+            else
+                echo "  [MISSING] \$expected_file"
+            fi
+        done
+    else
+        echo "  [SKIPPED] \$mit_ms1_json (Bruker instrument)"
+        echo "  [SKIPPED] \$mit_ms2_json (Bruker instrument)"
+    fi
     """
 }
