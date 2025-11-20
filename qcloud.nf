@@ -148,11 +148,11 @@ workflow {
         // FragPipe outputs calibrated mzML - use it for metadata extraction
         conversion_output_ch = fragpipe_main_pr.out[7]  // mzML files from FragPipe
             .flatten()
-            .filter { it.name.endsWith('_calibrated.mzML') }
+            .filter { it.toString().endsWith('_calibrated.mzML') }
             .map { mzml -> 
-                def mzml_filename = mzml.name
-                def mzml_basename = mzml.name.replaceAll(/_calibrated\.mzML$/, '')
-                def mzml_path = mzml.parent
+                def mzml_filename = mzml.getName()
+                def mzml_basename = mzml.getName().replaceAll(/_calibrated\.mzML$/, '')
+                def mzml_path = mzml.getParent()
                 [mzml_filename, mzml_basename, mzml_path, mzml]
             }
         
@@ -203,7 +203,7 @@ workflow {
         log.info "Extracting peptide metrics from FragPipe combined_ion.tsv and psm.tsv for Bruker .d folder"
         
         // Combine sample_id with combined_ion and psm outputs
-        def fragpipe_peptide_input = conversion_output_ch
+        fragpipe_peptide_input = conversion_output_ch
             .map { mzml_filename, mzml_basename, mzml_path, mzml -> mzml_basename }
             .combine(fragpipe_main_pr.out[5])  // combined_ion.tsv
             .combine(fragpipe_main_pr.out[6])  // psm.tsv
@@ -217,7 +217,6 @@ workflow {
     // Extract FragPipe metrics using actual TSV files
     // For Bruker, we need to get the sample_id from the mzML basename (which has UUID+checksum)
     // For Thermo, we can use the rawfile basename
-    def fragpipe_sample_id_ch
     if (is_bruker) {
         fragpipe_sample_id_ch = conversion_output_ch.map { mzml_filename, mzml_basename, mzml_path, mzml -> 
             [mzml_basename]  // Use mzML basename which has full UUID+context+checksum
