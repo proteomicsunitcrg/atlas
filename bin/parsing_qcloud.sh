@@ -947,7 +947,8 @@ submit_metrics_data() {
         $(extract_qcloud_term "$config_file" "median_mass_acc_ms1")
         $(extract_qcloud_term "$config_file" "median_mass_acc_ms2")
         $(extract_qcloud_term "$config_file" "points_per_peak")
-        $(extract_qcloud_term "$config_file" "median_fwhm")
+        $(extract_qcloud_term "$config_file" "fwhm_scans")
+        $(extract_qcloud_term "$config_file" "fwhm_sec")
     )
     
     echo "[DEBUG] QC codes to submit: ${qc_codes[*]}"

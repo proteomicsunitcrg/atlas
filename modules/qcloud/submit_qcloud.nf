@@ -160,7 +160,7 @@ process SUBMIT_TO_QCLOUD {
     
     # Now submit each QC data JSON file
     echo "Inserting QC data to QCloud..."
-    for json_file in *.json; do
+    for json_file in *_QC_*.json; do
         if [[ -f "\$json_file" ]]; then
             echo "Submitting \$json_file..."
             

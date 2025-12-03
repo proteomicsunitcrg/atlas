@@ -42,13 +42,15 @@ process EXTRACT_DIANN_METRICS {
     median_mass_acc_ms1_qccv=$(extract_qcloud_term "!{config_file}" "median_mass_acc_ms1")
     median_mass_acc_ms2_qccv=$(extract_qcloud_term "!{config_file}" "median_mass_acc_ms2")
     points_per_peak_qccv=$(extract_qcloud_term "!{config_file}" "points_per_peak")
-    median_fwhm_qccv=$(extract_qcloud_term "!{config_file}" "median_fwhm")
+    fwhm_scans_qccv=$(extract_qcloud_term "!{config_file}" "fwhm_scans")
+    fwhm_sec_qccv=$(extract_qcloud_term "!{config_file}" "fwhm_sec")
     
     # Read context sources from config file
     median_mass_acc_ms1_context=$(extract_context_value "!{config_file}" "median_mass_acc_ms1")
     median_mass_acc_ms2_context=$(extract_context_value "!{config_file}" "median_mass_acc_ms2")
     points_per_peak_context=$(extract_context_value "!{config_file}" "points_per_peak")
-    median_fwhm_context=$(extract_context_value "!{config_file}" "median_fwhm")
+    fwhm_scans_context=$(extract_context_value "!{config_file}" "fwhm_scans")
+    fwhm_sec_context=$(extract_context_value "!{config_file}" "fwhm_sec")
     
     # Set QC parameters for new metrics (Proteins.identified and Precursors.identified)
     proteins_identified_qccv="QC:9000001"
@@ -60,37 +62,46 @@ process EXTRACT_DIANN_METRICS {
     if [ -f "!{report_stats_tsv}" ]; then
         echo "Processing report.stats.tsv file: !{report_stats_tsv}"
         
-        # Extract FWHM.scans (Points per peak = FWHM.scans * 3)
+        # Extract FWHM.scans for both parameters
         # First, let's debug what columns are available
         echo "DEBUG: Available columns in report.stats.tsv:"
         head -1 !{report_stats_tsv} | tr '\\t' '\\n' | nl
         
         # Try different possible column names for FWHM scans
-        fwhm_scans=$(awk -F'\\t' 'NR==1 {for(i=1;i<=NF;i++) if($i=="FWHM.scans" || $i=="FWHM.Scans") col=i} NR==2 {if(col) print $col; else print ""}' !{report_stats_tsv})
+        fwhm_scans_raw=$(awk -F'\\t' 'NR==1 {for(i=1;i<=NF;i++) if($i=="FWHM.scans" || $i=="FWHM.Scans") col=i} NR==2 {if(col) print $col; else print ""}' !{report_stats_tsv})
         
-        echo "DEBUG: Extracted FWHM.scans value: '$fwhm_scans'"
+        echo "DEBUG: Extracted FWHM.scans value: '$fwhm_scans_raw'"
         
-        # Use awk for calculation instead of bc, with error handling
-        if [ -n "$fwhm_scans" ] && [ "$fwhm_scans" != "" ] && [ "$fwhm_scans" != "0" ]; then
-            points_per_peak=$(awk -v val="$fwhm_scans" 'BEGIN {printf "%.3f", val * 3}')
-            echo "DEBUG: Calculated points_per_peak: $fwhm_scans * 3 = $points_per_peak"
+        # New parameter: FWHM scans (raw value, no multiplication)
+        if [ -n "$fwhm_scans_raw" ] && [ "$fwhm_scans_raw" != "" ] && [ "$fwhm_scans_raw" != "0" ]; then
+            fwhm_scans="$fwhm_scans_raw"
+            echo "DEBUG: FWHM scans (raw): $fwhm_scans"
+        else
+            fwhm_scans=0
+            echo "DEBUG: FWHM.scans not found or empty, setting fwhm_scans to 0"
+        fi
+        
+        # Existing parameter: Points per peak = FWHM.scans * 3
+        if [ -n "$fwhm_scans_raw" ] && [ "$fwhm_scans_raw" != "" ] && [ "$fwhm_scans_raw" != "0" ]; then
+            points_per_peak=$(awk -v val="$fwhm_scans_raw" 'BEGIN {printf "%.3f", val * 3}')
+            echo "DEBUG: Calculated points_per_peak: $fwhm_scans_raw * 3 = $points_per_peak"
         else
             points_per_peak=0
             echo "DEBUG: FWHM.scans not found or empty, setting points_per_peak to 0"
         fi
         
-        # Extract FWHM.RT (Median FWHM = FWHM.RT * 60 sec)
+        # Extract FWHM.RT (FWHM (sec) = FWHM.RT * 60 sec)
         fwhm_rt=$(awk -F'\\t' 'NR==1 {for(i=1;i<=NF;i++) if($i=="FWHM.RT") col=i} NR==2 {if(col) print $col; else print ""}' !{report_stats_tsv})
         
         echo "DEBUG: Extracted FWHM.RT value: '$fwhm_rt'"
         
         # Use awk for calculation instead of bc, with error handling
         if [ -n "$fwhm_rt" ] && [ "$fwhm_rt" != "" ] && [ "$fwhm_rt" != "0" ]; then
-            median_fwhm=$(awk -v val="$fwhm_rt" 'BEGIN {printf "%.3f", val * 60}')
-            echo "DEBUG: Calculated median_fwhm: $fwhm_rt * 60 = $median_fwhm"
+            fwhm_sec=$(awk -v val="$fwhm_rt" 'BEGIN {printf "%.3f", val * 60}')
+            echo "DEBUG: Calculated FWHM (sec): $fwhm_rt * 60 = $fwhm_sec"
         else
-            median_fwhm=0
-            echo "DEBUG: FWHM.RT not found or empty, setting median_fwhm to 0"
+            fwhm_sec=0
+            echo "DEBUG: FWHM.RT not found or empty, setting fwhm_sec to 0"
         fi
         
         # Extract Median.Mass.Acc.MS1
@@ -126,16 +137,18 @@ process EXTRACT_DIANN_METRICS {
         fi
         
         echo "Extracted stats metrics:"
-        echo "  FWHM.scans: $fwhm_scans -> Points per peak: $points_per_peak"
-        echo "  FWHM.RT: $fwhm_rt -> Median FWHM: $median_fwhm"
+        echo "  FWHM.scans (raw): $fwhm_scans"
+        echo "  FWHM.scans * 3 -> Points per peak: $points_per_peak"
+        echo "  FWHM.RT * 60 -> FWHM (sec): $fwhm_sec"
         echo "  Median.Mass.Acc.MS1: $median_mass_acc_ms1"
         echo "  Median.Mass.Acc.MS2: $median_mass_acc_ms2"
         echo "  Proteins.Identified: $proteins_identified"
         echo "  Precursors.Identified: $precursors_identified"
     else
         echo "Warning: report.stats.tsv file not found"
+        fwhm_scans=0
         points_per_peak=0
-        median_fwhm=0
+        fwhm_sec=0
         median_mass_acc_ms1=0
         median_mass_acc_ms2=0
         proteins_identified=0
@@ -146,8 +159,9 @@ process EXTRACT_DIANN_METRICS {
     echo "  Area: $area_qccv"
     echo "  RT: $rt_qccv" 
     echo "  dppm: $dppm_qccv"
+    echo "  FWHM scans: $fwhm_scans_qccv (context: $fwhm_scans_context)"
     echo "  Points per peak: $points_per_peak_qccv (context: $points_per_peak_context)"
-    echo "  Median FWHM: $median_fwhm_qccv (context: $median_fwhm_context)"
+    echo "  FWHM (sec): $fwhm_sec_qccv (context: $fwhm_sec_context)"
     echo "  Median mass accuracy MS1: $median_mass_acc_ms1_qccv (context: $median_mass_acc_ms1_context)"
     echo "  Median mass accuracy MS2: $median_mass_acc_ms2_qccv (context: $median_mass_acc_ms2_context)"
     echo "  Proteins identified: $proteins_identified_qccv (context: $proteins_identified_context)"
@@ -159,8 +173,9 @@ process EXTRACT_DIANN_METRICS {
     rt_qcode=$(echo "$rt_qccv" | cut -d':' -f2)
     
     # For new stats metrics, use context codes (qcloud_contexts) for filenames
+    fwhm_scans_qcode=$(echo "$fwhm_scans_context" | cut -d':' -f2)
     points_per_peak_qcode=$(echo "$points_per_peak_context" | cut -d':' -f2)
-    median_fwhm_qcode=$(echo "$median_fwhm_context" | cut -d':' -f2)
+    fwhm_sec_qcode=$(echo "$fwhm_sec_context" | cut -d':' -f2)
     median_mass_acc_ms1_qcode=$(echo "$median_mass_acc_ms1_context" | cut -d':' -f2)
     median_mass_acc_ms2_qcode=$(echo "$median_mass_acc_ms2_context" | cut -d':' -f2)
     
@@ -168,8 +183,9 @@ process EXTRACT_DIANN_METRICS {
     rt_json="${uuid}_${context_code}_${checksum_extracted}_QC_${rt_qcode}.json"
     
     # New JSON files for stats metrics (using context codes for filenames)
+    fwhm_scans_json="${uuid}_${context_code}_${checksum_extracted}_QC_${fwhm_scans_qcode}.json"
     points_per_peak_json="${uuid}_${context_code}_${checksum_extracted}_QC_${points_per_peak_qcode}.json"
-    median_fwhm_json="${uuid}_${context_code}_${checksum_extracted}_QC_${median_fwhm_qcode}.json"
+    fwhm_sec_json="${uuid}_${context_code}_${checksum_extracted}_QC_${fwhm_sec_qcode}.json"
     median_mass_acc_ms1_json="${uuid}_${context_code}_${checksum_extracted}_QC_${median_mass_acc_ms1_qcode}.json"
     median_mass_acc_ms2_json="${uuid}_${context_code}_${checksum_extracted}_QC_${median_mass_acc_ms2_qcode}.json"
     
@@ -182,8 +198,9 @@ process EXTRACT_DIANN_METRICS {
     echo "JSON files to create:"
     echo "  Area: $area_json (using qCCV code: $area_qcode)"
     echo "  RT: $rt_json (using qCCV code: $rt_qcode) - VALUES CONVERTED TO SECONDS"
+    echo "  FWHM scans: $fwhm_scans_json (using context code: $fwhm_scans_qcode)"
     echo "  Points per peak: $points_per_peak_json (using context code: $points_per_peak_qcode)"
-    echo "  Median FWHM: $median_fwhm_json (using context code: $median_fwhm_qcode)"
+    echo "  FWHM (sec): $fwhm_sec_json (using context code: $fwhm_sec_qcode)"
     echo "  Median mass accuracy MS1: $median_mass_acc_ms1_json (using context code: $median_mass_acc_ms1_qcode)"
     echo "  Median mass accuracy MS2: $median_mass_acc_ms2_json (using context code: $median_mass_acc_ms2_qcode)"
     echo "  Proteins identified: $proteins_identified_json (using context code: $proteins_identified_qcode)"
@@ -221,6 +238,23 @@ EOF
 EOF
 
     # Initialize new JSON files for stats metrics using config values
+    cat > "$fwhm_scans_json" << EOF
+{
+  "file" : {
+    "checksum" : "$checksum_extracted"
+  },
+  "data" : [ {
+    "parameter" : {
+      "qCCV" : "$fwhm_scans_qccv"
+    },
+    "values" : [ {
+      "value" : "$fwhm_scans",
+      "contextSource" : "$fwhm_scans_context"
+    } ]
+  } ]
+}
+EOF
+
     cat > "$points_per_peak_json" << EOF
 {
   "file" : {
@@ -238,18 +272,18 @@ EOF
 }
 EOF
 
-    cat > "$median_fwhm_json" << EOF
+    cat > "$fwhm_sec_json" << EOF
 {
   "file" : {
     "checksum" : "$checksum_extracted"
   },
   "data" : [ {
     "parameter" : {
-      "qCCV" : "$median_fwhm_qccv"
+      "qCCV" : "$fwhm_sec_qccv"
     },
     "values" : [ {
-      "value" : "$median_fwhm",
-      "contextSource" : "$median_fwhm_context"
+      "value" : "$fwhm_sec",
+      "contextSource" : "$fwhm_sec_context"
     } ]
   } ]
 }
@@ -434,11 +468,14 @@ EOF
     echo "  RT values converted from minutes to seconds (column 30 * 60)"
     
     echo "Final JSON content for new metrics:"
+    echo "FWHM scans JSON:"
+    cat "$fwhm_scans_json"
+    
     echo "Points per peak JSON:"
     cat "$points_per_peak_json"
     
-    echo "Median FWHM JSON:"
-    cat "$median_fwhm_json"
+    echo "FWHM (sec) JSON:"
+    cat "$fwhm_sec_json"
     
     echo "Median mass accuracy MS1 JSON:"
     cat "$median_mass_acc_ms1_json"
