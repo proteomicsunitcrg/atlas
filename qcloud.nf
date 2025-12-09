@@ -176,16 +176,7 @@ workflow {
         msnbasexic_pr(
             conversion_output_ch,
             msnbasexic_script_ch,
-            extract_apex_rt_pr.out,
-            output_dir_ch, 
-            analyte_name_ch,
-            rt_tol_sec_ch,
-            mz_tol_ppm_ch,
-            ms_level_ch,
-            plot_xic_ms1_ch,
-            plot_xic_ms2_ch,
-            plot_output_path_ch,
-            overwrite_tsv_ch
+            extract_apex_rt_pr.out
         )
 
         // Extract area, rt, dppm, and fwhm from MSnbaseXIC output

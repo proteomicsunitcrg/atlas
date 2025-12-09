@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=qsample
+#SBATCH --job-name=atlas
 #SBATCH --no-requeue
 #SBATCH --mem=1G
 #SBATCH -p genoa64
