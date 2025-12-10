@@ -335,6 +335,9 @@ launch_nf_run() {
 }
 
 extract_qccode_and_request() {
+
+    echo "[DEBUG] ----------------- extract_qccode_and_request() -----------------"
+
     local file_path="$1"
     local filename
     local filename_core
@@ -342,59 +345,176 @@ extract_qccode_and_request() {
 
     filename=$(basename "$file_path")
 
-    # 1. Strip file extensions (.raw.*, .d.*, .mzML.*)
-    filename_core="${filename%%.raw*}"     # Remove .raw and everything after
-    filename_core="${filename_core%%.d.*}" # Remove .d. and everything after (Bruker)
-    filename_core="${filename_core%%.mzML*}" # Remove .mzML and everything after
+    echo "[DEBUG] Input filename: $filename"
 
-    echo "[DEBUG] Original filename: $filename"
-    echo "[DEBUG] After extension stripping: $filename_core"
+    ###########################################################################
+    # STEP 1 — Strip vendor-specific extensions
+    #
+    # We normalize the filename by removing vendor-specific tails such as:
+    #   *.raw.*
+    #   *.d.*
+    #   *.mzML.*
+    #
+    # Examples:
+    #   2025NK071_MASR_025_01_2ug.raw.SP_Human  ->  2025NK071_MASR_025_01_2ug
+    #   T068474_QC01_..._b118a..._QC01_662522fd.d.zip  ->  T068474_QC01_..._b118a..._QC01_662522fd
+    ###########################################################################
+    filename_core="${filename%%.raw*}"
+    filename_core="${filename_core%%.d.*}"
+    filename_core="${filename_core%%.mzML*}"
 
-    # 2. Reverse filename to process from the end
+    echo "[DEBUG] After stripping vendor extensions: $filename_core"
+
+
+    ###########################################################################
+    # STEP 2 — HARD PRIORITY OVERRIDE FOR QCloud CODES
+    #
+    # We always prioritize:
+    #   1) QC01
+    #   2) QC02
+    #   3) QCD1
+    #   4) QCD2
+    #
+    # If any of these tags appear ANYWHERE in the (normalized) filename_core,
+    # we immediately set QCCODE to that value and return.
+    #
+    # This guarantees that genuine QCloud runs are never confused with
+    # other naming schemes (NK, MQ, etc.).
+    ###########################################################################
+
+    if echo "$filename_core" | grep -q "QC01"; then
+        QCCODE="QC01"
+        REQUEST=""
+        echo "[INFO] Priority QCloud match: QC01 detected (highest priority)."
+        echo "[DEBUG] Early exit from extract_qccode_and_request() with QCCODE='$QCCODE'"
+        return
+    fi
+
+    if echo "$filename_core" | grep -q "QC02"; then
+        QCCODE="QC02"
+        REQUEST=""
+        echo "[INFO] Priority QCloud match: QC02 detected."
+        echo "[DEBUG] Early exit from extract_qccode_and_request() with QCCODE='$QCCODE'"
+        return
+    fi
+
+    if echo "$filename_core" | grep -q "QCD1"; then
+        QCCODE="QCD1"
+        REQUEST=""
+        echo "[INFO] Priority QCloud match: QCD1 detected."
+        echo "[DEBUG] Early exit from extract_qccode_and_request() with QCCODE='$QCCODE'"
+        return
+    fi
+
+    if echo "$filename_core" | grep -q "QCD2"; then
+        QCCODE="QCD2"
+        REQUEST=""
+        echo "[INFO] Priority QCloud match: QCD2 detected."
+        echo "[DEBUG] Early exit from extract_qccode_and_request() with QCCODE='$QCCODE'"
+        return
+    fi
+
+
+    ###########################################################################
+    # STEP 3 — Reverse-based parsing for generic QCloud-like patterns
+    #
+    # If we reached this point, there is no explicit QC01/QC02/QCD1/QCD2
+    # string in the filename. However, we still try to detect any QCloud
+    # QC code (QCxx or QCDx) using the generic pattern:
+    #
+    #   QC[digits]
+    #   QCD[digits]
+    #
+    # We do this by:
+    #   1) Reversing the filename_core
+    #   2) Splitting by "_"
+    #   3) Reversing each part again and checking if it matches the regex
+    ###########################################################################
     reversed=$(echo "$filename_core" | rev)
-    echo "[DEBUG] Reversed: $reversed"
+    echo "[DEBUG] Reversed filename core: $reversed"
 
-    # 3. Split reversed string by "_" and search for QC codes
-    IFS='_' read -ra parts <<< "$reversed"
-    
-    # 4. Look for QC patterns
-    local qccode_regex='^QCD?[0-9]+$'  # Matches QC01, QC02, QCD1, QCD2
+    local qccode_regex='^QCD?[0-9]+$'
     local found_qc=""
-    local checksum=""
-    local uuid_candidate=""
-    
-    echo "[DEBUG] Searching through parts for QC codes..."
+
+    IFS='_' read -ra parts <<< "$reversed"
+
+    echo "[DEBUG] Searching reversed filename components for QC codes..."
     for i in "${!parts[@]}"; do
+        local part_normal
         part_normal=$(echo "${parts[$i]}" | rev)
-        echo "[DEBUG] Part $i: ${parts[$i]} -> $part_normal"
-        
+        echo "[DEBUG]   Component $i: reversed='${parts[$i]}' -> normal='$part_normal'"
+
         if [[ "$part_normal" =~ $qccode_regex ]]; then
-            echo "[DEBUG] Found QC code: $part_normal"
+            echo "[DEBUG]   → Matched QCloud-style QC code: $part_normal"
             found_qc="$part_normal"
             break
         fi
     done
 
-    # 5. Extract checksum (first part when reversed)
-    if [[ ${#parts[@]} -gt 0 ]]; then
-        checksum=$(echo "${parts[0]}" | rev)
-    fi
-
-    # 6. Set results
+    ###########################################################################
+    # CASE A — QCloud-style file detected by regex (no hard priority used)
+    ###########################################################################
     if [[ -n "$found_qc" ]]; then
         QCCODE="$found_qc"
-        REQUEST=""  # Can be extracted if needed
-        echo "[INFO] Detected QCloud filename structure → QCCODE: $QCCODE"
-        echo "[INFO] Extracted checksum: $checksum"
-    else
-        # Fallback to classic extraction from the start
-        echo "[DEBUG] No QC code found in reverse parsing, trying classic method"
-        local file_arr=($(echo "$filename" | tr "_" "\n"))
-        REQUEST="${file_arr[0]}"
-        QCCODE="${file_arr[1]}"
-        echo "[INFO] Using QSample filename parsing → REQUEST: $REQUEST | QCCODE: $QCCODE"
+        REQUEST=""
+
+        echo "[INFO] QCloud-style filename detected via regex."
+        echo "[INFO] Extracted QC code: $QCCODE"
+        echo "[DEBUG] Exiting extract_qccode_and_request() in QCloud mode."
+        echo "[DEBUG] ----------------------------------------------------------------"
+        return
     fi
+
+
+    ###########################################################################
+    # CASE B — Non-QCloud / Atlas / QSample file
+    #
+    # These follow patterns like:
+    #
+    #   2025NK071_MASR_025_01_2ug.raw.SP_Human
+    #
+    # where:
+    #   - REQUEST = first block before "_": e.g. "2025NK071"
+    #   - pattern embedded in REQUEST = two or three uppercase letters,
+    #     such as NK, MQ, LA, etc., which correspond to the "pattern"
+    #     column in the methods TSV (MQ, LA, LB, MG, ...).
+    ###########################################################################
+
+    echo "[DEBUG] No QCloud QC code found → switching to non-QCloud parser."
+
+    # Split the NORMAL (non-reversed) filename core by "_"
+    local file_arr=($(echo "$filename_core" | tr "_" "\n"))
+    REQUEST="${file_arr[0]}"
+
+    echo "[DEBUG] REQUEST extracted from filename: $REQUEST"
+
+    ###########################################################################
+    # PATTERN EXTRACTION FOR NON-QCloud FILES
+    #
+    # We search for 2–3 consecutive uppercase letters inside REQUEST.
+    # This is robust enough for patterns like:
+    #   2025NK071  → NK
+    #   2024MQ52A  → MQ
+    #   2024LA843  → LA
+    #
+    # These two/three-letter codes must match the 'pattern' column in the
+    # methods CSV/TSV (MQ, LA, LB, MG, etc.), which your main loop uses.
+    ###########################################################################
+    QCCODE=$(echo "$REQUEST" | grep -oE '[A-Z]{2,3}' | head -n 1)
+
+    if [[ -z "$QCCODE" ]]; then
+        echo "[WARNING] No 2–3 letter pattern detected inside REQUEST."
+        echo "[WARNING] Filename might not follow Atlas/QSample conventions."
+    else
+        echo "[INFO] Non-QCloud pattern detected."
+        echo "[INFO] REQUEST: $REQUEST | PATTERN/QCCODE: $QCCODE"
+    fi
+
+    echo "[DEBUG] Finished non-QCloud parsing."
+    echo "[DEBUG] RETURN VALUES → REQUEST='$REQUEST' | QCCODE='$QCCODE'"
+    echo "[DEBUG] ----------------------------------------------------------------"
 }
+
 
 ################FUNCTIONS END
 
@@ -421,10 +541,14 @@ if [ -n "$FILE_TO_PROCESS" ]; then
     
     FILE_BASENAME=$(basename "$FILE_TO_PROCESS")
     extract_qccode_and_request "$FILE_TO_PROCESS"
+
+    MATCH_FOUND=false
     
     for j in ${LIST_PATTERNS}
     do
         if [ "$(echo $REQUEST | grep $j)" ] || [ "$QCCODE" = "$j" ]; then
+
+            MATCH_FOUND=true
             
             echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
             
@@ -496,6 +620,22 @@ if [ -n "$FILE_TO_PROCESS" ]; then
         fi
         
     done
+
+    if [ "$MATCH_FOUND" = false ]; then
+        echo ""
+        echo "[WARNING] ───────────────────────────────────────────────────────────────"
+        echo "[WARNING] No matching pattern found for detected code: \"$QCCODE\""
+        echo "[WARNING] or REQUEST prefix: \"$REQUEST\""
+        echo "[WARNING] Therefore, NO pipeline will be triggered for the file:"
+        echo "          $FILE_BASENAME"
+        echo ""
+        echo "[WARNING] Please check that this code exists in the METHODS TSV file:"
+        echo "          $METHODS_CSV"
+        echo "[WARNING] If this is expected, simply ignore this message."
+        echo "[WARNING] ───────────────────────────────────────────────────────────────"
+        echo ""
+    fi
+
 else
     echo "[INFO] No files to process!"
 fi
