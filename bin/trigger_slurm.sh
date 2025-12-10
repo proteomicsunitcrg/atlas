@@ -3,7 +3,7 @@
 #SBATCH --no-requeue
 #SBATCH --mem=1G
 #SBATCH -p genoa64
-#SBATCH --qos=pipelines
+#SBATCH --qos=core
 #SBATCH --time=4:00:00
 
 # Configure bash
