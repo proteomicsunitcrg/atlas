@@ -613,8 +613,8 @@ get_tic(){
   # Extract numeric values and sum them, converting scientific notation to full numbers
   grep -o '".*"' "$curr_dir/$basename.tic.str" | sed 's/"//g' > "$curr_dir/$basename.tic.num"
 
-  # Sum all TIC values using awk with printf to avoid scientific notation
-  awk '{sum+=$1} END{printf "%.0f", sum}' "$curr_dir/$basename.tic.num"
+  # Sum all TIC values and scale down by 10^10 to match old pipeline format (e.g., 577582990000 -> 57.76)
+  awk '{sum+=$1} END{printf "%.2f", sum/10000000000}' "$curr_dir/$basename.tic.num"
 }
 
 # Function: Extract checksum from filename by reversing and taking first element

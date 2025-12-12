@@ -68,12 +68,12 @@ process EXTRACT_METADATA {
     echo "  MIT MS2: \$mit_ms2_qccv (context: \$mit_ms2_context)"
     echo "  MS2 count: \$ms2_count_qccv (context: \$ms2_count_context)"
     
-    # Extract TIC using grep
+    # Extract TIC using grep and scale down by 10^10 to match old pipeline format
     echo "Extracting TIC from large mzML file..."
     tic=\$(grep 'MS:1000285' "\$original_filename" | \\
           grep -o 'value="[^"]*"' | \\
           sed 's/value="//g; s/"//g' | \\
-          awk '{sum+=\$1} END{printf "%.0f", sum}')
+          awk '{sum+=\$1} END{printf "%.2f", sum/10000000000}')
     echo "TIC: \$tic"
     
     # Detect instrument vendor for MIT interpretation
