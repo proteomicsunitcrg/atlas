@@ -423,7 +423,7 @@ EOF
         # Add to existing file (append to values array)
         local temp_file=$(mktemp)
         jq --arg contextSource "$long_name" --arg value "$value" \
-           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+           '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
            "$output_file" > "$temp_file" && mv "$temp_file" "$output_file"
     fi
     
@@ -1306,11 +1306,11 @@ EOF
             local temp_file=$(mktemp)
             
             jq --arg contextSource "$openms_name" --arg value "$area" \
-               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
                "$area_json" > "$temp_file" && mv "$temp_file" "$area_json"
             
             jq --arg contextSource "$openms_name" --arg value "$apex_rt" \
-               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
                "$rt_json" > "$temp_file" && mv "$temp_file" "$rt_json"
             
             continue
@@ -1330,11 +1330,11 @@ EOF
             local temp_file=$(mktemp)
             
             jq --arg contextSource "$openms_name" --arg value "$area" \
-               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
                "$area_json" > "$temp_file" && mv "$temp_file" "$area_json"
             
             jq --arg contextSource "$openms_name" --arg value "$apex_rt" \
-               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
                "$rt_json" > "$temp_file" && mv "$temp_file" "$rt_json"
             
             continue
@@ -1357,11 +1357,11 @@ EOF
             local temp_file=$(mktemp)
             
             jq --arg contextSource "$openms_name" --arg value "$area" \
-               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
                "$area_json" > "$temp_file" && mv "$temp_file" "$area_json"
             
             jq --arg contextSource "$openms_name" --arg value "$apex_rt" \
-               '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+               '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
                "$rt_json" > "$temp_file" && mv "$temp_file" "$rt_json"
             
             continue
@@ -1378,17 +1378,17 @@ EOF
         
         # Area
         jq --arg contextSource "$openms_name" --arg value "$area" \
-           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+           '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
            "$area_json" > "$temp_file" && mv "$temp_file" "$area_json"
         
         # RT
         jq --arg contextSource "$openms_name" --arg value "$apex_rt" \
-           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+           '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
            "$rt_json" > "$temp_file" && mv "$temp_file" "$rt_json"
         
         # dppm
         jq --arg contextSource "$openms_name" --arg value "$dppm" \
-           '.data[0].values += [{"contextSource": $contextSource, "value": $value}]' \
+           '.data[0].values += [{"contextSource": $contextSource, "value": ($value | tonumber)}]' \
            "$dppm_json" > "$temp_file" && mv "$temp_file" "$dppm_json"
         
     done < "$peptides_file"

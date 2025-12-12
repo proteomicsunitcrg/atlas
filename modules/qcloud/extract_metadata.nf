@@ -29,8 +29,8 @@ process EXTRACT_METADATA {
     # Clean the filename first to remove .mzML.SP_Bovine extension
     original_filename="${mzml_file}"
     
-    # Remove .mzML.SP_Bovine to get the proper sample ID
-    clean_sample_id=\$(echo "${basename_mzml}" | sed 's/\\.mzML.*\$//')
+    # Remove .mzML.database AND .raw to get the proper sample ID
+    clean_sample_id=\$(echo "${basename_mzml}" | sed 's/\\.mzML.*\$//' | sed 's/\\.raw\$//')
     
     echo "Original filename: \$original_filename"
     echo "Cleaned sample ID: \$clean_sample_id"
