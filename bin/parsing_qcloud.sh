@@ -384,7 +384,7 @@ extract_peptide_metrics_qcsummary() {
     echo "[DEBUG] Output file: $output_file"
     
     # Get the OpenMS notation name from config mapping
-    local long_name=$(get_openms_peptide_name "$config_file" "$peptide_short_name" "$sample_id")
+    local long_name=$(get_openms_peptide_name "$config_file" "$peptide_short_name" "$sample_id" "")
     
     echo "[DEBUG] OpenMS name for $peptide_short_name: $long_name"
     
