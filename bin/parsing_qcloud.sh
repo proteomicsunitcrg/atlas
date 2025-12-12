@@ -253,7 +253,7 @@ set_value_to_qcloud_json_with_context(){
   contextsource=$4
   contextsource_underscore=$(echo $contextsource | tr : _)
   json_basename="${checksum}_${contextsource_underscore}"
-  jq '.data[].values[] += {"value":"'$value'","contextSource":"'$contextsource'"}' "${json_basename}.json" | sponge "${json_basename}.json"
+  jq --arg value "$value" --arg contextsource "$contextsource" '.data[].values[] += {"value":($value|tonumber),"contextSource":$contextsource}' "${json_basename}.json" | sponge "${json_basename}.json"
 }
 
 # Function: Set peptide-specific value in monitored peptides JSON
@@ -300,7 +300,7 @@ set_value_to_qcloud_json_monitored_peptides_with_context(){
   contextsource=$4
   qccv_underscore=$(echo $qccv | tr : _)
   json_basename="${checksum}_${qccv_underscore}"
-  jq '.data[].values += [{"value":"'$value'","contextSource":"'$contextsource'"}]' "${json_basename}.json" | sponge "${json_basename}.json"
+  jq --arg value "$value" --arg contextsource "$contextsource" '.data[].values += [{"value":($value|tonumber),"contextSource":$contextsource}]' "${json_basename}.json" | sponge "${json_basename}.json"
 }
 
 extract_peptide_metrics() {
@@ -412,7 +412,7 @@ extract_peptide_metrics_qcsummary() {
       "values": [
         {
           "contextSource": "$long_name",
-          "value": "$value"
+          "value": $value
         }
       ]
     }
@@ -565,7 +565,7 @@ create_qcloud_json_with_header() {
       "qCCV" : "$qccv"
     },
     "values" : [ {
-      "value" : "$value",
+      "value" : $value,
       "contextSource" : "$context_source"
     } ]
   } ]
