@@ -98,20 +98,12 @@ process EXTRACT_METADATA {
     # Extract MIT MS1 (Ion Injection Time)
     echo "Extracting MIT MS1..."
     # Try MS:1000927 (ion injection time) first
-    mit_ms1_temp=\$(grep -A 20 'MS:1000511.*value="1"' "\$original_filename" | \\
-                   grep 'MS:1000927' | \\
-                   grep -o 'value="[0-9.]*"' | \\
-                   sed 's/value="//g; s/"//g' | \\
-                   awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print ""}')
+    mit_ms1_temp=\$(median_from_mzml 1 MS:1000927 "\$original_filename")   
     
     # If not found or zero, try MS:1000016 (scan start time) as fallback
     if [[ -z "\$mit_ms1_temp" || "\$mit_ms1_temp" == "0" ]]; then
         echo "  MS:1000927 not found for MS1, trying MS:1000016 (scan start time)..."
-        mit_ms1_temp=\$(grep -A 20 'MS:1000511.*value="1"' "\$original_filename" | \\
-                       grep 'MS:1000016' | \\
-                       grep -o 'value="[0-9.]*"' | \\
-                       sed 's/value="//g; s/"//g' | \\
-                       awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print ""}')
+        mit_ms1_temp=\$(median_from_mzml 1 MS:1000016 "\$original_filename")   
     fi
     
     # Convert from seconds to milliseconds if value < 1 (likely in seconds)
@@ -129,19 +121,11 @@ process EXTRACT_METADATA {
     
     # Extract MIT MS2 (Ion Injection Time)
     echo "Extracting MIT MS2..."
-    mit_ms2_temp=\$(grep -A 20 'MS:1000511.*value="2"' "\$original_filename" | \\
-                   grep 'MS:1000927' | \\
-                   grep -o 'value="[0-9.]*"' | \\
-                   sed 's/value="//g; s/"//g' | \\
-                   awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print ""}')
+    mit_ms2_temp=\$(median_from_mzml 2 MS:1000927 "\$original_filename")   
     
     if [[ -z "\$mit_ms2_temp" || "\$mit_ms2_temp" == "0" ]]; then
         echo "  MS:1000927 not found for MS2, trying MS:1000016..."
-        mit_ms2_temp=\$(grep -A 20 'MS:1000511.*value="2"' "\$original_filename" | \\
-                       grep 'MS:1000016' | \\
-                       grep -o 'value="[0-9.]*"' | \\
-                       sed 's/value="//g; s/"//g' | \\
-                       awk '{sum+=\$1; count++} END{if(count>0) printf "%.6f", sum/count; else print ""}')
+        mit_ms2_temp=\$(median_from_mzml 2 MS:1000016 "\$original_filename")   
     fi
     
     if [[ -n "\$mit_ms2_temp" && "\$mit_ms2_temp" != "" ]]; then

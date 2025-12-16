@@ -1166,6 +1166,26 @@ extract_peptide_metrics_diann_ppm(){
     set_value_to_qcloud_json_monitored_peptides "$checksum" "$dppm" "QC:1000014" "$peptide"
 }
 
+# Function: Extract median ion injection time (MIT) from mzML file
+# Inputs:
+#   $1 - MS level (1 = MS1, 2 = MS2)
+#   $2 - PSI-MS accession to extract (e.g. MS:1000927 for ion injection time,
+#        MS:1000016 for scan start time fallback)
+#   $3 - mzML file path
+# Output:
+#   Prints the median value of the extracted metric (empty if not found)
+median_from_mzml() {
+    local ms_level="$1"
+    local accession="$2"
+    local file="$3"
+
+    grep -A 20 "MS:1000511.*value=\"${ms_level}\"" "$file" | \
+    grep "$accession" | \
+    grep -o 'value="[0-9.]*"' | \
+    sed 's/value="//g; s/"//g' | \
+    datamash median 1 2>/dev/null
+}
+
 # Function: Extract peptide metrics from FragPipe combined_ion.tsv and psm.tsv
 # Inputs:
 #   $1 - combined_ion.tsv file from FragPipe
