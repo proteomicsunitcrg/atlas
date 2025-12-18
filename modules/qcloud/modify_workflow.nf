@@ -16,20 +16,27 @@ process MODIFY_FRAGPIPE_WORKFLOW {
     echo "Original workflow: ${original_workflow}"
     echo "Instruments table: ${instruments_table}"
     
-    # Read the instrument accession from the file
-    accession=\$(cat ${instrument_accession_file})
-    echo "Instrument accession from file: \$accession"
+    # Read the instrument identifier from the file (could be model name or MS accession)
+    identifier=\$(cat ${instrument_accession_file})
+    echo "Instrument identifier from file: \$identifier"
     
     # Look up the fragment tolerance in the instruments table
-    if [[ "\$accession" != "unknown" && -f "${instruments_table}" ]]; then
-        # Search for the accession in the table (skip header)
-        fragment_tolerance=\$(awk -F'\t' -v acc="\$accession" 'NR>1 && \$2==acc {print \$3}' ${instruments_table})
+    if [[ "\$identifier" != "unknown" && -f "${instruments_table}" ]]; then
+        # Try to find by instrument model name (column 1) first
+        fragment_tolerance=\$(awk -F'\t' -v id="\$identifier" 'NR>1 && \$1==id {print \$3}' ${instruments_table})
         
         if [[ -n "\$fragment_tolerance" ]]; then
-            echo "Found instrument in table: fragment_tolerance=\$fragment_tolerance"
+            echo "Found instrument by model name in table: fragment_tolerance=\$fragment_tolerance"
         else
-            echo "Instrument accession \$accession not found in table, using default 0.5"
-            fragment_tolerance="0.5"
+            # If not found, try to find by MS accession (column 2)
+            fragment_tolerance=\$(awk -F'\t' -v id="\$identifier" 'NR>1 && \$2==id {print \$3}' ${instruments_table})
+            
+            if [[ -n "\$fragment_tolerance" ]]; then
+                echo "Found instrument by MS accession in table: fragment_tolerance=\$fragment_tolerance"
+            else
+                echo "Instrument identifier '\$identifier' not found in table, using default 0.5"
+                fragment_tolerance="0.5"
+            fi
         fi
     else
         echo "Unknown instrument or missing table, using default fragment_tolerance=0.5"
