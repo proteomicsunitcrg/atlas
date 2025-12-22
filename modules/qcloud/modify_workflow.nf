@@ -34,8 +34,16 @@ process MODIFY_FRAGPIPE_WORKFLOW {
             if [[ -n "\$fragment_tolerance" ]]; then
                 echo "Found instrument by MS accession in table: fragment_tolerance=\$fragment_tolerance"
             else
-                echo "Instrument identifier '\$identifier' not found in table, using default 0.5"
-                fragment_tolerance="0.5"
+                # Not found in table - check if it matches high-resolution pattern
+                identifier_lower=\$(echo "\$identifier" | tr '[:upper:]' '[:lower:]')
+                if [[ "\$identifier_lower" == *"exactive"* || "\$identifier_lower" == *"exploris"* ]]; then
+                    fragment_tolerance="0.02"
+                    echo "Instrument identifier '\$identifier' not found in table"
+                    echo "Pattern matched (exactive/exploris) - using fragment_tolerance=0.02"
+                else
+                    echo "Instrument identifier '\$identifier' not found in table, using default 0.5"
+                    fragment_tolerance="0.5"
+                fi
             fi
         fi
     else
