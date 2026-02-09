@@ -231,8 +231,9 @@ workflow {
     // Collect JSON files based on instrument type
     if (is_thermo) {
         // Collect JSON files from all sources (Thermo workflow)
-        all_json_files = EXTRACT_METADATA.out.qc_jsons
-            .map { basename, jsons -> jsons }
+        // CRITICAL: Must include metadata.json for SUBMIT_TO_QCLOUD to extract creation date
+        all_json_files = EXTRACT_METADATA.out.metadata_json
+            .mix(EXTRACT_METADATA.out.qc_jsons.map { basename, jsons -> jsons })
             .mix(PROCESS_PEPTIDES.out.peptide_jsons.map { basename, jsons -> jsons })
             .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
             .flatten()
@@ -245,8 +246,9 @@ workflow {
         
     } else if (is_bruker) {
         // For Bruker, collect FragPipe metrics + metadata from mzML + peptide metrics from FragPipe
-        all_json_files = EXTRACT_METADATA.out.qc_jsons
-            .map { basename, jsons -> jsons }
+        // CRITICAL: Must include metadata.json for SUBMIT_TO_QCLOUD to extract creation date
+        all_json_files = EXTRACT_METADATA.out.metadata_json
+            .mix(EXTRACT_METADATA.out.qc_jsons.map { basename, jsons -> jsons })
             .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
             .mix(PROCESS_FRAGPIPE_PEPTIDES.out.peptide_jsons.map { sample_id, jsons -> jsons })
             .flatten()
