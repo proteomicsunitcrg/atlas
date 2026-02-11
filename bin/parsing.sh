@@ -57,18 +57,30 @@ get_peptidoform_miscleavages_counts(){
 
 }
 
+#get_sum_area_propionyl_protein_n_terminal(){
+# xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
+#}
 get_sum_area_propionyl_protein_n_terminal(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][(starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and (contains(@sequence,".(Propionyl)") or contains(@sequence,".(Acetyl)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
+ xmllint --xpath '//*[local-name()="PeptideHit"][starts-with(@sequence,".(Propionyl)") and (@start="1" or @start="2")]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
 }
 
+#get_sum_area_not_propionyl_protein_n_terminal(){
+# xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
+#}
 get_sum_area_not_propionyl_protein_n_terminal(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][((starts-with(@aa_before,"M") or starts-with(@aa_before,"[")) and not(contains(@sequence,".(Propionyl)"))) and not(contains(@sequence,".(Acetyl)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
+ xmllint --xpath '//*[local-name()="PeptideHit"][not(starts-with(@sequence,".(Propionyl)")) and not(starts-with(@sequence,".(Acetyl)")) and (@start="1" or @start="2")]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
 }
 
+#get_sum_area_phenylisocyanate_precursors_n_terminal(){
+# xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
+#}
 get_sum_area_phenylisocyanate_precursors_n_terminal(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains (@sequence,".(Phenylisocyanate)")]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
+ xmllint --xpath '//*[local-name()="PeptideHit"][contains(@aa_before,"R") or contains(@aa_before,"K")][starts-with(@sequence,".(Phenylisocyanate)")]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
 }
 
+#get_sum_area_not_phenylisocyanate_precursors_n_terminal(){
+# xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
+#}
 get_sum_area_not_phenylisocyanate_precursors_n_terminal(){
- xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][not(contains (@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
+ xmllint --xpath '//*[local-name()="PeptideHit"][contains(@aa_before,"R") or contains(@aa_before,"K")][not(starts-with(@sequence,".(Phenylisocyanate)"))]/../../intensity/text()' $1 | xargs printf "%1.0f\n" | paste -sd+ - | bc -l
 }
