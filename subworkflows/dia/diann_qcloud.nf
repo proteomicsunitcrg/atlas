@@ -25,6 +25,11 @@ process diann {
     diann_name_speclib_filter_sh=!{params.diann_name_speclib_filter}
     diann_exec_cmd_sh=!{params.diann_exec_cmd}
     databases_folder_sh=!{params.databases_folder}
+    
+    # Conditional parameter configuration (hardcoded)
+    pattern_sh="QCD1"
+    param_name_sh="qvalue"
+    param_value_sh="0.1"
 
     echo "CFG file: $diann_cfg_sh"
     echo "Spectra complete filename: $filename_sh"
@@ -53,6 +58,13 @@ process diann {
     # Check for existing predicted spectral libraries
     existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
 
+    # Conditional parameter logic - ALWAYS add for QCD1
+    conditional_param=""
+    if [[ "$basename_sh" == *"$pattern_sh"* ]]; then
+      conditional_param="--${param_name_sh} ${param_value_sh}"
+      echo "[INFO] Pattern '$pattern_sh' detected - adding parameter: $conditional_param"
+    fi
+
     if [[ -n "$existing_spec_lib" ]]; then
       echo "Running DIA-NN with existing spectral library..."
       "$diann_exec_cmd_sh" \
@@ -61,7 +73,8 @@ process diann {
         --out "$output_file" \
         --lib "$existing_spec_lib" \
         --fasta "$fastafile" \
-        --out-lib "${basename_sh}.parquet"
+        --out-lib "${basename_sh}.parquet" \
+        $conditional_param
     else
       echo "Running DIA-NN with library prediction..."
       "$diann_exec_cmd_sh" \
@@ -71,7 +84,8 @@ process diann {
         --fasta "$fastafile" \
         --fasta-search \
         --gen-spec-lib \
-        --predictor
+        --predictor \
+        $conditional_param
     fi
     '''
 }
@@ -112,6 +126,11 @@ process diann_bruker {
     diann_exec_cmd_bruker_sh=!{params.diann_exec_cmd}
     diann_name_speclib_filter_sh=!{params.diann_name_speclib_filter}
     databases_folder_sh=!{params.databases_folder}
+    
+    # Conditional parameter configuration (hardcoded)
+    pattern_sh="QCD1"
+    param_name_sh="qvalue"
+    param_value_sh="0.1"
 
     # Extract filename info:
     # Get the base name without .d.SP_Bovine suffix  
@@ -145,6 +164,13 @@ process diann_bruker {
     # Check for existing predicted spectral libraries
     existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
 
+    # Conditional parameter logic - ALWAYS add for QCD1
+    conditional_param=""
+    if [[ "$basename_sh" == *"$pattern_sh"* ]]; then
+      conditional_param="--${param_name_sh} ${param_value_sh}"
+      echo "[INFO] Pattern '$pattern_sh' detected - adding parameter: $conditional_param"
+    fi
+
     if [[ -n "$existing_spec_lib" ]]; then
       echo "Running DIA-NN Bruker with existing spectral library..."
       "$diann_exec_cmd_bruker_sh" \
@@ -153,7 +179,8 @@ process diann_bruker {
         --out "$output_file" \
         --lib "$existing_spec_lib" \
         --fasta "$fastafile" \
-        --out-lib "${basename_sh}.parquet"
+        --out-lib "${basename_sh}.parquet" \
+        $conditional_param
     else
       echo "Running DIA-NN Bruker with library prediction..."
       "$diann_exec_cmd_bruker_sh" \
@@ -163,7 +190,8 @@ process diann_bruker {
         --fasta "$fastafile" \
         --fasta-search \
         --gen-spec-lib \
-        --predictor
+        --predictor \
+        $conditional_param
     fi
     '''
 }
