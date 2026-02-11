@@ -552,6 +552,10 @@ if [ -n "$FILE_TO_PROCESS" ]; then
             
             echo "[INFO] Found pattern $j in filename $FILE_BASENAME"
             
+            # BUGFIX: Break after first match to prevent multiple job submissions
+            # Without this, overlapping patterns in methods.csv (e.g., "SP_Bov" and "SP_Bovine")
+            # would both match the same file and trigger duplicate jobs
+            
             CURRENT_UUID=$(uuidgen)
             CURRENT_UUID_FOLDER=$ATLAS_RUNS_FOLDER/$CURRENT_UUID
             
@@ -639,7 +643,8 @@ if [ -n "$FILE_TO_PROCESS" ]; then
                 echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
             fi
             
-            
+            # Exit loop after processing first matching pattern
+            break
             
         fi
         
