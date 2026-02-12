@@ -4,7 +4,7 @@
 #SBATCH --mem=1G
 #SBATCH -p genoa64
 #SBATCH --qos=core
-#SBATCH --time=4:00:00
+#SBATCH --time=12:00:00
 
 # Configure bash
 set -e          # Exit immediately on error
