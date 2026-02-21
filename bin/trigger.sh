@@ -414,6 +414,30 @@ extract_qccode_and_request() {
         return
     fi
 
+    ###########################################################################
+    # STEP 2.5 — SAMPLEQC PATTERN DETECTION (QCHL, QCDL, QCGL, etc.)
+    #
+    # Detects 4-character sampleqc codes that appear after the first underscore.
+    # Pattern: QC[A-Z]{2} (exactly 4 characters starting with "QC")
+    #
+    # Examples:
+    #   20260216_QCHL_W08_R1_01_Histones_1ug.raw.SP_Human → QCHL
+    #   20260216_QCDL_W08_R1_01_Digestion_1ug.raw.SP_Human → QCDL
+    #
+    # These are distinct from QCloud codes (QC01, QC02, QCD1, QCD2) and
+    # take priority over regular REQUEST patterns (NK, MQ, LA, etc.).
+    ###########################################################################
+    
+    local sampleqc_pattern=$(echo "$filename_core" | cut -d'_' -f2 | grep -E '^QC[A-Z]{2}$')
+    
+    if [[ -n "$sampleqc_pattern" ]]; then
+        QCCODE="$sampleqc_pattern"
+        REQUEST=""
+        echo "[INFO] SampleQC pattern detected: $QCCODE"
+        echo "[DEBUG] Early exit from extract_qccode_and_request() with QCCODE='$QCCODE'"
+        echo "[DEBUG] ----------------------------------------------------------------"
+        return
+    fi
 
     ###########################################################################
     # STEP 3 — Reverse-based parsing for generic QCloud-like patterns
