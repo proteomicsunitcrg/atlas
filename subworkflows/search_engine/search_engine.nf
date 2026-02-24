@@ -188,7 +188,7 @@ process fragpipe_prep {
     # Create manifest: 
     echo "[INFO] Creating manifest file..."
     # Remove database suffix - match what fragpipe_main does
-    basename_no_db="${filename_sh%%.[A-Z][A-Z]_*}"
+    basename_no_db="${filename_sh%.*}"
     if [[ $filename_sh == *.d ]]; then
         manifest_basename="${basename_no_db}.d"
     else
@@ -242,22 +242,14 @@ process fragpipe_main {
 
     echo "[INFO] Using ${FP_RAM}GB RAM for FragPipe"
 
-    # Remove database suffix from basename (e.g., .SP_Bovine, .HP_Human, etc.)
-    clean_basename="${basename_sh%%.[A-Z][A-Z]_*}"
-
-    # For .d files, add the .d extension to the clean basename
-    if [[ "$filename_sh" == *.d ]]; then
-        raw_filename="${clean_basename}.d"
-    else
-        # For other files, use the clean basename as-is
-        raw_filename="$clean_basename"
-    fi
+    # basename_sh already has database suffix removed by Nextflow's getBaseName()
+    # For "file.raw.Database", getBaseName() returns "file.raw" - use it directly
+    raw_filename="$basename_sh"
 
     echo "[INFO] Copying raw file..."
     echo "[INFO] Path: "!{path}
     echo "[INFO] Filename: "$filename_sh
-    echo "[INFO] Original basename: "$basename_sh
-    echo "[INFO] Clean basename: "$clean_basename
+    echo "[INFO] Basename (from Nextflow): "$basename_sh
     echo "[INFO] Target filename: "$raw_filename
 
     # Find the actual file (may have database suffix in original name)
