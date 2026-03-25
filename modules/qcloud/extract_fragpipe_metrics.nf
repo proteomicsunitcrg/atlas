@@ -16,7 +16,7 @@ process EXTRACT_FRAGPIPE_METRICS {
     source parsing_qcloud.sh
     
     # Construct config file path the same way as your other scripts
-    config_file="${params.home_dir}/mygit/atlas-config/atlas-test/conf/tools/qcloud.config"
+    config_file="${params.home_dir}/mygit/atlas-config/atlas-main/conf/tools/qcloud.config"
     
     echo "Extracting FragPipe metrics for sample: ${sample_id}"
     echo "Processing files: ${protein_tsv}, ${peptide_tsv}, ${psm_tsv}"

@@ -118,7 +118,7 @@ process diann_bruker {
         echo "Using Bruker-specific CFG file: $diann_cfg_bruker_sh"
     else
         # Fallback to default Bruker config path
-        diann_cfg_bruker_sh="!{params.home_dir}/mygit/atlas-config/atlas-test/assets/diann_192_bruker.cfg"
+        diann_cfg_bruker_sh="!{params.home_dir}/mygit/atlas-config/atlas-main/assets/diann_192_bruker.cfg"
         echo "Using default Bruker CFG file: $diann_cfg_bruker_sh"
     fi
     
