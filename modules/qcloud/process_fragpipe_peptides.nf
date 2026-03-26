@@ -16,7 +16,7 @@ process PROCESS_FRAGPIPE_PEPTIDES {
     source parsing_qcloud.sh
     
     # Construct config file path
-    config_file="${params.home_dir}/mygit/atlas-config/atlas-main/conf/tools/qcloud.config"
+    config_file="${params.qcloud_config}"
     
     echo "Extracting peptide metrics from FragPipe outputs for sample: ${sample_id}"
     echo "Using combined_ion.tsv: ${combined_ion_tsv}"
