@@ -21,8 +21,8 @@ process EXTRACT_METADATA {
     source parsing_qcloud.sh
     
     # Use config file from params
-    config_file="${params.home_dir}/mygit/atlas-config/atlas-test/conf/tools/qcloud.config"
-    
+    config_file="${params.qcloud_config}"
+   
     echo "Extracting general metrics using config-driven approach..."
     echo "Using config file: \$config_file"
     

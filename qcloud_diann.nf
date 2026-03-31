@@ -43,10 +43,10 @@ log.info "Detected instrument type: ${is_bruker ? 'Bruker (.d folder)' : 'Thermo
 
 def qcType              = extractQCTypeFromFilename(filename)
 def selected_tsv_file   = selectTsvFile(qcType, params)
-def qcodeFilePath       = "${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv"
+def qcodeFilePath       = "${params.qcode_file}"
 def qcloud_sample_type  = getQCloudSampleType(qcType, qcodeFilePath)
 def checksum            = extract_checksum_from_filename(filename)
-def config_file_path    = "${params.home_dir}/mygit/atlas-config/atlas-test/conf/tools/qcloud.config"
+def config_file_path = "${params.qcloud_config}"
 
 log.info "QC type: ${qcType}"
 log.info "Selected TSV file: ${selected_tsv_file}"

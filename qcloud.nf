@@ -30,7 +30,7 @@ workflow {
     def selected_tsv_file = selectTsvFile(qcType, params)
     
     // Get QCloud sample type code from mapping file
-    def qcodeFilePath = "${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcode.tsv"
+    def qcodeFilePath = "${params.qcode_file}"
     def qcloud_sample_type = getQCloudSampleType(qcType, qcodeFilePath)
 
     // Get database name from mapping file
@@ -105,8 +105,8 @@ workflow {
         // Extract instrument info and modify FragPipe workflow based on instrument type
         MODIFY_FRAGPIPE_WORKFLOW(
             EXTRACT_INSTRUMENT_INFO.out.instrument_info,  // [basename, instrument_accession]
-            Channel.fromPath(params.fp_workflow.replaceAll("'", "")),
-            Channel.fromPath("${params.home_dir}/mygit/atlas-config/atlas-test/assets/qcloud_instruments_ot.tsv")
+            Channel.fromPath(params.fp_workflow.replaceAll("'", "")),            
+            Channel.fromPath("${params.qcloud_instruments_file}")
         )
 
         // Search engine preparation and execution
