@@ -378,8 +378,11 @@ EOF
             peptide_alt="${long_clean%_}"  # Remove trailing underscore
             echo "DEBUG: Peptide has trailing underscore. Searching for both '$long_clean' and '$peptide_alt' in report"
         fi
+
+        # Use column number from config for peptide matching              
+        pcol="!{params.diann_sequence_column}" 
         
-        result=$(awk -F'\\t' -v peptide="$peptide_for_search" -v peptide_alt="$peptide_alt" -v pcol="14" -v acol="27" -v rcol="30" -v mass_ev_col="42" '
+        result=$(awk -F'\\t' -v peptide="$peptide_for_search" -v peptide_alt="$peptide_alt" -v pcol="$pcol" -v acol="27" -v rcol="30" -v mass_ev_col="42" '
             # Try exact match first
             $pcol == peptide { 
                 area = ($acol == "" || $acol == "0") ? 0 : $acol
