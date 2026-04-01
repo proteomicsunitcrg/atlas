@@ -360,7 +360,7 @@ EOF
     echo "Processing peptides with REAL Mass.Evidence extraction for individual dppm values..."
 
     # Process each peptide and collect all values
-    tail -n +2 !{qcloud_tsv} | while IFS=$'\\t' read -r short long extra; do
+    tail -n +2 !{qcloud_tsv} | while IFS=$'\\t' read -r short long extra || [ -n "$short" ]; do
         echo "Processing peptide: $short -> $long"
         
         # SEPARATE: contextSource for JSON vs peptide for DIA-NN matching
