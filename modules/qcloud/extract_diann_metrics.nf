@@ -360,52 +360,37 @@ EOF
     echo "Processing peptides with REAL Mass.Evidence extraction for individual dppm values..."
 
     # Process each peptide and collect all values
-    tail -n +2 !{qcloud_tsv} | while IFS=$'\\t' read -r short long extra; do
+    tail -n +2 !{qcloud_tsv} | while IFS=$'\\t' read -r short long extra || [ -n "$short" ]; do
         echo "Processing peptide: $short -> $long"
         
-        # Use automated peptide mapping function to get correct contextSource
-        # Pass the qcode.tsv path explicitly to avoid bash substitution errors
+        # SEPARATE: contextSource for JSON vs peptide for DIA-NN matching
+        # 1. Get contextSource from config mapping (for JSON)
         long_clean=$(get_openms_peptide_name "!{config_file}" "$short" "$sample_id" "!{params.qcode_file}")
-        echo "DEBUG: Mapped $short -> $long_clean using automated function"
+        echo "DEBUG: contextSource for JSON: $long_clean (from config mapping)"
         
-        # Extract area, RT, and REAL Mass.Evidence (column 42) for each peptide
-        # Handle peptides with trailing underscores by trying both with and without underscore
-        peptide_for_search="$long_clean"
-        peptide_alt=""
+        # 2. Get peptide identifier DIRECTLY from TSV column 2 for DIA-NN report matching
+        # NO transformations, NO underscore processing - use exactly as-is from TSV
+        peptide_for_search="$long"  # Read directly from TSV column 2, exactly as-is
+        echo "DEBUG: Peptide for DIA-NN matching: $peptide_for_search (EXACT from TSV, no transformations)"
+
+        # Use column number from config for peptide matching              
+        pcol="!{params.diann_sequence_column}" 
         
-        # If peptide ends with underscore, create alternative without underscore for DIA-NN report search
-        if [[ "$long_clean" == *"_" ]]; then
-            peptide_alt="${long_clean%_}"  # Remove trailing underscore
-            echo "DEBUG: Peptide has trailing underscore. Searching for both '$long_clean' and '$peptide_alt' in report"
-        fi
-        
-        result=$(awk -F'\\t' -v peptide="$peptide_for_search" -v peptide_alt="$peptide_alt" -v pcol="14" -v acol="27" -v rcol="30" -v mass_ev_col="42" '
-            # Try exact match first
+        result=$(awk -F'\\t' -v peptide="$peptide_for_search" -v pcol="$pcol" -v acol="27" -v rcol="30" -v mass_ev_col="42" '
+            BEGIN { found = 0 }
+            # Match peptide exactly as provided from TSV (no alternatives, no transformations)
             $pcol == peptide { 
                 area = ($acol == "" || $acol == "0") ? 0 : $acol
                 rt = ($rcol == "" || $rcol == "0") ? 0 : $rcol
                 mass_evidence = ($mass_ev_col == "" || $mass_ev_col == "0") ? 0 : $mass_ev_col
-                print area "," rt "," mass_evidence ",EXACT:" $pcol
+                print area "," rt "," mass_evidence ",MATCHED:" $pcol
+                found = 1
                 exit
             }
-            # Try alternative match (without trailing underscore)
-            peptide_alt != "" && $pcol == peptide_alt { 
-                area = ($acol == "" || $acol == "0") ? 0 : $acol
-                rt = ($rcol == "" || $rcol == "0") ? 0 : $rcol
-                mass_evidence = ($mass_ev_col == "" || $mass_ev_col == "0") ? 0 : $mass_ev_col
-                print area "," rt "," mass_evidence ",ALT_MATCH:" $pcol
-                exit
-            }
-            {
-                # Try modified match (remove modifications)
-                clean_seq = $pcol
-                gsub(/\\([^)]*\\)/, "", clean_seq)
-                if (clean_seq == peptide || (peptide_alt != "" && clean_seq == peptide_alt)) {
-                    area = ($acol == "" || $acol == "0") ? 0 : $acol
-                    rt = ($rcol == "" || $rcol == "0") ? 0 : $rcol
-                    mass_evidence = ($mass_ev_col == "" || $mass_ev_col == "0") ? 0 : $mass_ev_col
-                    print area "," rt "," mass_evidence ",MODIFIED:" $pcol
-                    exit
+            END {
+                # If no match found, return zeros
+                if (found == 0) {
+                    print "0,0,0,NOT_FOUND"
                 }
             }' !{report_tsv})
         
@@ -438,7 +423,7 @@ EOF
             
             echo "Found: $short -> area=$area, rt=$rt_obs sec (converted from $rt_obs_minutes min), dppm=$dppm ($match_type)"
         else
-            echo "Peptide $long_clean not found in report"
+            echo "WARNING: Peptide '$peptide_for_search' not found in DIA-NN report (will use 0 values, contextSource: $long_clean)"
             area=0
             rt_obs=0  # Already in seconds (0)
             dppm=0
