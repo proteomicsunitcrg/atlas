@@ -655,14 +655,6 @@ if [ -n "$FILE_TO_PROCESS" ]; then
             # Check if RAWFILE_TO_PROCESS exists before executing
             if [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
                 launch_nf_run "${ARGS[@]}"
-                
-                # BUGFIX: Clean up test file after successful job submission
-                # In TEST mode, files are downloaded but never removed from ORIGIN_FOLDER,
-                # causing trigger.sh to find and resubmit the same file on subsequent runs.
-                # Production mode already handles this by moving files to UUID folder (line 747).
-                if [[ "$RAWFILE_TO_PROCESS" == "$ORIGIN_FOLDER/"* ]] && [ "$PROD_MODE" != "true" ]; then
-                    rm -f "$RAWFILE_TO_PROCESS" && echo "[INFO] Test file removed from origin folder: $RAWFILE_TO_PROCESS" || echo "[WARNING] Failed to remove test file: $RAWFILE_TO_PROCESS"
-                fi
             else
                 echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
             fi
