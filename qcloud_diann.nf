@@ -58,7 +58,7 @@ log.info "Config file: ${config_file_path}"
 // ----------------------------
 // LOAD DIA-NN METHOD CONFIG
 // ----------------------------
-def diannConfigPath = "${params.assets_path}/diann_methods_config.yaml"
+def diannConfigPath = "${params.assets}/diann_methods_config.yaml"
 def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, params.pattern)
 
 def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
