@@ -49,25 +49,25 @@ Channel
   .from(params.output_folder)
   .set { output_folder_ch }
 
-// ----------------------------
-// LOAD DIA-NN METHOD CONFIG
-// ----------------------------
-def diannConfigPath = "${params.assets}/diann_methods_config.yaml"
-def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, params.pattern)
-
-def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
-def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
-def diannConfigFile = DiannConfigLoader.getConfigFile(diannMethodConfig)
-def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
-
-log.info "DIA-NN Config loaded for pattern '${params.pattern}':"
-log.info "  Version: ${diannVersion}"
-log.info "  Container: ${diannContainer}"
-log.info "  Config: ${diannConfigFile}"
-log.info "  Parser: ${parserVersion}"
-
 workflow {
  
+  // ----------------------------
+  // LOAD DIA-NN METHOD CONFIG
+  // ----------------------------
+  def diannConfigPath = "${params.assets}/diann_methods_config.yaml"
+  def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, params.pattern)
+
+  def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
+  def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
+  def diannConfigFile = DiannConfigLoader.getConfigFile(diannMethodConfig)
+  def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
+
+  log.info "DIA-NN Config loaded for pattern '${params.pattern}':"
+  log.info "  Version: ${diannVersion}"
+  log.info "  Container: ${diannContainer}"
+  log.info "  Config: ${diannConfigFile}"
+  log.info "  Parser: ${parserVersion}"
+
    //Conversion:
    trfp_diann_pr(rawfile_ch)
 

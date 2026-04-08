@@ -55,23 +55,6 @@ log.info "Checksum: ${checksum}"
 log.info "Config file: ${config_file_path}"
 
 // ----------------------------
-// LOAD DIA-NN METHOD CONFIG
-// ----------------------------
-def diannConfigPath = "${params.assets}/diann_methods_config.yaml"
-def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, params.pattern)
-
-def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
-def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
-def diannConfigFile = DiannConfigLoader.getConfigFile(diannMethodConfig)
-def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
-
-log.info "DIA-NN Config loaded for pattern '${params.pattern}':"
-log.info "  Version: ${diannVersion}"
-log.info "  Container: ${diannContainer}"
-log.info "  Config: ${diannConfigFile}"
-log.info "  Parser: ${parserVersion}"
-
-// ----------------------------
 // CHANNEL CREATION - HANDLES BOTH FILES AND FOLDERS
 // ----------------------------
 def input_ch = Channel.fromPath(params.rawfile, checkIfExists: true, type: is_bruker ? 'dir' : 'file')
@@ -91,6 +74,23 @@ def config_ch     = Channel.fromPath(config_file_path, checkIfExists: true)
 // WORKFLOW
 // ----------------------------
 workflow {
+
+    // ----------------------------
+    // LOAD DIA-NN METHOD CONFIG
+    // ----------------------------
+    def diannConfigPath = "${params.assets}/diann_methods_config.yaml"
+    def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, params.pattern)
+
+    def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
+    def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
+    def diannConfigFile = DiannConfigLoader.getConfigFile(diannMethodConfig)
+    def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
+
+    log.info "DIA-NN Config loaded for pattern '${params.pattern}':"
+    log.info "  Version: ${diannVersion}"
+    log.info "  Container: ${diannContainer}"
+    log.info "  Config: ${diannConfigFile}"
+    log.info "  Parser: ${parserVersion}"
 
     if (is_thermo) {
         // ----------------------------
