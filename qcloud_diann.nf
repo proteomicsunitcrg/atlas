@@ -5,7 +5,6 @@ nextflow.enable.dsl=2
 // UTILS
 // ----------------------------
 include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSampleType; extract_checksum_from_filename } from './modules/functions/utils'
-include { DiannConfigLoader } from './lib/DiannConfigLoader'
 
 // ----------------------------
 // SUBWORKFLOWS

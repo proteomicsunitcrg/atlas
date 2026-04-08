@@ -6,7 +6,6 @@ include { ThermoRawFileParserDiann as trfp_diann_pr } from './subworkflows/conve
 include { diann as diann_pr } from './subworkflows/dia/dia'
 include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr; insertDiannPolymerContToQSample as insertDiannPolymerContToQSample_pr} from './subworkflows/report/report_qsample_diann'
 include { output_folder_diann as output_folder_diann_pr} from './subworkflows/report/report_output_folder'
-include { DiannConfigLoader } from './lib/DiannConfigLoader'
 
 Channel
   .fromPath(params.rawfile)
