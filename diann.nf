@@ -2,6 +2,8 @@
 
 nextflow.enable.dsl=2
 
+import DiannConfigLoader
+
 include { ThermoRawFileParserDiann as trfp_diann_pr } from './subworkflows/conversion/conversion'
 include { diann as diann_pr } from './subworkflows/dia/dia'
 include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr; insertDiannPolymerContToQSample as insertDiannPolymerContToQSample_pr} from './subworkflows/report/report_qsample_diann'
@@ -70,8 +72,10 @@ workflow {
    def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
    def diannConfigFile = "${params.assets}/${DiannConfigLoader.getConfigFile(diannMethodConfig)}"
    def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
+   def diannExecutable = DiannConfigLoader.getExecutable(diannMethodConfig)
 
-   log.info "DIA-NN Config loaded for pattern '${pattern}':"
+   log.info "  Executable: ${diannExecutable}"
+   log.info "  DIA-NN Config loaded for pattern '${pattern}':"
    log.info "  Version: ${diannVersion}"
    log.info "  Container: ${diannContainer}"
    log.info "  Config: ${diannConfigFile}"
@@ -81,7 +85,7 @@ workflow {
    trfp_diann_pr(rawfile_ch)
 
    //DIA-NN: 
-   diann_pr(trfp_diann_pr.out, diannContainer, diannConfigFile, parserVersion)
+   diann_pr(trfp_diann_pr.out, diannContainer, diannConfigFile, parserVersion, diannExecutable)
 
    //Report to QSample database:
    insertDIANNFileToQSample_pr(rawfile_ch,trfp_diann_pr.out)

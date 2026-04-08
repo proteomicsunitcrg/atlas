@@ -34,4 +34,8 @@ class DiannConfigLoader {
     static def getParserVersion(Map methodConfig) {
         return methodConfig.parser_version ?: 'tsv'
     }
+
+    static def getExecutable(Map methodConfig) {
+        return methodConfig.executable ?: '/diann/diann-linux'
+    }
 }

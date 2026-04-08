@@ -16,6 +16,7 @@ process diann {
     val container_img
     val config_file
     val parser_version
+    val diann_executable
 
     output:
     file("*report.tsv")
@@ -24,13 +25,15 @@ process diann {
     '''
     # Copy spectra file: 
     filename_sh=!{mzml_file}
-    diann_cfg_sh=!{diann_cfg}
+    diann_cfg_sh=!{config_file}
     diann_speclib_folder_sh=!{diann_speclib_folder}
     diann_name_speclib_filter_sh=!{diann_name_speclib_filter}
-    diann_exec_cmd_sh=!{diann_exec_cmd}
+    diann_exec_cmd_sh=!{diann_executable}
 
     echo "CFG file: "$diann_cfg_sh
-    echo "Spectra complete filename: "$filename_sh
+    echo "[DEBUG] Container: !{container_img}"
+    echo "[DEBUG] Config received: !{config_file}"
+    echo "[DEBUG] Parser version: !{parser_version}"
 
     # Extract filename info:
     basename_sh=$(basename $filename_sh | cut -f 1 -d '.')
