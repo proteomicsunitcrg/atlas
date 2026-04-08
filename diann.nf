@@ -52,21 +52,30 @@ Channel
 workflow {
  
   // ----------------------------
-  // LOAD DIA-NN METHOD CONFIG
-  // ----------------------------
-  def diannConfigPath = "${params.assets}/diann_methods_config.yaml"
-  def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, params.pattern)
+   // EXTRACT PATTERN FROM FILENAME
+   // ----------------------------
+   // Example: 2024MK888_DIA_min_test.mzML.SP_Human → REQUEST=2024MK888 → pattern=MK
+   def rawfilePath = params.rawfile
+   def filename = new File(rawfilePath).getName()
+   def request = filename.tokenize('_')[0]  // Extract first part before underscore
+   def pattern = request.find(/[A-Z]{2,3}/)  // Extract 2-3 uppercase letters (MK, NK, LA, etc.)
+   
+   log.info "Pattern extraction: filename='${filename}' → request='${request}' → pattern='${pattern}'"
 
-  def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
-  def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
-  def diannConfigFile = DiannConfigLoader.getConfigFile(diannMethodConfig)
-  def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
+   // ----------------------------
+   // LOAD DIA-NN METHOD CONFIG
+   // ----------------------------
+   def diannMethodConfig = DiannConfigLoader.loadConfig(params.diann_config, pattern)
+   def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
+   def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
+   def diannConfigFile = "${params.assets}/${DiannConfigLoader.getConfigFile(diannMethodConfig)}"
+   def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
 
-  log.info "DIA-NN Config loaded for pattern '${params.pattern}':"
-  log.info "  Version: ${diannVersion}"
-  log.info "  Container: ${diannContainer}"
-  log.info "  Config: ${diannConfigFile}"
-  log.info "  Parser: ${parserVersion}"
+   log.info "DIA-NN Config loaded for pattern '${pattern}':"
+   log.info "  Version: ${diannVersion}"
+   log.info "  Container: ${diannContainer}"
+   log.info "  Config: ${diannConfigFile}"
+   log.info "  Parser: ${parserVersion}"
 
    //Conversion:
    trfp_diann_pr(rawfile_ch)

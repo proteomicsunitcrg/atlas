@@ -76,17 +76,24 @@ def config_ch     = Channel.fromPath(config_file_path, checkIfExists: true)
 workflow {
 
     // ----------------------------
+    // USE QCTYPE AS PATTERN FOR DIA-NN CONFIG
+    // ----------------------------
+    // For QCloud files, qcType is already extracted (QC01, QC02, QCD1, QCD2, etc.)
+    // This was extracted earlier using extractQCTypeFromFilename()
+    log.info "Using QC type as pattern for DIA-NN config: '${qcType}'"
+
+    // ----------------------------
     // LOAD DIA-NN METHOD CONFIG
     // ----------------------------
-    def diannConfigPath = "${params.assets}/diann_methods_config.yaml"
-    def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, params.pattern)
+    def diannConfigPath = params.diann_config ?: "${params.assets}/diann_methods_config.yaml"
+    def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, qcType)
 
     def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
     def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
-    def diannConfigFile = DiannConfigLoader.getConfigFile(diannMethodConfig)
+    def diannConfigFile = "${params.assets}/${DiannConfigLoader.getConfigFile(diannMethodConfig)}"
     def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
 
-    log.info "DIA-NN Config loaded for pattern '${params.pattern}':"
+    log.info "DIA-NN Config loaded for pattern '${qcType}':"
     log.info "  Version: ${diannVersion}"
     log.info "  Container: ${diannContainer}"
     log.info "  Config: ${diannConfigFile}"
