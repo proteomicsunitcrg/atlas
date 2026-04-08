@@ -6,6 +6,7 @@ include { ThermoRawFileParserDiann as trfp_diann_pr } from './subworkflows/conve
 include { diann as diann_pr } from './subworkflows/dia/dia'
 include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr; insertDiannPolymerContToQSample as insertDiannPolymerContToQSample_pr} from './subworkflows/report/report_qsample_diann'
 include { output_folder_diann as output_folder_diann_pr} from './subworkflows/report/report_output_folder'
+include { DiannConfigLoader } from './lib/DiannConfigLoader'
 
 Channel
   .fromPath(params.rawfile)
@@ -49,13 +50,30 @@ Channel
   .from(params.output_folder)
   .set { output_folder_ch }
 
+// ----------------------------
+// LOAD DIA-NN METHOD CONFIG
+// ----------------------------
+def diannConfigPath = "${params.assets_path}/diann_methods_config.yaml"
+def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, params.pattern)
+
+def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
+def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
+def diannConfigFile = DiannConfigLoader.getConfigFile(diannMethodConfig)
+def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
+
+log.info "DIA-NN Config loaded for pattern '${params.pattern}':"
+log.info "  Version: ${diannVersion}"
+log.info "  Container: ${diannContainer}"
+log.info "  Config: ${diannConfigFile}"
+log.info "  Parser: ${parserVersion}"
+
 workflow {
  
    //Conversion:
    trfp_diann_pr(rawfile_ch)
 
    //DIA-NN: 
-   diann_pr(trfp_diann_pr.out)
+   diann_pr(trfp_diann_pr.out, diannContainer, diannConfigFile, parserVersion)
 
    //Report to QSample database:
    insertDIANNFileToQSample_pr(rawfile_ch,trfp_diann_pr.out)

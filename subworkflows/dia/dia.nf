@@ -9,9 +9,13 @@ diann_name_speclib_filter = params.diann_name_speclib_filter
 process diann {
     label 'diann'
     tag  { "${mzml_file}" }
+    container { container_img } 
 
     input:
     file(mzml_file)
+    val container_img
+    val config_file
+    val parser_version
 
     output:
     file("*report.tsv")
