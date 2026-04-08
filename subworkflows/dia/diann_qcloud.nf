@@ -7,14 +7,16 @@ process diann {
     label 'diann'
     tag  { "${mzml_file}" }
 
-    input:
     path mzml_file
+    val container_img
+    val config_file
+    val parser_version
 
     output:
     path "*report.tsv", emit: report_tsv
     path "*report.stats.tsv", emit: report_stats_tsv
 
-    container "${params.diann_img}"
+    container { container_img }
 
     shell:
     '''
@@ -99,13 +101,16 @@ process diann_bruker {
 
     input:
     path d_folder
+    val container_img
+    val config_file
+    val parser_version
 
     output:
     path "*report.tsv", emit: report_tsv
     path "*report.stats.tsv", emit: report_stats_tsv
     path "chromatography-data.sqlite", emit: sqlite_file
 
-    container "${params.diann_img}"
+    container { container_img }
 
     shell:
     '''
@@ -202,9 +207,12 @@ process diann_bruker {
 workflow diann_qcloud {
     take:
     rawfile_ch
+    container_img
+    config_file
+    parser_version
 
     main:
-    diann(rawfile_ch)
+    diann(rawfile_ch, container_img, config_file, parser_version)
 
     emit:
     report_tsv = diann.out.report_tsv
@@ -217,9 +225,12 @@ workflow diann_qcloud {
 workflow diann_bruker_qcloud {
     take:
     bruker_folder_ch
+    container_img
+    config_file
+    parser_version
 
     main:
-    diann_bruker(bruker_folder_ch)
+    diann_bruker(bruker_folder_ch, container_img, config_file, parser_version)
 
     emit:
     report_tsv = diann_bruker.out.report_tsv

@@ -106,7 +106,7 @@ workflow {
         trfp_pr(thermo_ch)
 
         // Run DIA-NN on mzML
-        diann_pr(trfp_pr.out)
+        diann_pr(trfp_pr.out, diannContainer, diannConfigFile, parserVersion
 
         // Extract metadata from mzML
         mzml_ch = trfp_pr.out.map { f ->
@@ -132,7 +132,7 @@ workflow {
         bruker_ch = input_ch.map { name, basename, path, folder -> folder }
         
         // Run DIA-NN directly on .d folder
-        diann_bruker_pr(bruker_ch)
+        diann_bruker_pr(bruker_ch, diannContainer, diannConfigFile, parserVersion)
 
         // For Bruker, we don't have mzML files, so create a mock metadata channel
         // or extract metadata from the original .d folder if needed
