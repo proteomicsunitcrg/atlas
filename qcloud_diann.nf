@@ -5,6 +5,7 @@ nextflow.enable.dsl=2
 // UTILS
 // ----------------------------
 include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSampleType; extract_checksum_from_filename } from './modules/functions/utils'
+include { DiannConfigLoader } from './lib/DiannConfigLoader'
 
 // ----------------------------
 // SUBWORKFLOWS
@@ -53,6 +54,23 @@ log.info "Selected TSV file: ${selected_tsv_file}"
 log.info "QCloud sample type: ${qcloud_sample_type}"
 log.info "Checksum: ${checksum}"
 log.info "Config file: ${config_file_path}"
+
+// ----------------------------
+// LOAD DIA-NN METHOD CONFIG
+// ----------------------------
+def diannConfigPath = "${params.assets_path}/diann_methods_config.yaml"
+def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, params.pattern)
+
+def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
+def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
+def diannConfigFile = DiannConfigLoader.getConfigFile(diannMethodConfig)
+def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
+
+log.info "DIA-NN Config loaded for pattern '${params.pattern}':"
+log.info "  Version: ${diannVersion}"
+log.info "  Container: ${diannContainer}"
+log.info "  Config: ${diannConfigFile}"
+log.info "  Parser: ${parserVersion}"
 
 // ----------------------------
 // CHANNEL CREATION - HANDLES BOTH FILES AND FOLDERS
