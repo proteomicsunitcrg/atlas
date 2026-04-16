@@ -43,45 +43,47 @@ def is_thermo           = rawfilePath.toLowerCase().endsWith('.raw') || rawfileP
 log.info "Raw file/folder: ${params.rawfile}"
 log.info "Detected instrument type: ${is_bruker ? 'Bruker (.d folder)' : 'Thermo (.raw file)'}"
 
-def qcType              = extractQCTypeFromFilename(filename)
-def selected_tsv_file   = selectTsvFile(qcType, params)
-def qcodeFilePath       = "${params.qcode_file}"
-def qcloud_sample_type  = getQCloudSampleType(qcType, qcodeFilePath)
-def checksum            = extract_checksum_from_filename(filename)
-def config_file_path = "${params.qcloud_config}"
-
-log.info "QC type: ${qcType}"
-log.info "Selected TSV file: ${selected_tsv_file}"
-log.info "QCloud sample type: ${qcloud_sample_type}"
-log.info "Checksum: ${checksum}"
-log.info "Config file: ${config_file_path}"
-
-// ----------------------------
-// CHANNEL CREATION - HANDLES BOTH FILES AND FOLDERS
-// ----------------------------
-def input_ch = Channel.fromPath(params.rawfile, checkIfExists: true, type: is_bruker ? 'dir' : 'file')
-    .map { input -> 
-        def input_name = input.getName()      
-        def input_basename = input.getBaseName()  
-        def input_path = input.getParent()    
-        tuple(input_name, input_basename, input_path, input)
-    }
-
-def tsv_file_ch   = Channel.value(selected_tsv_file)
-def checksum_ch   = Channel.value(checksum)
-def sampletype_ch = Channel.value(qcloud_sample_type)
-def config_ch     = Channel.fromPath(config_file_path, checkIfExists: true)
-
 // ----------------------------
 // WORKFLOW
 // ----------------------------
 workflow {
 
     // ----------------------------
+    // EXTRACT QC TYPE & CONFIG
+    // ----------------------------
+    def qcType              = extractQCTypeFromFilename(filename)
+    def selected_tsv_file   = selectTsvFile(qcType, params)
+    def qcodeFilePath       = "${params.qcode_file}"
+    def qcloud_sample_type  = getQCloudSampleType(qcType, qcodeFilePath)
+    def checksum            = extract_checksum_from_filename(filename)
+    def config_file_path    = "${params.qcloud_config}"
+
+    log.info "QC type: ${qcType}"
+    log.info "Selected TSV file: ${selected_tsv_file}"
+    log.info "QCloud sample type: ${qcloud_sample_type}"
+    log.info "Checksum: ${checksum}"
+    log.info "Config file: ${config_file_path}"
+
+    // ----------------------------
+    // CHANNEL CREATION - HANDLES BOTH FILES AND FOLDERS
+    // ----------------------------
+    def input_ch = Channel.fromPath(params.rawfile, checkIfExists: true, type: is_bruker ? 'dir' : 'file')
+        .map { input -> 
+            def input_name = input.getName()      
+            def input_basename = input.getBaseName()  
+            def input_path = input.getParent()    
+            tuple(input_name, input_basename, input_path, input)
+        }
+
+    def tsv_file_ch   = Channel.value(selected_tsv_file)
+    def checksum_ch   = Channel.value(checksum)
+    def sampletype_ch = Channel.value(qcloud_sample_type)
+    def config_ch     = Channel.fromPath(config_file_path, checkIfExists: true)
+
+    // ----------------------------
     // USE QCTYPE AS PATTERN FOR DIA-NN CONFIG
     // ----------------------------
     // For QCloud files, qcType is already extracted (QC01, QC02, QCD1, QCD2, etc.)
-    // This was extracted earlier using extractQCTypeFromFilename()
     log.info "Using QC type as pattern for DIA-NN config: '${qcType}'"
 
     // ----------------------------

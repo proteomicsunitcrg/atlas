@@ -6,11 +6,13 @@ nextflow.enable.dsl=2
 process diann {
     label 'diann'
     tag  { "${mzml_file}" }
-
+     
+    input:
     path mzml_file
     val container_img
     val config_file
     val parser_version
+    val diann_executable
 
     output:
     path "*report.tsv", emit: report_tsv
@@ -22,10 +24,10 @@ process diann {
     '''
     # Copy spectra file:
     filename_sh=!{mzml_file}
-    diann_cfg_sh=!{params.diann_cfg}
+    diann_cfg_sh=!{config_file}
     diann_speclib_folder_sh=!{params.diann_speclib_folder}
     diann_name_speclib_filter_sh=!{params.diann_name_speclib_filter}
-    diann_exec_cmd_sh=!{params.diann_exec_cmd}
+    diann_exec_cmd_sh=!{diann_executable}
     databases_folder_sh=!{params.databases_folder}
     
     # Conditional parameter configuration (hardcoded)
@@ -104,6 +106,7 @@ process diann_bruker {
     val container_img
     val config_file
     val parser_version
+    val diann_executable
 
     output:
     path "*report.tsv", emit: report_tsv
@@ -123,12 +126,12 @@ process diann_bruker {
         echo "Using Bruker-specific CFG file: $diann_cfg_bruker_sh"
     else
         # Fallback to default Bruker config path
-        diann_cfg_bruker_sh="!{params.diann_cfg_bruker}"
+        diann_cfg_bruker_sh="!{config_file}"
         echo "Using default Bruker CFG file: $diann_cfg_bruker_sh"
     fi
     
     diann_speclib_folder_sh=!{params.diann_speclib_folder}
-    diann_exec_cmd_bruker_sh=!{params.diann_exec_cmd}
+    diann_exec_cmd_bruker_sh=!{diann_executable}
     diann_name_speclib_filter_sh=!{params.diann_name_speclib_filter}
     databases_folder_sh=!{params.databases_folder}
     
@@ -210,9 +213,10 @@ workflow diann_qcloud {
     container_img
     config_file
     parser_version
+    diann_executable
 
     main:
-    diann(rawfile_ch, container_img, config_file, parser_version)
+    diann(rawfile_ch, container_img, config_file, parser_version, diann_executable) 
 
     emit:
     report_tsv = diann.out.report_tsv
@@ -228,9 +232,10 @@ workflow diann_bruker_qcloud {
     container_img
     config_file
     parser_version
+    diann_executable
 
     main:
-    diann_bruker(bruker_folder_ch, container_img, config_file, parser_version)
+    diann_bruker(bruker_folder_ch, container_img, config_file, parser_version, diann_executable)
 
     emit:
     report_tsv = diann_bruker.out.report_tsv
