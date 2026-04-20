@@ -17,6 +17,7 @@ process diann {
     val config_file
     val parser_version
     val diann_executable
+    val diann_version_filter
 
     output:
     file("*report.tsv")
@@ -27,8 +28,11 @@ process diann {
     filename_sh=!{mzml_file}
     diann_cfg_sh=!{config_file}
     diann_speclib_folder_sh=!{diann_speclib_folder}
-    diann_name_speclib_filter_sh=!{diann_name_speclib_filter}
+    diann_version_filter_sh=!{diann_version_filter}  
+    diann_name_speclib_filter_sh=!{diann_name_speclib_filter}  
     diann_exec_cmd_sh=!{diann_executable}
+    
+    echo "[INFO] Spectral library filter from DIA-NN version: $diann_version_filter_sh"
 
     echo "CFG file: "$diann_cfg_sh
     echo "[DEBUG] Container: !{container_img}"
@@ -58,7 +62,16 @@ process diann {
     echo "Output TSV report: "$output_file
 
     # Check for existing predicted spectral libraries
-    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
+    # Use version-derived filter if available, otherwise fall back to legacy filter
+    if [[ -n "$diann_version_filter_sh" && "$diann_version_filter_sh" != "null" ]]; then
+        filter_to_use="$diann_version_filter_sh"
+        echo "[INFO] Using version-derived spectral library filter: $filter_to_use"
+    else
+        filter_to_use="$diann_name_speclib_filter_sh"
+        echo "[INFO] Using legacy spectral library filter: $filter_to_use"
+    fi
+    
+    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${filter_to_use}*")
 
     if [[ -n "$existing_spec_lib" ]]; then
       echo "Running DIA-NN command line with already existing spectral library..."
@@ -89,6 +102,7 @@ process diann_bruker {
 
     input:
     tuple val(folder), val(base), val(d_folder)
+    val diann_version_filter 
 
     output:
     file("*report.tsv")
@@ -102,7 +116,10 @@ process diann_bruker {
     diann_speclib_folder_sh=!{diann_speclib_folder}
     echo "CFG file: "$diann_cfg_bruker_sh
     diann_exec_cmd_bruker_sh=!{diann_exec_cmd_bruker}
-    diann_name_speclib_filter_sh=!{diann_name_speclib_filter}
+    diann_version_filter_sh=!{diann_version_filter} 
+    diann_name_speclib_filter_sh=!{diann_name_speclib_filter} 
+    
+    echo "[INFO] Spectral library filter from DIA-NN version: $diann_version_filter_sh"
 
     # Extract filename info:
     basename_sh=$(basename "$bruker_folder_sh" .d)
@@ -127,7 +144,16 @@ process diann_bruker {
     cp $bruker_folder_sh/chromatography-data.sqlite .
 
     # Check for existing predicted spectral libraries
-    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
+    # Use version-derived filter if available, otherwise fall back to legacy filter
+    if [[ -n "$diann_version_filter_sh" && "$diann_version_filter_sh" != "null" ]]; then
+        filter_to_use="$diann_version_filter_sh"
+        echo "[INFO] Using version-derived spectral library filter: $filter_to_use"
+    else
+        filter_to_use="$diann_name_speclib_filter_sh"
+        echo "[INFO] Using legacy spectral library filter: $filter_to_use"
+    fi
+    
+    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${filter_to_use}*")
 
     if [[ -n "$existing_spec_lib" ]]; then
       echo "Running DIA-NN command line with already existing spectral library..."

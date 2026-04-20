@@ -13,6 +13,7 @@ process diann {
     val config_file
     val parser_version
     val diann_executable
+    val diann_version_filter
 
     output:
     path "*report.tsv", emit: report_tsv
@@ -26,9 +27,12 @@ process diann {
     filename_sh=!{mzml_file}
     diann_cfg_sh=!{config_file}
     diann_speclib_folder_sh=!{params.diann_speclib_folder}
-    diann_name_speclib_filter_sh=!{params.diann_name_speclib_filter}
+    diann_version_filter_sh=!{diann_version_filter}  # <----- NEW
+    diann_name_speclib_filter_sh=!{params.diann_name_speclib_filter}  # <----- LEGACY
     diann_exec_cmd_sh=!{diann_executable}
     databases_folder_sh=!{params.databases_folder}
+    
+    echo "[INFO] Spectral library filter from DIA-NN version: $diann_version_filter_sh"
     
     # Conditional parameter configuration (hardcoded)
     pattern_sh="QCD1"
@@ -60,7 +64,16 @@ process diann {
     echo "Output TSV report: $output_file"
 
     # Check for existing predicted spectral libraries
-    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
+    # Use version-derived filter if available, otherwise fall back to legacy filter
+    if [[ -n "$diann_version_filter_sh" && "$diann_version_filter_sh" != "null" ]]; then
+        filter_to_use="$diann_version_filter_sh"
+        echo "[INFO] Using version-derived spectral library filter: $filter_to_use"
+    else
+        filter_to_use="$diann_name_speclib_filter_sh"
+        echo "[INFO] Using legacy spectral library filter: $filter_to_use"
+    fi
+    
+    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${filter_to_use}*")
 
     # Conditional parameter logic - ALWAYS add for QCD1
     conditional_param=""
@@ -107,6 +120,7 @@ process diann_bruker {
     val config_file
     val parser_version
     val diann_executable
+    val diann_version_filter
 
     output:
     path "*report.tsv", emit: report_tsv
@@ -130,10 +144,13 @@ process diann_bruker {
         echo "Using default Bruker CFG file: $diann_cfg_bruker_sh"
     fi
     
-    diann_speclib_folder_sh=!{params.diann_speclib_folder}
+        diann_speclib_folder_sh=!{params.diann_speclib_folder}
     diann_exec_cmd_bruker_sh=!{diann_executable}
-    diann_name_speclib_filter_sh=!{params.diann_name_speclib_filter}
+    diann_version_filter_sh=!{diann_version_filter}  # <----- NEW
+    diann_name_speclib_filter_sh=!{params.diann_name_speclib_filter}  # <----- LEGACY
     databases_folder_sh=!{params.databases_folder}
+    
+    echo "[INFO] Spectral library filter from DIA-NN version: $diann_version_filter_sh"
     
     # Conditional parameter configuration (hardcoded)
     pattern_sh="QCD1"
@@ -170,7 +187,16 @@ process diann_bruker {
     cp $diann_folder/chromatography-data.sqlite .
 
     # Check for existing predicted spectral libraries
-    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${diann_name_speclib_filter_sh}*")
+    # Use version-derived filter if available, otherwise fall back to legacy filter
+    if [[ -n "$diann_version_filter_sh" && "$diann_version_filter_sh" != "null" ]]; then
+        filter_to_use="$diann_version_filter_sh"
+        echo "[INFO] Using version-derived spectral library filter: $filter_to_use"
+    else
+        filter_to_use="$diann_name_speclib_filter_sh"
+        echo "[INFO] Using legacy spectral library filter: $filter_to_use"
+    fi
+    
+    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${filter_to_use}*")
 
     # Conditional parameter logic - ALWAYS add for QCD1
     conditional_param=""
@@ -214,9 +240,10 @@ workflow diann_qcloud {
     config_file
     parser_version
     diann_executable
+    diann_version_filter  // <----- ADD THIS
 
     main:
-    diann(rawfile_ch, container_img, config_file, parser_version, diann_executable) 
+    diann(rawfile_ch, container_img, config_file, parser_version, diann_executable, diann_version_filter) 
 
     emit:
     report_tsv = diann.out.report_tsv
@@ -233,9 +260,10 @@ workflow diann_bruker_qcloud {
     config_file
     parser_version
     diann_executable
+    diann_version_filter  // <----- ADD THIS
 
     main:
-    diann_bruker(bruker_folder_ch, container_img, config_file, parser_version, diann_executable)
+    diann_bruker(bruker_folder_ch, container_img, config_file, parser_version, diann_executable, diann_version_filter)
 
     emit:
     report_tsv = diann_bruker.out.report_tsv

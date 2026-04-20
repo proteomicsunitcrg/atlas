@@ -42,5 +42,14 @@ class DiannConfigLoader {
     static boolean requiresConversion(Map config) {                  
         return config.requiresConversion != null ?         
                config.requiresConversion : true                  
+    }
+
+    static String getSpectralLibraryFilter(Map methodConfig) {
+        // Extract version filter from diann_version for library matching
+        // Example: "2.3.2" → "232", "1.9.2" → "192"
+        def version = methodConfig.diann_version
+        if (!version) return null
+        
+        return version.replaceAll('\\.', '')
     }    
 }

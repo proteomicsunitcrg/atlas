@@ -73,7 +73,8 @@ workflow {
    def diannConfigFile = "${params.assets}/${DiannConfigLoader.getConfigFile(diannMethodConfig)}"
    def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
    def diannExecutable = DiannConfigLoader.getExecutable(diannMethodConfig)
-   def requiresConversion = DiannConfigLoader.requiresConversion(diannMethodConfig) 
+   def requiresConversion = DiannConfigLoader.requiresConversion(diannMethodConfig)
+   def spectralLibraryFilter = DiannConfigLoader.getSpectralLibraryFilter(diannMethodConfig) 
 
    log.info "  Executable: ${diannExecutable}"
    log.info "  DIA-NN Config loaded for pattern '${pattern}':"
@@ -81,27 +82,22 @@ workflow {
    log.info "  Container: ${diannContainer}"
    log.info "  Config: ${diannConfigFile}"
    log.info "  Parser: ${parserVersion}"
-   log.info "  Requires RAW->mzML conversion: ${requiresConversion}"     
+   log.info "  Requires RAW->mzML conversion: ${requiresConversion}"    
+   log.info "  Spectral Library Filter: ${spectralLibraryFilter} (derived from version)" 
 
    def converted_files_ch                                                            
-   if (requiresConversion) {                                                         
-       log.info "RAW->mzML conversion enabled"                                     
-       //Conversion:
+   if (requiresConversion) {
+       log.info "RAW->mzML conversion enabled"
        trfp_diann_pr(rawfile_ch)
-       converted_files_ch = trfp_diann_pr.out                                     
-       //DIA-NN: 
-       diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable)  
-    } else {
-        log.info "RAW->mzML conversion skipped (DIA-NN processes RAW directly)"
-        
-        // Reconstruct the file path from the tuple elements
-        converted_files_ch = rawfile_ch.map { fname, bname, fpath -> 
-            file("${fpath}/${fname}")
-        }
-        
-        //DIA-NN directly on RAW:
-        diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable)  
-    }                                                                               
+       converted_files_ch = trfp_diann_pr.out
+       diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)  // <----- ADD PARAM
+   } else {
+       log.info "RAW->mzML conversion skipped (DIA-NN processes RAW directly)"
+       converted_files_ch = rawfile_ch.map { fname, bname, fpath -> 
+           file("${fpath}/${fname}")
+       }
+       diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)  // <----- ADD PARAM
+   }                                                                           
 
    //Report to QSample database:
    insertDIANNFileToQSample_pr(rawfile_ch, converted_files_ch)                   

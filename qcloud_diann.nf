@@ -97,13 +97,15 @@ workflow {
     def diannConfigFile = "${params.assets}/${DiannConfigLoader.getConfigFile(diannMethodConfig)}"
     def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
     def diannExecutable = DiannConfigLoader.getExecutable(diannMethodConfig)
-
+    def spectralLibraryFilter = DiannConfigLoader.getSpectralLibraryFilter(diannMethodConfig)
+    
     log.info "  Executable: ${diannExecutable}"
     log.info "DIA-NN Config loaded for pattern '${qcType}':"
     log.info "  Version: ${diannVersion}"
     log.info "  Container: ${diannContainer}"
     log.info "  Config: ${diannConfigFile}"
     log.info "  Parser: ${parserVersion}"
+    log.info "  Spectral library filter: ${spectralLibraryFilter}"
 
     if (is_thermo) {
         // ----------------------------
@@ -118,7 +120,7 @@ workflow {
         trfp_pr(thermo_ch)
 
         // Run DIA-NN on mzML
-        diann_pr(trfp_pr.out, diannContainer, diannConfigFile, parserVersion, diannExecutable)
+        diann_pr(trfp_pr.out, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
 
         // Extract metadata from mzML
         mzml_ch = trfp_pr.out.map { f ->
@@ -144,7 +146,7 @@ workflow {
         bruker_ch = input_ch.map { name, basename, path, folder -> folder }
         
         // Run DIA-NN directly on .d folder
-        diann_bruker_pr(bruker_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable)
+        diann_bruker_pr(bruker_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
 
         // For Bruker, we don't have mzML files, so create a mock metadata channel
         // or extract metadata from the original .d folder if needed
