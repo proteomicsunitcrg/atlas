@@ -38,4 +38,9 @@ class DiannConfigLoader {
     static def getExecutable(Map methodConfig) {
         return methodConfig.executable ?: '/diann/diann-linux'
     }
+
+    static boolean requiresConversion(Map config) {                  
+        return config.requiresConversion != null ?         
+               config.requiresConversion : true                  
+    }    
 }

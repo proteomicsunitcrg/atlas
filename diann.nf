@@ -73,6 +73,7 @@ workflow {
    def diannConfigFile = "${params.assets}/${DiannConfigLoader.getConfigFile(diannMethodConfig)}"
    def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
    def diannExecutable = DiannConfigLoader.getExecutable(diannMethodConfig)
+   def requiresConversion = DiannConfigLoader.requiresConversion(diannMethodConfig) 
 
    log.info "  Executable: ${diannExecutable}"
    log.info "  DIA-NN Config loaded for pattern '${pattern}':"
@@ -80,20 +81,36 @@ workflow {
    log.info "  Container: ${diannContainer}"
    log.info "  Config: ${diannConfigFile}"
    log.info "  Parser: ${parserVersion}"
+   log.info "  Requires RAW->mzML conversion: ${requiresConversion}"     
 
-   //Conversion:
-   trfp_diann_pr(rawfile_ch)
-
-   //DIA-NN: 
-   diann_pr(trfp_diann_pr.out, diannContainer, diannConfigFile, parserVersion, diannExecutable)
+   def converted_files_ch                                                            
+   if (requiresConversion) {                                                         
+       log.info "RAW->mzML conversion enabled"                                     
+       //Conversion:
+       trfp_diann_pr(rawfile_ch)
+       converted_files_ch = trfp_diann_pr.out                                     
+       //DIA-NN: 
+       diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable)  
+    } else {
+        log.info "RAW->mzML conversion skipped (DIA-NN processes RAW directly)"
+        
+        // Reconstruct the file path from the tuple elements
+        converted_files_ch = rawfile_ch.map { fname, bname, fpath -> 
+            file("${fpath}/${fname}")
+        }
+        
+        //DIA-NN directly on RAW:
+        diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable)  
+    }                                                                               
 
    //Report to QSample database:
-   insertDIANNFileToQSample_pr(rawfile_ch,trfp_diann_pr.out)
-   insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out,trfp_diann_pr.out)
-   insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out,diann_pr.out)
+   insertDIANNFileToQSample_pr(rawfile_ch, converted_files_ch)                   
+   insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out, converted_files_ch)  
+   insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out)
    //Report to output folder (if the field output_folder was informed at methods CSV file):
-   output_folder_diann_pr(diann_pr.out,trfp_diann_pr.out,output_folder_ch)  
+   output_folder_diann_pr(diann_pr.out, converted_files_ch, output_folder_ch)        
    
    //lab
-   insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out,trfp_diann_pr.out)
+   insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out, converted_files_ch)  
+
 }
