@@ -96,47 +96,84 @@ workflow {
     def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
     def diannConfigFile = "${params.assets}/${DiannConfigLoader.getConfigFile(diannMethodConfig)}"
     def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
+    
     def diannExecutable = DiannConfigLoader.getExecutable(diannMethodConfig)
+    def requiresConversion = DiannConfigLoader.requiresConversion(diannMethodConfig)
     def spectralLibraryFilter = DiannConfigLoader.getSpectralLibraryFilter(diannMethodConfig)
     
     log.info "  Executable: ${diannExecutable}"
+    
     log.info "DIA-NN Config loaded for pattern '${qcType}':"
     log.info "  Version: ${diannVersion}"
     log.info "  Container: ${diannContainer}"
+    
     log.info "  Config: ${diannConfigFile}"
     log.info "  Parser: ${parserVersion}"
+    log.info "  Requires RAW->mzML conversion: ${requiresConversion}"
     log.info "  Spectral library filter: ${spectralLibraryFilter}"
 
     if (is_thermo) {
         // ----------------------------
-        // THERMO WORKFLOW: RAW → mzML → DIA-NN
+        // THERMO WORKFLOW: Conditional RAW processing
         // ----------------------------
         log.info "Processing Thermo RAW file..."
         
-        // Convert tuple for Thermo workflow (extract first 3 elements)
-        thermo_ch = input_ch.map { name, basename, path, file -> tuple(name, basename, path) }
+        def converted_files_ch
+        def metadata_ch
         
-        // Convert RAW → mzML
-        trfp_pr(thermo_ch)
+        if (requiresConversion) {
+            // ----------------------------
+            // PATH 1: RAW → mzML → DIA-NN
+            // ----------------------------
+            log.info "RAW->mzML conversion enabled"
+            
+            // Convert tuple for Thermo workflow (extract first 3 elements)
+            thermo_ch = input_ch.map { name, basename, path, file -> tuple(name, basename, path) }
+            
+            // Convert RAW → mzML
+            trfp_pr(thermo_ch)
 
-        // Run DIA-NN on mzML
-        diann_pr(trfp_pr.out, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
+            // Run DIA-NN on mzML
+            diann_pr(trfp_pr.out, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
 
-        // Extract metadata from mzML
-        mzml_ch = trfp_pr.out.map { f ->
-            def filename_mzml  = f.getName()
-            def basename_mzml  = filename_mzml.replaceAll(/\.mzML\..*$/, "")
-            def path_mzml      = f.getParent()
-            tuple(filename_mzml, basename_mzml, path_mzml, f)
+            // Extract metadata from mzML
+            mzml_ch = trfp_pr.out.map { f ->
+                def filename_mzml  = f.getName()
+                def basename_mzml  = filename_mzml.replaceAll(/\.mzML\..*$/, "")
+                def path_mzml      = f.getParent()
+                tuple(filename_mzml, basename_mzml, path_mzml, f)
+            }
+            EXTRACT_METADATA(mzml_ch)
+
+            // Set up channels for downstream processing
+            report_tsv_ch = diann_pr.out.report_tsv
+            report_stats_tsv_ch = diann_pr.out.report_stats_tsv
+            metadata_ch = EXTRACT_METADATA.out
+            
+        } else {
+            // ----------------------------
+            // PATH 2: RAW → DIA-NN (direct processing)
+            // ----------------------------
+            log.info "RAW->mzML conversion skipped (DIA-NN processes RAW directly)"
+            
+            // Pass RAW file directly to DIA-NN
+            raw_direct_ch = input_ch.map { name, basename, path, file -> file }
+            diann_pr(raw_direct_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
+            
+            // Create mock metadata channel for downstream compatibility
+            mock_metadata_ch = input_ch.map { name, basename, path, file ->
+                def mock_qc_jsons = []
+                def mock_metadata_json = null
+                [qc_jsons: mock_qc_jsons, metadata_json: mock_metadata_json]
+            }
+            
+            // Set up channels for downstream processing
+            report_tsv_ch = diann_pr.out.report_tsv
+            report_stats_tsv_ch = diann_pr.out.report_stats_tsv
+            metadata_ch = mock_metadata_ch
         }
-        EXTRACT_METADATA(mzml_ch)
-
-        // Set up channels for downstream processing
-        report_tsv_ch = diann_pr.out.report_tsv
-        report_stats_tsv_ch = diann_pr.out.report_stats_tsv
-        metadata_ch = EXTRACT_METADATA.out
         
-    } else if (is_bruker) {
+    }  else if (is_bruker) {
         // ----------------------------
         // BRUKER WORKFLOW: .d folder → DIA-NN directly
         // ----------------------------
