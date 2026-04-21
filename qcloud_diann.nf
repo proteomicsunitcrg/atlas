@@ -112,14 +112,16 @@ workflow {
     log.info "  Requires RAW->mzML conversion: ${requiresConversion}"
     log.info "  Spectral library filter: ${spectralLibraryFilter}"
 
+    // <--- Declare channels outside conditional blocks for proper scoping
+    def report_tsv_ch
+    def report_stats_tsv_ch
+    def metadata_ch
+    
     if (is_thermo) {
         // ----------------------------
         // THERMO WORKFLOW: Conditional RAW processing
         // ----------------------------
         log.info "Processing Thermo RAW file..."
-        
-        def converted_files_ch
-        def metadata_ch
         
         if (requiresConversion) {
             // ----------------------------
@@ -160,17 +162,18 @@ workflow {
             raw_direct_ch = input_ch.map { name, basename, path, file -> file }
             diann_pr(raw_direct_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
             
-            // Create mock metadata channel for downstream compatibility
-            mock_metadata_ch = input_ch.map { name, basename, path, file ->
-                def mock_qc_jsons = []
-                def mock_metadata_json = null
-                [qc_jsons: mock_qc_jsons, metadata_json: mock_metadata_json]
+            // <--- Create mock metadata structure matching EXTRACT_METADATA output
+            def mock_qc_jsons = input_ch.map { name, basename, path, file ->
+                tuple(basename, [])  // Empty list for qc_jsons
             }
+            def mock_metadata_json = Channel.empty()  // Empty channel for metadata_json
+            
+            // <--- Create metadata_ch with same structure as EXTRACT_METADATA.out
+            metadata_ch = [qc_jsons: mock_qc_jsons, metadata_json: mock_metadata_json]
             
             // Set up channels for downstream processing
             report_tsv_ch = diann_pr.out.report_tsv
             report_stats_tsv_ch = diann_pr.out.report_stats_tsv
-            metadata_ch = mock_metadata_ch
         }
         
     }  else if (is_bruker) {
@@ -185,19 +188,18 @@ workflow {
         // Run DIA-NN directly on .d folder
         diann_bruker_pr(bruker_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
 
-        // For Bruker, we don't have mzML files, so create a mock metadata channel
-        // or extract metadata from the original .d folder if needed
-        mock_metadata_ch = input_ch.map { name, basename, path, folder ->
-            // Create a structure similar to EXTRACT_METADATA output
-            def mock_qc_jsons = []  // Empty for now, could be populated if needed
-            def mock_metadata_json = null  // Could extract from .d folder if needed
-            [qc_jsons: mock_qc_jsons, metadata_json: mock_metadata_json]
+        // <--- Create mock metadata structure matching EXTRACT_METADATA output
+        def mock_qc_jsons = input_ch.map { name, basename, path, folder ->
+            tuple(basename, [])  // Empty list for qc_jsons
         }
+        def mock_metadata_json = Channel.empty()  // Empty channel for metadata_json
+        
+        // <--- Create metadata_ch with same structure as EXTRACT_METADATA.out
+        metadata_ch = [qc_jsons: mock_qc_jsons, metadata_json: mock_metadata_json]
 
         // Set up channels for downstream processing
         report_tsv_ch = diann_bruker_pr.out.report_tsv
         report_stats_tsv_ch = diann_bruker_pr.out.report_stats_tsv
-        metadata_ch = mock_metadata_ch
         
     } else {
         error "ERROR: Unable to determine instrument type. Expected .raw file or .d folder."
@@ -218,17 +220,19 @@ workflow {
     // COLLECT ALL JSON FILES - UPDATED for both instrument types
     // ----------------------------
     if (is_thermo) {
+        // <--- Mix metadata QC jsons (may be empty) with DIA-NN jsons
         all_json_files = metadata_ch.qc_jsons
             .map { basename, jsons -> jsons }
             .mix(EXTRACT_DIANN_METRICS.out.diann_jsons.map { cs, jsons -> jsons })
             .flatten()
             .collect()
 
+        // <--- Extract sample_info from basename (remove .raw and .mzML extensions)
         sample_info = metadata_ch.qc_jsons.map { basename_mzml, jsons ->
-            basename_mzml.replaceAll(/\.mzML\..*$/, "")
+            basename_mzml.replaceAll(/\.mzML\..*$/, "").replaceAll(/\.raw\..*$/, "")
         }.first()
 
-        // Collect all files including metadata.json
+        // <--- Collect all files including metadata.json (may be empty)
         all_files_with_metadata = all_json_files
             .mix(metadata_ch.metadata_json)
             .collect()

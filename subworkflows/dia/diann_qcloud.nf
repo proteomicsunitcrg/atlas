@@ -6,6 +6,7 @@ nextflow.enable.dsl=2
 process diann {
     label 'diann'
     tag { "${mzml_file}" }
+    container "${container_img}" 
 
     input:
     path mzml_file
@@ -61,7 +62,6 @@ process diann {
 
     basename_with_ext_sh=$(basename "$filename_sh")
     basename_sh="${basename_with_ext_sh%%.*}"
-    extension_sh="${basename_with_ext_sh#${basename_sh}.}"
     organism_sh="${filename_sh##*.}"
 
     if [[ -z "$basename_sh" ]]; then
@@ -73,6 +73,28 @@ process diann {
         echo "[ERROR] Could not extract organism from: $filename_sh" >&2
         exit 1
     fi
+    
+    # Extract file extension (raw or mzML) without organism suffix
+    case "$filename_sh" in
+        *.raw.*)
+            file_ext_sh="raw"
+            ;;
+        *.raw)
+            file_ext_sh="raw"
+            ;;
+        *.mzML.*)
+            file_ext_sh="mzML"
+            ;;
+        *.mzML)
+            file_ext_sh="mzML"
+            ;;
+        *)
+            echo "[ERROR] Unsupported file format: $filename_sh (expected .raw or .mzML)" >&2
+            exit 1
+            ;;
+    esac
+    
+    echo "[DEBUG] Detected file extension: $file_ext_sh"
 
     fasta_dir_sh="${databases_folder_sh}/${organism_sh}/current"
 
@@ -99,9 +121,15 @@ process diann {
     cp "$first_fasta_path" .
     echo "Fasta complete filename: $fastafile"
 
-    diann_filename="${basename_sh}.${extension_sh}"
-    cp "$filename_sh" "$diann_filename"
-    echo "Spectra filename for DIA-NN: $diann_filename"
+    diann_filename="${basename_sh}.${file_ext_sh}"
+    
+    # Only copy/rename if source and destination are different
+    if [[ "$filename_sh" != "$diann_filename" ]]; then
+        cp "$filename_sh" "$diann_filename"
+        echo "Renamed spectra file from $filename_sh to: $diann_filename"
+    else
+        echo "Spectra filename already correct: $diann_filename"
+    fi
 
     output_file="${basename_sh}.report.tsv"
     echo "Output TSV report: $output_file"
@@ -231,6 +259,7 @@ process diann {
 process diann_bruker {
     label 'diann_bruker'
     tag { "${d_folder}" }
+    container "${container_img}"
 
     input:
     path d_folder
@@ -292,21 +321,22 @@ process diann_bruker {
         exit 1
     fi
 
-    basename_raw_sh=$(basename "$bruker_folder_sh")
-    basename_sh="${basename_raw_sh%%.d.*}"
-    organism_sh="${bruker_folder_sh##*.d.}"
+    folder_name_sh=$(basename "$bruker_folder_sh")
+    basename_sh="${folder_name_sh%.d}"
+    organism_sh="${folder_name_sh##*.}"
 
     if [[ -z "$basename_sh" ]]; then
-        echo "[ERROR] Could not extract basename from Bruker folder: $bruker_folder_sh" >&2
+        echo "[ERROR] Could not extract basename from: $folder_name_sh" >&2
         exit 1
     fi
 
     if [[ -z "$organism_sh" ]]; then
-        echo "[ERROR] Could not extract organism from Bruker folder: $bruker_folder_sh" >&2
+        echo "[ERROR] Could not extract organism from: $folder_name_sh" >&2
         exit 1
     fi
 
-    echo "Extracted organism: $organism_sh"
+    echo "[DEBUG] Bruker folder basename: $basename_sh"
+    echo "[DEBUG] Extracted organism: $organism_sh"
 
     diann_folder="${basename_sh}.d"
     echo "Creating DIA-NN compatible folder: $diann_folder"
