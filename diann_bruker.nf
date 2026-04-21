@@ -16,7 +16,7 @@ Channel
   .map { file ->
        def folder = file.name
        def base = file.baseName
-       tuple(folder, base, file)
+       tuple(folder, base, file.getParent())  // <--- Mantenim tuple per compatibilitat
   }
   .set { rawfile_ch }
 

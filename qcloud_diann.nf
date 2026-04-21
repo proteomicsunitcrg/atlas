@@ -67,13 +67,8 @@ workflow {
     // ----------------------------
     // CHANNEL CREATION - HANDLES BOTH FILES AND FOLDERS
     // ----------------------------
+    // <--- Channel creation - simplified since workflows now handle parsing
     def input_ch = Channel.fromPath(params.rawfile, checkIfExists: true, type: is_bruker ? 'dir' : 'file')
-        .map { input -> 
-            def input_name = input.getName()      
-            def input_basename = input.getBaseName()  
-            def input_path = input.getParent()    
-            tuple(input_name, input_basename, input_path, input)
-        }
 
     def tsv_file_ch   = Channel.value(selected_tsv_file)
     def checksum_ch   = Channel.value(checksum)
