@@ -71,7 +71,47 @@ process diann {
         echo "[INFO] Using legacy spectral library filter: $filter_to_use"
     fi
     
-    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${filter_to_use}*")
+    # Multi-pattern search for spectral libraries
+    # Pattern 1: New naming convention with DIA-NN version embedded
+    # Format: sp_human_2025_01_diann_1_9_2_astral.predicted.speclib
+    existing_spec_lib=""
+
+    # Extract version components from filter (e.g., "192" -> "1_9_2", "232" -> "2_3_2")
+    if [[ "$filter_to_use" =~ ^[0-9]+$ ]]; then
+        # Convert numeric filter to underscore format: 192 -> 1_9_2
+        version_normalized=$(echo "$filter_to_use" | sed 's/\(.\)\(.\)\(.\)/\1_\2_\3/')
+        echo "[DEBUG] Normalized version from filter '$filter_to_use': $version_normalized"
+        
+        # Search for new format: organism + diann_version + filter_name
+        existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f \
+            \( -name "*${fastafilename}*diann_${version_normalized}*${diann_name_speclib_filter_sh}*.speclib" \
+            -o -name "*${fastafilename}*diann_${version_normalized}*${diann_name_speclib_filter_sh}*.parquet" \) \
+            2>/dev/null | head -n 1)
+        
+        if [[ -n "$existing_spec_lib" ]]; then
+            echo "[INFO] Found spectral library with new naming convention: $(basename "$existing_spec_lib")"
+        fi
+    fi
+
+    # Pattern 2: Legacy naming convention with numeric filter only
+    # Format: sp_human_192_predicted.parquet or sp_human_192_astral.predicted.speclib
+    if [[ -z "$existing_spec_lib" ]]; then
+        echo "[DEBUG] Searching with legacy pattern: *${fastafilename}*${filter_to_use}*"
+        existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f \
+            \( -name "*${fastafilename}*${filter_to_use}*.speclib" \
+            -o -name "*${fastafilename}*${filter_to_use}*.parquet" \) \
+            2>/dev/null | head -n 1)
+        
+        if [[ -n "$existing_spec_lib" ]]; then
+            echo "[INFO] Found spectral library with legacy naming convention: $(basename "$existing_spec_lib")"
+        fi
+    fi
+
+    # Final check
+    if [[ -z "$existing_spec_lib" ]]; then
+        echo "[WARNING] No existing spectral library found for organism '$fastafilename' with filter '$filter_to_use'"
+        echo "[INFO] Will generate new spectral library from FASTA"
+    fi
 
     if [[ -n "$existing_spec_lib" ]]; then
       echo "Running DIA-NN command line with already existing spectral library..."
@@ -153,7 +193,47 @@ process diann_bruker {
         echo "[INFO] Using legacy spectral library filter: $filter_to_use"
     fi
     
-    existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f -name "*${fastafilename}*${filter_to_use}*")
+    # Multi-pattern search for spectral libraries
+    # Pattern 1: New naming convention with DIA-NN version embedded
+    # Format: sp_human_2025_01_diann_1_9_2_astral.predicted.speclib
+    existing_spec_lib=""
+
+    # Extract version components from filter (e.g., "192" -> "1_9_2", "232" -> "2_3_2")
+    if [[ "$filter_to_use" =~ ^[0-9]+$ ]]; then
+        # Convert numeric filter to underscore format: 192 -> 1_9_2
+        version_normalized=$(echo "$filter_to_use" | sed 's/\(.\)\(.\)\(.\)/\1_\2_\3/')
+        echo "[DEBUG] Normalized version from filter '$filter_to_use': $version_normalized"
+        
+        # Search for new format: organism + diann_version + filter_name
+        existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f \
+            \( -name "*${fastafilename}*diann_${version_normalized}*${diann_name_speclib_filter_sh}*.speclib" \
+            -o -name "*${fastafilename}*diann_${version_normalized}*${diann_name_speclib_filter_sh}*.parquet" \) \
+            2>/dev/null | head -n 1)
+        
+        if [[ -n "$existing_spec_lib" ]]; then
+            echo "[INFO] Found spectral library with new naming convention: $(basename "$existing_spec_lib")"
+        fi
+    fi
+
+    # Pattern 2: Legacy naming convention with numeric filter only
+    # Format: sp_human_192_predicted.parquet or sp_human_192_astral.predicted.speclib
+    if [[ -z "$existing_spec_lib" ]]; then
+        echo "[DEBUG] Searching with legacy pattern: *${fastafilename}*${filter_to_use}*"
+        existing_spec_lib=$(find "$diann_speclib_folder_sh" -type f \
+            \( -name "*${fastafilename}*${filter_to_use}*.speclib" \
+            -o -name "*${fastafilename}*${filter_to_use}*.parquet" \) \
+            2>/dev/null | head -n 1)
+        
+        if [[ -n "$existing_spec_lib" ]]; then
+            echo "[INFO] Found spectral library with legacy naming convention: $(basename "$existing_spec_lib")"
+        fi
+    fi
+
+    # Final check
+    if [[ -z "$existing_spec_lib" ]]; then
+        echo "[WARNING] No existing spectral library found for organism '$fastafilename' with filter '$filter_to_use'"
+        echo "[INFO] Will generate new spectral library from FASTA"
+    fi
 
     if [[ -n "$existing_spec_lib" ]]; then
       echo "Running DIA-NN command line with already existing spectral library..."
