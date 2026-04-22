@@ -124,8 +124,10 @@ workflow {
             // ----------------------------
             log.info "RAW->mzML conversion enabled"
             
-            // Convert tuple for Thermo workflow (extract first 3 elements)
-            thermo_ch = input_ch.map { name, basename, path, file -> tuple(name, basename, path) }
+            // Convert Path to tuple for ThermoRawFileParser
+            thermo_ch = input_ch.map { file ->
+                tuple(file.getName(), file.getBaseName(), file.getParent())
+            }
             
             // Convert RAW → mzML
             trfp_pr(thermo_ch)
@@ -153,13 +155,12 @@ workflow {
             // ----------------------------
             log.info "RAW->mzML conversion skipped (DIA-NN processes RAW directly)"
             
-            // Pass RAW file directly to DIA-NN
-            raw_direct_ch = input_ch.map { name, basename, path, file -> file }
-            diann_pr(raw_direct_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
+            // Pass RAW file directly to DIA-NN (input_ch is already Path)
+            diann_pr(input_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
             
             // <--- Create mock metadata structure matching EXTRACT_METADATA output
-            def mock_qc_jsons = input_ch.map { name, basename, path, file ->
-                tuple(basename, [])  // Empty list for qc_jsons
+            def mock_qc_jsons = input_ch.map { file ->
+                tuple(file.getBaseName(), [])  // Empty list for qc_jsons
             }
             def mock_metadata_json = Channel.empty()  // Empty channel for metadata_json
             
@@ -177,15 +178,12 @@ workflow {
         // ----------------------------
         log.info "Processing Bruker .d folder..."
         
-        // Extract just the folder path for Bruker workflow
-        bruker_ch = input_ch.map { name, basename, path, folder -> folder }
-        
-        // Run DIA-NN directly on .d folder
-        diann_bruker_pr(bruker_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
+        // Run DIA-NN directly on .d folder (input_ch is already Path)
+        diann_bruker_pr(input_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
 
         // <--- Create mock metadata structure matching EXTRACT_METADATA output
-        def mock_qc_jsons = input_ch.map { name, basename, path, folder ->
-            tuple(basename, [])  // Empty list for qc_jsons
+        def mock_qc_jsons = input_ch.map { folder ->
+            tuple(folder.getBaseName().replaceAll(/\.d$/, ''), [])  // Empty list for qc_jsons
         }
         def mock_metadata_json = Channel.empty()  // Empty channel for metadata_json
         
@@ -239,8 +237,8 @@ workflow {
             .flatten()
             .collect()
 
-        sample_info = input_ch.map { name, basename, path, folder ->
-            basename.replaceAll(/\.d$/, "")
+        sample_info = input_ch.map { folder ->
+            folder.getName().replaceAll(/\.d$/, "")
         }.first()
 
         // For Bruker, no metadata.json from mzML

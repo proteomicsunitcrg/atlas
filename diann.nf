@@ -53,7 +53,7 @@ Channel
 
 workflow {
  
-  // ----------------------------
+   // ----------------------------
    // EXTRACT PATTERN FROM FILENAME
    // ----------------------------
    // Example: 2024MK888_DIA_min_test.mzML.SP_Human → REQUEST=2024MK888 → pattern=MK
@@ -99,14 +99,14 @@ workflow {
        diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)  // <----- ADD PARAM
    }                                                                           
 
-   //Report to QSample database:
-   insertDIANNFileToQSample_pr(rawfile_ch, converted_files_ch)                   
-   insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out, converted_files_ch)  
-   insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out)
-   //Report to output folder (if the field output_folder was informed at methods CSV file):
-   output_folder_diann_pr(diann_pr.out, converted_files_ch, output_folder_ch)        
-   
-   //lab
-   insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out, converted_files_ch)  
+  //Report to QSample database:
+  insertDIANNFileToQSample_pr(rawfile_ch, converted_files_ch)                   
+  insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out.report_tsv, converted_files_ch)  
+  insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out.report_tsv)
+  //Report to output folder (if the field output_folder was informed at methods CSV file):
+  output_folder_diann_pr(diann_pr.out.report_tsv, converted_files_ch, output_folder_ch)        
+  
+  //lab
+  insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out, converted_files_ch) 
 
 }
