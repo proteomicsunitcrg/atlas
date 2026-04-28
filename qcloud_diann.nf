@@ -11,8 +11,8 @@ include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSamp
 // ----------------------------
 // SUBWORKFLOWS
 // ----------------------------
-include { diann_qcloud as diann_pr } from './subworkflows/dia/diann_qcloud.nf'
-include { diann_bruker_qcloud as diann_bruker_pr } from './subworkflows/dia/diann_qcloud.nf'
+include { diann_qcloud as diann_pr } from './subworkflows/dia/dia.nf'
+include { diann_bruker_qcloud as diann_bruker_pr } from './subworkflows/dia/dia.nf'
 include { ThermoRawFileParserDiann as trfp_pr } from './subworkflows/conversion/conversion'
 
 // ----------------------------

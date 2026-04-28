@@ -6,7 +6,7 @@ import DiannConfigLoader
 // ----------------------------
 // SUBWORKFLOWS
 // ----------------------------
-include { diann_bruker_qcloud as diann_bruker_pr } from './subworkflows/dia/diann_qcloud.nf'
+include { diann_bruker_qcloud as diann_bruker_pr } from './subworkflows/dia/dia.nf'
 include { insertDIANNBrukerFileToQSample as insertDIANNBrukerFileToQSample_pr; insertDIANNBrukerDataToQSample as insertDIANNBrukerDataToQSample_pr; insertDIANNBrukerQuantToQSample as insertDIANNBrukerQuantToQSample_pr } from './subworkflows/report/report_qsample_diann'
 
 // ----------------------------

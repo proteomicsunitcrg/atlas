@@ -9,6 +9,7 @@ process DIANN_RUN {
     tuple val(meta), path(input_file)      // <--- meta: [basename, organism, fileType]
     val container_img
     val config_file
+    val parser_version                     //  report format (tsv, parquet, sqlite)
     val diann_executable
     val diann_version_filter              // <--- e.g., "232"
     val legacy_filter                     // <--- e.g., "NK", "MK"
@@ -115,40 +116,39 @@ process DIANN_RUN {
     echo "[INFO] DIA-NN completed successfully"
     
     # ============================================
-    # STEP 6: Parse DIA-NN report (format auto-detection)
+    # STEP 6: Parse DIA-NN report (using configured parser_version)
     # ============================================
-    echo "[INFO] Detecting report format..."
+    echo "[INFO] Using parser version: ${parser_version}"
     
-    # DIA-NN may generate report in different formats:
-    # - TSV (v1.9.2): ${basename}.report.tsv
-    # - Parquet (v2.2.0+): ${basename}.report.parquet
-    # - SQLite (future): ${basename}.report.sqlite
-    
-    if [[ -f "${basename}.report.parquet" ]]; then
-        echo "[INFO] Detected Parquet format - converting to TSV..."
-        bash ${moduleDir}/scripts/parsers/parse_diann_report.sh \
-            "${basename}.report.parquet" \
-            "parquet" \
-            "${params.duckdb_path}" \
-            > "${basename}.report.tsv"
-        
-    elif [[ -f "${basename}.report.sqlite" ]]; then
-        echo "[INFO] Detected SQLite format - converting to TSV..."
-        bash ${moduleDir}/scripts/parsers/parse_diann_report.sh \
-            "${basename}.report.sqlite" \
-            "sqlite" \
-            "${params.duckdb_path}" \
-            > "${basename}.report.tsv"
-        
-    elif [[ -f "${basename}.report.tsv" ]]; then
-        echo "[INFO] Detected TSV format - no conversion needed"
-        # File already exists in correct format
-        
-    else
-        echo "[ERROR] No report file found for ${basename}" >&2
-        echo "[ERROR] Expected one of: ${basename}.report.{tsv,parquet,sqlite}" >&2
-        exit 1
-    fi
+    case "${parser_version}" in
+        parquet)
+            echo "[INFO] Converting Parquet report to TSV..."
+            bash ${moduleDir}/scripts/parsers/parse_diann_report.sh \
+                "${basename}.report.parquet" \
+                "parquet" \
+                "${params.duckdb_path}" \
+                > "${basename}.report.tsv"
+            ;;
+            
+        sqlite)
+            echo "[INFO] Converting SQLite report to TSV..."
+            bash ${moduleDir}/scripts/parsers/parse_diann_report.sh \
+                "${basename}.report.sqlite" \
+                "sqlite" \
+                "${params.duckdb_path}" \
+                > "${basename}.report.tsv"
+            ;;
+            
+        tsv)
+            echo "[INFO] TSV report already generated - no conversion needed"
+            ;;
+            
+        *)
+            echo "[ERROR] Unknown parser_version: ${parser_version}" >&2
+            echo "[ERROR] Valid values: parquet, sqlite, tsv" >&2
+            exit 1
+            ;;
+    esac
     
     echo "[INFO] Report parsing completed: ${basename}.report.tsv"
     """

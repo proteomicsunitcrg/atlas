@@ -14,7 +14,7 @@ workflow diann {
     input_ch                  // <--- Path to .mzML or .raw file
     container_img
     config_file
-    parser_version            // <--- DEPRECATED but kept for compatibility
+    parser_version            // <--- report format (tsv, parquet, sqlite)
     diann_executable
     diann_version_filter
 
@@ -38,6 +38,7 @@ workflow diann {
         meta_ch,
         container_img,
         config_file,
+        parser_version,                             // 
         diann_executable,
         diann_version_filter,
         params.diann_name_speclib_filter,           // <--- legacy filter (NK, MK, etc.)
@@ -58,7 +59,7 @@ workflow diann_bruker {
     input_ch                  // <--- Tuple: (folder_name, base_name, path)
     container_img
     config_file
-    parser_version            // <--- DEPRECATED but kept for compatibility
+    parser_version            // <--- report format (tsv, parquet, sqlite)
     diann_executable
     diann_version_filter
 
@@ -82,6 +83,7 @@ workflow diann_bruker {
         meta_ch,
         container_img,
         config_file,
+        parser_version,                             
         diann_executable,
         diann_version_filter,
         params.diann_name_speclib_filter,
