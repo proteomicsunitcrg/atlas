@@ -16,7 +16,7 @@ process DIANN_RUN {
     path speclib_folder
 
     output:
-    tuple val(meta), path("*report.tsv"), emit: report_tsv
+    tuple val(meta), path("${meta.basename}.report.tsv"), emit: report_tsv
     tuple val(meta), path("*report.stats.tsv"), emit: report_stats_tsv
     tuple val(meta), path("chromatography-data.sqlite"), emit: sqlite_file, optional: true
 
@@ -113,5 +113,43 @@ process DIANN_RUN {
     eval "\${diann_cmd}"
     
     echo "[INFO] DIA-NN completed successfully"
+    
+    # ============================================
+    # STEP 6: Parse DIA-NN report (format auto-detection)
+    # ============================================
+    echo "[INFO] Detecting report format..."
+    
+    # DIA-NN may generate report in different formats:
+    # - TSV (v1.9.2): ${basename}.report.tsv
+    # - Parquet (v2.2.0+): ${basename}.report.parquet
+    # - SQLite (future): ${basename}.report.sqlite
+    
+    if [[ -f "${basename}.report.parquet" ]]; then
+        echo "[INFO] Detected Parquet format - converting to TSV..."
+        bash ${moduleDir}/scripts/parsers/parse_diann_report.sh \
+            "${basename}.report.parquet" \
+            "parquet" \
+            "${params.duckdb_path}" \
+            > "${basename}.report.tsv"
+        
+    elif [[ -f "${basename}.report.sqlite" ]]; then
+        echo "[INFO] Detected SQLite format - converting to TSV..."
+        bash ${moduleDir}/scripts/parsers/parse_diann_report.sh \
+            "${basename}.report.sqlite" \
+            "sqlite" \
+            "${params.duckdb_path}" \
+            > "${basename}.report.tsv"
+        
+    elif [[ -f "${basename}.report.tsv" ]]; then
+        echo "[INFO] Detected TSV format - no conversion needed"
+        # File already exists in correct format
+        
+    else
+        echo "[ERROR] No report file found for ${basename}" >&2
+        echo "[ERROR] Expected one of: ${basename}.report.{tsv,parquet,sqlite}" >&2
+        exit 1
+    fi
+    
+    echo "[INFO] Report parsing completed: ${basename}.report.tsv"
     """
 }
