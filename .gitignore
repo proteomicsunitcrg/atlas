@@ -5,7 +5,6 @@ work
 output
 .Dockerfile.swp
 incoming
-scripts
 incoming_to_process
 incoming_backup
 reports
@@ -18,3 +17,5 @@ conf
 assets
 *config*
 .classpath
+/scripts/
+!modules/**/scripts/
