@@ -85,19 +85,31 @@ workflow {
    log.info "  Requires RAW->mzML conversion: ${requiresConversion}"    
    log.info "  Spectral Library Filter: ${spectralLibraryFilter} (derived from version)" 
 
-   def converted_files_ch                                                            
+   def converted_files_ch
+   def diann_input_ch
+
    if (requiresConversion) {
-       log.info "RAW->mzML conversion enabled"
+       // Mode LEGACY: DIA-NN espera conversió (seqüencial)
+       log.info "RAW->mzML conversion REQUIRED (sequential mode)"
        trfp_diann_pr(rawfile_ch)
        converted_files_ch = trfp_diann_pr.out
-       diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)  // <----- ADD PARAM
+       diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
    } else {
-       log.info "RAW->mzML conversion skipped (DIA-NN processes RAW directly)"
-       converted_files_ch = rawfile_ch.map { fname, bname, fpath -> 
+       // Mode PARAL·LEL: DIA-NN processa RAW directament, conversió en background
+       log.info "RAW->mzML conversion NOT REQUIRED (parallel mode)"
+       log.info "  - DIA-NN processes .raw directly"
+       log.info "  - TRFP conversion runs in parallel for compatibility"
+       
+       // DIA-NN processa fitxer RAW original
+       diann_input_ch = rawfile_ch.map { fname, bname, fpath -> 
            file("${fpath}/${fname}")
        }
-       diann_pr(converted_files_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)  // <----- ADD PARAM
-   }                                                                           
+       diann_pr(diann_input_ch, diannContainer, diannConfigFile, parserVersion, diannExecutable, spectralLibraryFilter)
+       
+       // Conversió en paral·lel per altres eines downstream
+       trfp_diann_pr(rawfile_ch)
+       converted_files_ch = trfp_diann_pr.out
+   }                                                                          
 
   //Report to QSample database:
   insertDIANNFileToQSample_pr(rawfile_ch, converted_files_ch)                   
