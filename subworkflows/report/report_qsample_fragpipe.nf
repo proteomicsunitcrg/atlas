@@ -77,7 +77,7 @@ process insertFragpipeDataToQSample {
         ## Extract quantification data: 
         echo "[INFO] Extracting quantification data..."
         source !{binfolder}/parsing_fragpipe.sh; parse_combined_protein_tsv ./combined_protein.tsv
-        !{binfolder}/quant2json.sh extracted_quant_data_final.tsv $checksum output.json !{num_max_prots} 
+        !{binfolder}/quant2json.sh extracted_quant_data_final.tsv $checksum output.json !{num_max_prots} false 
 
         # Checks: 
         echo $total_base_peak_intenisty > total_base_peak_intenisty

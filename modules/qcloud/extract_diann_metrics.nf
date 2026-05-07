@@ -373,11 +373,19 @@ EOF
         peptide_for_search="$long"  # Read directly from TSV column 2, exactly as-is
         echo "DEBUG: Peptide for DIA-NN matching: $peptide_for_search (EXACT from TSV, no transformations)"
 
-        # Use column number from config for peptide matching              
-        pcol="!{params.diann_sequence_column}" 
-        
-        result=$(awk -F'\\t' -v peptide="$peptide_for_search" -v pcol="$pcol" -v acol="27" -v rcol="30" -v mass_ev_col="42" '
-            BEGIN { found = 0 }
+        # Use column names instead of hardcoded positions (works for both TSV and Parquet)
+        result=$(awk -F'\\t' -v peptide="$peptide_for_search" '
+            NR == 1 {
+                # Parse header to find column positions dynamically
+                for (i = 1; i <= NF; i++) {
+                    if ($i == "Precursor.Id") pcol = i
+                    if ($i == "Precursor.Quantity") acol = i
+                    if ($i == "RT") rcol = i
+                    if ($i == "Mass.Evidence") mass_ev_col = i
+                }
+                print "[COLUMN-DETECT] Precursor.Id=" pcol ", Precursor.Quantity=" acol ", RT=" rcol ", Mass.Evidence=" mass_ev_col > "/dev/stderr"
+                next
+            }
             # Match peptide exactly as provided from TSV (no alternatives, no transformations)
             $pcol == peptide { 
                 area = ($acol == "" || $acol == "0") ? 0 : $acol
@@ -450,7 +458,7 @@ EOF
     echo "QC Summary:"
     echo "  Peptides processed: $(tail -n +2 !{qcloud_tsv} | wc -l)"
     echo "  Using REAL Mass.Evidence values for individual peptide mass accuracy"
-    echo "  RT values converted from minutes to seconds (column 30 * 60)"
+    echo "  RT values converted from minutes to seconds (RT column * 60)"
     
     echo "Final JSON content for new metrics:"
     echo "FWHM scans JSON:"

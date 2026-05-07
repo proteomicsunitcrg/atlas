@@ -1,63 +1,77 @@
 #!/usr/bin/env nextflow
-
 nextflow.enable.dsl=2
 
-include { diann_bruker as diann_bruker_pr } from './subworkflows/dia/dia'
+import DiannConfigLoader
+
+// ----------------------------
+// SUBWORKFLOWS
+// ----------------------------
+include { diann_bruker_qcloud as diann_bruker_pr } from './subworkflows/dia/dia.nf'
 include { insertDIANNBrukerFileToQSample as insertDIANNBrukerFileToQSample_pr; insertDIANNBrukerDataToQSample as insertDIANNBrukerDataToQSample_pr; insertDIANNBrukerQuantToQSample as insertDIANNBrukerQuantToQSample_pr } from './subworkflows/report/report_qsample_diann'
 
-// Check if params.rawfile is defined
+// ----------------------------
+// VALIDATION
+// ----------------------------
 if (!params.rawfile) {
     error "Parameter 'rawfile' is required. Please provide it using --rawfile"
 }
 
-Channel
-  .fromPath(params.rawfile, type: 'dir')
-  .ifEmpty { error "No .d directories found in ${params.rawfile}" }
-  .map { file ->
-       def folder = file.name
-       def base = file.baseName
-       tuple(folder, base, file)
-  }
-  .set { rawfile_ch }
+// ----------------------------
+// INPUT CHANNEL
+// ----------------------------
+// Create input channel as Path (same as qcloud_diann.nf)
+def input_ch = channel.fromPath(params.rawfile, checkIfExists: true, type: 'dir')
+    .ifEmpty { error "No .d directories found in ${params.rawfile}" }
 
-Channel
-  .from(params.var_modif)
-  .set { var_modif_ch }
+// ----------------------------
+// PATTERN EXTRACTION
+// ----------------------------
+// Extract pattern from filename for DIA-NN config (BK in this case)
+def filename = new File(params.rawfile).getName()
+def afterDigits = filename.replaceAll(/^\d+/, '')
+def pattern = (afterDigits =~ /^([A-Z]{2,3})/)[0][1]
 
-Channel
-  .from(params.fragment_mass_tolerance)
-  .set { fragment_mass_tolerance_ch }
+log.info "Detected pattern for DIA-NN config: '${pattern}'"
 
-Channel
-  .from(params.fragment_error_units)
-  .set { fragment_error_units_ch }
+// ----------------------------
+// DIA-NN CONFIG LOADING
+// ----------------------------
+// Load DIA-NN method config using pattern (same as qcloud_diann.nf)
+def diannConfigPath = params.diann_config ?: "${params.assets}/diann_methods_config.yaml"
+def diannMethodConfig = DiannConfigLoader.loadConfig(diannConfigPath, pattern)
 
-Channel
-  .from(params.precursor_mass_tolerance)
-  .set { precursor_mass_tolerance }
+def diannVersion = DiannConfigLoader.getVersion(diannMethodConfig)
+def diannContainer = DiannConfigLoader.getContainer(diannMethodConfig)
+def diannConfigFile = "${params.assets}/${DiannConfigLoader.getConfigFile(diannMethodConfig)}"
+def parserVersion = DiannConfigLoader.getParserVersion(diannMethodConfig)
+def diannExecutable = DiannConfigLoader.getExecutable(diannMethodConfig)
+def spectralLibraryFilter = DiannConfigLoader.getSpectralLibraryFilter(diannMethodConfig)
 
-Channel
-  .from(params.missed_cleavages)
-  .set { missed_cleavages }
+log.info "DIA-NN Config loaded for pattern '${pattern}':"
+log.info "  Version: ${diannVersion}"
+log.info "  Container: ${diannContainer}"
+log.info "  Config: ${diannConfigFile}"
+log.info "  Executable: ${diannExecutable}"
+log.info "  Spectral library filter: ${spectralLibraryFilter}"
 
-Channel
-  .from(params.instrument_folder)
-  .set { instrument_folder }
-
-Channel
-  .from(params.output_folder)
-  .set { output_folder }
-
-Channel
-  .from(params.output_folder)
-  .set { output_folder_ch }
-
+// ----------------------------
+// WORKFLOW
+// ----------------------------
 workflow {
 
-   diann_bruker_pr(rawfile_ch) 
+   // Call Bruker workflow with same signature as qcloud_diann.nf
+   diann_bruker_pr(
+       input_ch,
+       diannContainer,
+       diannConfigFile,
+       parserVersion,
+       diannExecutable,
+       spectralLibraryFilter
+   )
 
+   // Insert results into QSample database
    insertDIANNBrukerFileToQSample_pr(
-        diann_bruker_pr.out[0],
+        diann_bruker_pr.out.report_tsv,
         diann_bruker_pr.out.sqlite_file
     )   
 

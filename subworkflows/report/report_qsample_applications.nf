@@ -106,7 +106,7 @@ process insertQuantToQSample {
     shell:
     '''
     checksum=$(cat !{checksum})
-    !{binfolder}/quant2json.sh !{csvfile} $checksum output.json !{num_max_prots}
+    !{binfolder}/quant2json.sh !{csvfile} $checksum output.json !{num_max_prots} false
     access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
     curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_quant} -H "Content-Type: application/json" --data '@output.json'
     '''

@@ -27,25 +27,26 @@ get_mit(){
   datamash median 1 < $curr_dir/$basename.it.num
 }
 
-# Function: Convert scientific notation to readable format using sed
-# Input: 
-#   $1 - numeric value in scientific notation
-# Output:
-#   Echoes the value with exponent as *10^
 convert_scientific_notation(){
   value=$1
-  echo $value | sed 's/[eE]+*/\*10\^/'
+  convert_to_e_notation "$value"
 }
 
-# Function: Convert scientific notation to E-notation format without leading zeros
-# Input: 
-#   $1 - numeric value in scientific notation (e.g., "2.2683e+08")
-# Output:
-#   Echoes the value in E-notation format without leading zeros (e.g., "2.2683E8")
 convert_to_e_notation(){
   value=$1
-  # Convert e/E to uppercase E, remove + sign, and remove leading zeros from exponent
-  echo $value | sed 's/[eE]+\{0,1\}\([0-9]\)/E\1/g; s/[eE]-0*/E-/g; s/E0*\([1-9]\)/E\1/g; s/E0*$/E0/g'
+
+  if [ -z "$value" ] || [ "$value" = "null" ]; then
+    echo "0"
+    return 1
+  fi
+
+  awk -v val="$value" 'BEGIN {
+    if (val == 0) {
+      print "0"
+    } else {
+      printf "%.6E", val
+    }
+  }' | sed 's/E+0*/E/; s/E-0*/E-/'
 }
 
 # Function: Convert CSV file to JSON format for QC analysis
