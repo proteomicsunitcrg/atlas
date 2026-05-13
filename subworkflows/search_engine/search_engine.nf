@@ -96,11 +96,11 @@ process MascotAdapterOnline {
     organism_sh=$(cat organism)
     
     # Determine enzyme based on filename pattern
-    # For histone patterns (MH, MZ, or QCHL), use Arg-C; otherwise use default
+    # For histone patterns (MH, MZ, or QCHE), use Arg-C; otherwise use default
     filename_sh=!{filename}
-    if [[ $filename_sh =~ (MH|MZ|QCHL) ]]; then
+    if [[ $filename_sh =~ (MH|MZ|QCHE) ]]; then
         enzyme_param='Arg-C'
-        echo "[INFO] Detected histone pattern (MH/MZ/QCHL) in filename: $filename_sh - using Arg-C enzyme"
+        echo "[INFO] Detected histone pattern (MH/MZ/QCHE) in filename: $filename_sh - using Arg-C enzyme"
     else
         enzyme_param=!{enzyme}
         echo "[INFO] Using default enzyme: $enzyme_param"
