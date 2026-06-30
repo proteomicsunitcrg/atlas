@@ -6,7 +6,7 @@ import DiannConfigLoader
 
 include { ThermoRawFileParserDiann as trfp_diann_pr } from './subworkflows/conversion/conversion'
 include { diann as diann_pr } from './subworkflows/dia/dia'
-include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr; insertDiannPolymerContToQSample as insertDiannPolymerContToQSample_pr} from './subworkflows/report/report_qsample_diann'
+include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr; insertDiannPolymerContToQSample as insertDiannPolymerContToQSample_pr; insertDIANNModificationsToQSample as insertDIANNModificationsToQSample_pr } from './subworkflows/report/report_qsample_diann'
 include { output_folder_diann as output_folder_diann_pr} from './subworkflows/report/report_output_folder'
 
 Channel
@@ -50,6 +50,10 @@ Channel
 Channel
   .from(params.output_folder)
   .set { output_folder_ch }
+
+Channel
+  .fromPath(params.atlas_ptm_list)
+  .set { atlas_ptm_list_ch }
 
 workflow {
  
@@ -115,6 +119,7 @@ workflow {
   insertDIANNFileToQSample_pr(rawfile_ch, converted_files_ch)                   
   insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out.report_tsv, converted_files_ch)  
   insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out.report_tsv)
+  insertDIANNModificationsToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out.modification_metrics_tsv, atlas_ptm_list_ch)
   //Report to output folder (if the field output_folder was informed at methods CSV file):
   output_folder_diann_pr(diann_pr.out.report_tsv, converted_files_ch, output_folder_ch)        
   

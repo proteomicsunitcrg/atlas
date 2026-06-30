@@ -2,6 +2,7 @@ nextflow.enable.dsl=2
 
 // <--- Import del process unificat
 include { DIANN_RUN } from '../../modules/diann/diann_core'
+include { EXTRACT_DIANN_MODIFICATION_METRICS } from '../../modules/diann/extract_modification_metrics'
 
 // <--- Import del parser
 import DiannInputParser
@@ -46,9 +47,17 @@ workflow diann {
         params.diann_speclib_folder
     )
 
+    EXTRACT_DIANN_MODIFICATION_METRICS(
+        DIANN_RUN.out.report_parquet,
+        config_file
+    )
+
     emit:
     report_tsv = DIANN_RUN.out.report_tsv.map { meta, file -> file }         // <--- Remove meta
     report_stats_tsv = DIANN_RUN.out.report_stats_tsv.map { meta, file -> file }
+    report_parquet = DIANN_RUN.out.report_parquet.map { meta, file -> file }
+    site_report_parquet = DIANN_RUN.out.site_report_parquet.map { meta, file -> file }
+    modification_metrics_tsv = EXTRACT_DIANN_MODIFICATION_METRICS.out.metrics_tsv.map { meta, file -> file }
 }
 
 // =========================================
@@ -91,9 +100,17 @@ workflow diann_bruker {
         params.diann_speclib_folder
     )
 
+    EXTRACT_DIANN_MODIFICATION_METRICS(
+        DIANN_RUN.out.report_parquet,
+        config_file
+    )
+
     emit:
     report_tsv = DIANN_RUN.out.report_tsv.map { meta, file -> file }
     report_stats_tsv = DIANN_RUN.out.report_stats_tsv.map { meta, file -> file }
+    report_parquet = DIANN_RUN.out.report_parquet.map { meta, file -> file }
+    site_report_parquet = DIANN_RUN.out.site_report_parquet.map { meta, file -> file }
+    modification_metrics_tsv = EXTRACT_DIANN_MODIFICATION_METRICS.out.metrics_tsv.map { meta, file -> file }
     sqlite_file = DIANN_RUN.out.sqlite_file.map { meta, file -> file }
     tuple_output = DIANN_RUN.out.report_tsv.map { meta, file -> tuple(meta.basename, file) }  // <--- For QSample compatibility
 }
@@ -154,5 +171,6 @@ workflow diann_bruker_qcloud {
     emit:
     report_tsv = diann_bruker.out.report_tsv
     report_stats_tsv = diann_bruker.out.report_stats_tsv
+    modification_metrics_tsv = diann_bruker.out.modification_metrics_tsv
     sqlite_file = diann_bruker.out.sqlite_file
 }
