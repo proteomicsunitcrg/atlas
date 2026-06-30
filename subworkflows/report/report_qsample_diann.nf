@@ -320,3 +320,74 @@ process insertDiannPolymerContToQSample {
 	
      '''
 }
+
+
+process insertDIANNModificationsToQSample {
+     tag { "${modification_metrics_tsv}" }
+     label 'clitools'
+
+     input:
+     file(checksum)
+     file(modification_metrics_tsv)
+     file(atlas_ptm_list)
+
+     shell:
+     '''
+     checksum=$(cat !{checksum})
+
+     access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+
+     awk -F '\t' '
+       BEGIN { OFS="\t" }
+       FNR == NR {
+         if (FNR > 1) {
+           key = $1 "|" $2 "|" $3
+           ptm_name[key] = $4
+         }
+         next
+       }
+       FNR > 1 && $1 == "site_count" {
+         key = $1 "|" $2 "|" $3
+         if (key in ptm_name) {
+           print ptm_name[key], $5
+         }
+       }
+     ' !{atlas_ptm_list} !{modification_metrics_tsv} > qsample_modifications.tsv
+
+     peptide_hits=$(awk -F '\t' '$1 == "peptide_hits" { print $5 }' !{modification_metrics_tsv})
+     peptide_modified=$(awk -F '\t' '
+       BEGIN { total = 0 }
+       FNR == NR {
+         if (FNR > 1 && $1 == "modified_peptidoforms") {
+           key = $1 "|" $2 "|" $3
+           mapped[key] = 1
+         }
+         next
+       }
+       FNR > 1 && $1 == "modified_peptidoforms" {
+         key = $1 "|" $2 "|" $3
+         if (key in mapped) {
+           total += $5
+         }
+       }
+       END {
+         if (total > 0) {
+           print total
+         }
+       }
+     ' !{atlas_ptm_list} !{modification_metrics_tsv})
+
+     if [[ -n "$peptide_hits" && -n "$peptide_modified" ]]; then
+       echo "[INFO] Insert DIA-NN peptide fileinfo: peptideHits=${peptide_hits}, peptideModified=${peptide_modified}"
+       curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$peptide_hits'", "peptideModified": "'$peptide_modified'"}}'
+     else
+       echo "[INFO] DIA-NN peptide fileinfo not inserted: peptideHits=${peptide_hits:-NA}, peptideModified=${peptide_modified:-NA}"
+     fi
+
+     while IFS=$'\t' read -r modification_name modification_value
+     do
+       echo "[INFO] Insert DIA-NN modification: ${modification_name}=${modification_value}"
+       curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_modif} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"modification": {"name": "'$modification_name'"},"value": "'$modification_value'"}]}'
+     done < qsample_modifications.tsv
+     '''
+}

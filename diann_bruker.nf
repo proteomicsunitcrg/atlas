@@ -7,7 +7,7 @@ import DiannConfigLoader
 // SUBWORKFLOWS
 // ----------------------------
 include { diann_bruker_qcloud as diann_bruker_pr } from './subworkflows/dia/dia.nf'
-include { insertDIANNBrukerFileToQSample as insertDIANNBrukerFileToQSample_pr; insertDIANNBrukerDataToQSample as insertDIANNBrukerDataToQSample_pr; insertDIANNBrukerQuantToQSample as insertDIANNBrukerQuantToQSample_pr } from './subworkflows/report/report_qsample_diann'
+include { insertDIANNBrukerFileToQSample as insertDIANNBrukerFileToQSample_pr; insertDIANNBrukerDataToQSample as insertDIANNBrukerDataToQSample_pr; insertDIANNBrukerQuantToQSample as insertDIANNBrukerQuantToQSample_pr; insertDIANNModificationsToQSample as insertDIANNModificationsToQSample_pr } from './subworkflows/report/report_qsample_diann'
 
 // ----------------------------
 // VALIDATION
@@ -22,6 +22,8 @@ if (!params.rawfile) {
 // Create input channel as Path (same as qcloud_diann.nf)
 def input_ch = channel.fromPath(params.rawfile, checkIfExists: true, type: 'dir')
     .ifEmpty { error "No .d directories found in ${params.rawfile}" }
+
+def atlas_ptm_list_ch = channel.fromPath(params.atlas_ptm_list, checkIfExists: true)
 
 // ----------------------------
 // PATTERN EXTRACTION
@@ -83,6 +85,12 @@ workflow {
    insertDIANNBrukerQuantToQSample_pr(
         insertDIANNBrukerFileToQSample_pr.out.checksum,
         insertDIANNBrukerFileToQSample_pr.out.tsv
+   )
+
+   insertDIANNModificationsToQSample_pr(
+        insertDIANNBrukerFileToQSample_pr.out.checksum,
+        diann_bruker_pr.out.modification_metrics_tsv,
+        atlas_ptm_list_ch
    )
 
 }

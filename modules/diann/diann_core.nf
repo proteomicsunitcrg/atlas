@@ -19,6 +19,11 @@ process DIANN_RUN {
     output:
     tuple val(meta), path("${meta.basename}.report.tsv"), emit: report_tsv
     tuple val(meta), path("*report.stats.tsv"), emit: report_stats_tsv
+
+    // Native DIA-NN outputs
+    tuple val(meta), path("${meta.basename}.report.parquet"), emit: report_parquet, optional: true
+    tuple val(meta), path("${meta.basename}.report.site_report.parquet"), emit: site_report_parquet, optional: true
+
     tuple val(meta), path("chromatography-data.sqlite"), emit: sqlite_file, optional: true
 
     script:
