@@ -7,6 +7,9 @@ url_api_insert_data        = params.url_api_insert_data
 url_api_insert_quant       = params.url_api_insert_quant
 url_api_fileinfo           = params.url_api_fileinfo
 url_api_insert_modif       = params.url_api_insert_modif
+url_api_insert_request_data = params.url_api_insert_request_data
+total_numbers_param_id = params.total_numbers_param_id
+ptm_enrichment_context_source_api_key = params.ptm_enrichment_context_source_api_key
 num_max_prots              = params.num_max_prots
 api_key_qc_params          = params.api_key_qc_params
 
@@ -380,6 +383,19 @@ process insertDIANNModificationsToQSample {
      if [[ -n "$peptide_hits" && -n "$peptide_modified" ]]; then
        echo "[INFO] Insert DIA-NN peptide fileinfo: peptideHits=${peptide_hits}, peptideModified=${peptide_modified}"
        curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_fileinfo} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"info": {"peptideHits": "'$peptide_hits'", "peptideModified": "'$peptide_modified'"}}'
+
+       ptm_enrichment=$(awk -v hits="$peptide_hits" -v modified="$peptide_modified" 'BEGIN {
+         if (hits > 0) {
+           printf "%.2f", (modified / hits) * 100
+         }
+       }')
+
+       if [[ -n "$ptm_enrichment" ]]; then
+         echo "[INFO] Insert DIA-NN PTM enrichment: ${ptm_enrichment}%"
+         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_request_data} -H "Content-Type: application/json" --data '{"file":{"checksum":"'$checksum'"},"data":[{"parameter":{"id":'!{total_numbers_param_id}'},"values":[{"contextSourceApiKey":"'!{ptm_enrichment_context_source_api_key}'","value":'$ptm_enrichment'}]}]}'
+       else
+         echo "[INFO] DIA-NN PTM enrichment not inserted: invalid peptideHits=${peptide_hits:-NA}, peptideModified=${peptide_modified:-NA}"
+       fi
      else
        echo "[INFO] DIA-NN peptide fileinfo not inserted: peptideHits=${peptide_hits:-NA}, peptideModified=${peptide_modified:-NA}"
      fi
