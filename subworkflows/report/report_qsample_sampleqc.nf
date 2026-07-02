@@ -4,6 +4,8 @@ url_api_user               = params.url_api_user
 url_api_pass               = params.url_api_pass
 url_api_insert_wetlab_file = params.url_api_insert_wetlab_file
 url_api_insert_wetlab_data = params.url_api_insert_wetlab_data
+total_numbers_param_id = params.total_numbers_param_id
+ptm_enrichment_context_source_api_key = params.ptm_enrichment_context_source_api_key
 
 //Bash scripts folder:
 binfolder                      = "$baseDir/bin"
@@ -115,5 +117,22 @@ process insertSampleQCModificationsToQsample {
         num_peptides_sites_modif=$(source !{binfolder}/parsing.sh; get_num_all_modified_peptidoforms !{protinf_file} "$pattern")
         echo "[INFO] num_peptides_sites_modif: $num_peptides_sites_modif"
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "25","value": "'$num_peptides_sites_modif'"}]}]}'
+
+        # PTM enrichment %: total peptidoforms vs modified peptidoforms
+        num_peptd_total=$(source !{binfolder}/parsing.sh; get_num_peptidoforms !{protinf_file})
+        echo "[INFO] num_peptd_total: $num_peptd_total"
+
+        ptm_enrichment=$(awk -v hits="$num_peptd_total" -v modified="$num_peptides_sites_modif" 'BEGIN {
+          if (hits > 0) {
+            printf "%.2f", (modified / hits) * 100
+          }
+        }')
+
+        if [[ -n "$ptm_enrichment" ]]; then
+          echo "[INFO] Insert SampleQC PTM enrichment: ${ptm_enrichment}%"
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file":{"checksum":"'$checksum'"},"data":[{"parameter":{"id":'!{total_numbers_param_id}'},"values":[{"contextSourceApiKey":"'!{ptm_enrichment_context_source_api_key}'","value":'$ptm_enrichment'}]}]}'
+        else
+          echo "[INFO] SampleQC PTM enrichment not inserted: invalid num_peptd_total=${num_peptd_total:-NA}"
+        fi
         '''
 }
