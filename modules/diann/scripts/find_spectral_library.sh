@@ -11,31 +11,46 @@ legacy_filter="$4"       # e.g., "NK" or "MK"
 
 existing_lib=""
 
-# <--- Strategy 1: New naming convention (diann_X_Y_Z)
-if [[ "$version_filter" =~ ^[0-9]{3}$ ]]; then
-    v_normalized="${version_filter:0:1}_${version_filter:1:1}_${version_filter:2:1}"
-    
-    # Try .speclib first, then .parquet
-    for ext in speclib parquet; do
-        for lib in "${speclib_folder}"/*"${fasta_basename}"*"diann_${v_normalized}"*"${legacy_filter}"*.${ext}; do
-            if [[ -e "$lib" ]]; then
-                existing_lib="$lib"
-                break 2
-            fi
-        done
-    done
+# Fundamental rule: a spectral library is only ever loaded from the folder for
+# the exact DIA-NN version running the search, i.e. <speclib_folder>/diann_X_Y_Z/
+# (e.g. atlas-libs/diann_2_3_2/). No cross-version fallback, no top-level scan:
+# the on-disk .speclib/.parquet format is tied to the DIA-NN version that wrote
+# it (DIA-NN 1.9.2 cannot load a library produced by 2.3.2 -- "version 10 of
+# the .speclib format is not supported"), so guessing across versions is unsafe.
+# If nothing exists for this version, the caller regenerates from FASTA.
+
+# Within that version folder, match by organism only, ignoring the FASTA's
+# year/date suffix (e.g. "sp_human_2026_01" -> "sp_human",
+# "sp_bovine_2014a" -> "sp_bovine"): the shared FASTA's year drifts
+# independently of when each per-version library was last (re)generated, and
+# the version folder already guarantees format compatibility -- there is
+# currently only one library per organism per version folder, so matching on
+# organism alone is safe.
+organism="$fasta_basename"
+if [[ "$fasta_basename" =~ ^(.*)_[0-9]{4}.*$ ]]; then
+    organism="${BASH_REMATCH[1]}"
 fi
 
-# <--- Strategy 2: Legacy naming (fallback)
-if [[ -z "$existing_lib" ]]; then
-    for ext in speclib parquet; do
-        for lib in "${speclib_folder}"/*"${fasta_basename}"*"${legacy_filter}"*.${ext}; do
-            if [[ -e "$lib" ]]; then
+if [[ "$version_filter" =~ ^[0-9]{3}$ ]]; then
+    v_normalized="${version_filter:0:1}_${version_filter:1:1}_${version_filter:2:1}"
+    version_folder="${speclib_folder}/diann_${v_normalized}"
+
+    if [[ -d "$version_folder" ]]; then
+        # Try .speclib first, then .parquet
+        for ext in speclib parquet; do
+            while IFS= read -r -d '' lib; do
                 existing_lib="$lib"
-                break 2
-            fi
+                break
+            done < <(find -L "${version_folder}" -maxdepth 1 -type f -name "*.${ext}" -print0 | \
+                while IFS= read -r -d '' f; do
+                    base="$(basename "$f")"
+                    if [[ "$base" == *"${organism}"*"${legacy_filter}"* ]]; then
+                        printf '%s\0' "$f"
+                    fi
+                done)
+            [[ -n "$existing_lib" ]] && break
         done
-    done
+    fi
 fi
 
 # <--- Return result (may be empty)
