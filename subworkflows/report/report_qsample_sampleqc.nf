@@ -6,6 +6,7 @@ url_api_insert_wetlab_file = params.url_api_insert_wetlab_file
 url_api_insert_wetlab_data = params.url_api_insert_wetlab_data
 total_numbers_param_id = params.total_numbers_param_id
 ptm_enrichment_context_source_api_key = params.ptm_enrichment_context_source_api_key
+sequence_coverage_context_source_api_key = params.sequence_coverage_context_source_api_key
 
 //Bash scripts folder:
 binfolder                      = "$baseDir/bin"
@@ -69,6 +70,40 @@ process insertSampleQCDataToQSample {
         echo "[INFO] num_prots: "$num_prots
         echo "[INFO] num_peptd: "$num_peptd
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "1","value": "'$num_prots'"},{"contextSource": "2","value": "'$num_peptd'"}]}]}'
+        '''
+}
+
+process insertSampleQCSequenceCoverageToQSample {
+
+        tag { "${protinf_file}" }
+        label 'clitools'
+
+        input:
+        tuple val(filename), val(basename), val(path)
+        file(checksum)
+        file(protinf_file)
+        val sampleqc_api_key
+
+        when:
+        filename =~ /QCGE/
+
+        shell:
+        '''
+        checksum=$(cat !{checksum})
+
+        # Access token:
+        access_token=$(curl -s -X POST !{url_api_signin} -H "Content-Type: application/json" --data '{"username":"'!{url_api_user}'","password":"'!{url_api_pass}'"}' | grep -Po '"accessToken": *\\K"[^"]*"' | sed 's/"//g')
+        echo "[INFO] Access token: "$access_token
+
+        # BSA sequence coverage:
+        coverage=$(source !{binfolder}/parsing.sh; get_protein_coverage_bsa !{protinf_file})
+        echo "[INFO] BSA sequence coverage: ${coverage}%"
+
+        if [[ -n "$coverage" ]]; then
+          curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_wetlab_data} -H "Content-Type: application/json" --data '{"file":{"checksum":"'$checksum'"},"data":[{"parameter":{"id":'!{total_numbers_param_id}'},"values":[{"contextSourceApiKey":"'!{sequence_coverage_context_source_api_key}'","value":'$coverage'}]}]}'
+        else
+          echo "[INFO] Sequence coverage not inserted: BSA protein hit not found in !{protinf_file}"
+        fi
         '''
 }
 
