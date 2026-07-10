@@ -8,7 +8,7 @@ include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conve
 include { create_decoy as cdecoy_pr; CometAdapter as comet_adapter_pr; MascotAdapterOnline as mao_pr } from './subworkflows/search_engine/search_engine'
 include { PeptideIndexer as pepidx_pr; FalseDiscoveryRate as fdr_pr; IDFilter_aaa as idfilter_aaa_pr; IDFilter_score as idfilter_score_pr; FileInfo as fileinfo_pr; ProteinInference as protinf_pr } from './subworkflows/identification/identification'
 include { FeatureFinderMultiplex as ffm_pr; IDMapper as idmapper_pr; ProteinQuantifier as protquant_pr } from './subworkflows/quantification/quantification'
-include { insertSampleQCFileToQSample as insertSampleQCFileToQSample_pr; insertSampleQCDataToQSample as insertSampleQCDataToQSample_pr; insertSampleQCModificationsToQsample as insertSampleQCModificationsToQsample_pr } from './subworkflows/report/report_qsample_sampleqc'
+include { insertSampleQCFileToQSample as insertSampleQCFileToQSample_pr; insertSampleQCDataToQSample as insertSampleQCDataToQSample_pr; insertSampleQCModificationsToQsample as insertSampleQCModificationsToQsample_pr; insertSampleQCSequenceCoverageToQSample as insertSampleQCSequenceCoverageToQSample_pr } from './subworkflows/report/report_qsample_sampleqc'
 include { insertSampleQCHistonesToQSample as insertSampleQCHistonesToQSample_pr } from './subworkflows/lab/report_qsample_sampleqc_lab'
 
 Channel
@@ -77,6 +77,7 @@ workflow {
    insertSampleQCFileToQSample_pr(rawfile_ch,trfp_pr.out,sampleqc_api_key_ch)
    insertSampleQCDataToQSample_pr(rawfile_ch,insertSampleQCFileToQSample_pr.out,protinf_pr.out,sampleqc_api_key_ch)
    insertSampleQCModificationsToQsample_pr(rawfile_ch,insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,sites_modif_ch,sampleqc_api_key_ch)
+   insertSampleQCSequenceCoverageToQSample_pr(rawfile_ch,insertSampleQCFileToQSample_pr.out,protinf_pr.out,sampleqc_api_key_ch)
 
    //Lab:
    insertSampleQCHistonesToQSample_pr(insertSampleQCFileToQSample_pr.out,fileinfo_pr.out,idmapper_pr.out,protinf_pr.out)

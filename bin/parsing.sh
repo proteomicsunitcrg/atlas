@@ -16,6 +16,10 @@ get_num_all_modified_peptidoforms(){
  xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | grep -E $2 | wc -l
 }
 
+get_protein_coverage_bsa(){
+ grep -Pio 'accession="sp\|P02769\|ALBU_BOVIN"[^>]*coverage="\K[0-9.]*' $1
+}
+
 get_num_charges(){
  xmllint --xpath '//*[local-name()="PeptideIdentification"]/*[local-name()="PeptideHit"][contains(@charge,"'$2'")]' $1 | grep -Pio '.*sequence="\K[^"]*' | sort -u | wc -l
 }
