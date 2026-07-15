@@ -679,6 +679,20 @@ if [ -n "$FILE_TO_PROCESS" ]; then
         echo "[WARNING] If this is expected, simply ignore this message."
         echo "[WARNING] ───────────────────────────────────────────────────────────────"
         echo ""
+
+        # Move the unmatched file out of ORIGIN_FOLDER so it stops being
+        # re-selected as "most recent" on every subsequent run — otherwise
+        # it blocks any later file from ever being processed.
+        if [ "$PROD_MODE" = "true" ]; then
+            UNMATCHED_FOLDER="${ATLAS_RUNS_FOLDER}/unmatched"
+            mkdir -p "$UNMATCHED_FOLDER"
+            UNMATCHED_DEST="${UNMATCHED_FOLDER}/$(date '+%Y%m%d%H%M%S')_${FILE_BASENAME}"
+            if mv "$FILE_TO_PROCESS" "$UNMATCHED_DEST"; then
+                echo "[INFO] Unmatched file moved to $UNMATCHED_DEST"
+            else
+                echo "[ERROR] Could not move unmatched file $FILE_TO_PROCESS to $UNMATCHED_FOLDER"
+            fi
+        fi
     fi
 
 else
