@@ -52,11 +52,21 @@ process DIANN_RUN {
     # ============================================
     # STEP 2: Find spectral library
     # ============================================
+    # Libraries built with extra variable modifications (e.g. phospho STY for
+    # the NY pattern) must never be matched against by organism+instrument
+    # alone -- they live in their own "phospho" subfolder so a config without
+    # that var-mod can't silently pick one up, and vice versa.
+    speclib_subfolder=""
+    if grep -q -- "--var-mod UniMod:21," "${config_file}"; then
+        speclib_subfolder="phospho"
+    fi
+
     spectral_lib=\$(bash ${moduleDir}/scripts/find_spectral_library.sh \
         "${speclib_folder}" \
         "\${fasta_basename}" \
         "${diann_version_filter}" \
-        "${legacy_filter}")
+        "${legacy_filter}" \
+        "\${speclib_subfolder}")
     
     if [[ -n "\${spectral_lib}" ]]; then
         echo "[INFO] Found existing spectral library: \${spectral_lib}"

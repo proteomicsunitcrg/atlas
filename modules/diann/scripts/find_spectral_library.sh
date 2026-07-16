@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: find_spectral_library.sh <speclib_folder> <fasta_basename> <version_filter> <legacy_filter>
+# Usage: find_spectral_library.sh <speclib_folder> <fasta_basename> <version_filter> <legacy_filter> [subfolder]
 # Returns: Path to spectral library or empty string
 
 set -euo pipefail
@@ -8,6 +8,10 @@ speclib_folder="$1"
 fasta_basename="$2"      # e.g., "uniprot_human_reviewed"
 version_filter="$3"      # e.g., "232" (from DIA-NN 2.3.2)
 legacy_filter="$4"       # e.g., "NK" or "MK"
+subfolder="${5:-}"       # e.g., "phospho" -- libraries built with extra var-mods
+                         # (like NY's phospho search) live in their own subfolder
+                         # so organism+instrument matching never picks a library
+                         # built for a different variable-modification set.
 
 existing_lib=""
 
@@ -34,6 +38,10 @@ fi
 if [[ "$version_filter" =~ ^[0-9]{3}$ ]]; then
     v_normalized="${version_filter:0:1}_${version_filter:1:1}_${version_filter:2:1}"
     version_folder="${speclib_folder}/diann_${v_normalized}"
+
+    if [[ -n "$subfolder" ]]; then
+        version_folder="${version_folder}/${subfolder}"
+    fi
 
     if [[ -d "$version_folder" ]]; then
         # Try .speclib first, then .parquet
