@@ -40,6 +40,15 @@ SQL
 
 printf "peptide_hits\tNA\tNA\tNA\t%s\t%s\n" "$peptide_hits" "$QVALUE_CUTOFF" >> "$OUTPUT_FILE"
 
+total_area=$("$DUCKDB_BIN" -noheader -csv <<SQL
+SELECT COALESCE(sum("Precursor.Quantity"), 0)
+FROM read_parquet('$REPORT_FILE')
+WHERE "Q.Value" <= CAST('$QVALUE_CUTOFF' AS DOUBLE);
+SQL
+)
+
+printf "total_area\tNA\tNA\tNA\t%s\t%s\n" "$total_area" "$QVALUE_CUTOFF" >> "$OUTPUT_FILE"
+
 while read -r unimod residues; do
     [[ -z "$unimod" || -z "$residues" ]] && continue
 
@@ -82,6 +91,17 @@ SQL
 
     printf "modified_peptidoforms\t%s\tNA\t%s\t%s\t%s\n" \
         "$unimod" "$residues" "$modified_peptidoforms" "$QVALUE_CUTOFF"
+
+    modified_area=$("$DUCKDB_BIN" -noheader -csv <<SQL
+SELECT COALESCE(sum("Precursor.Quantity"), 0)
+FROM read_parquet('$REPORT_FILE')
+WHERE "Q.Value" <= CAST('$QVALUE_CUTOFF' AS DOUBLE)
+  AND regexp_matches("Modified.Sequence", '$combined_pattern');
+SQL
+)
+
+    printf "modified_area\t%s\tNA\t%s\t%s\t%s\n" \
+        "$unimod" "$residues" "$modified_area" "$QVALUE_CUTOFF"
 
 done < <(
     awk '
