@@ -10,6 +10,7 @@ url_api_insert_modif       = params.url_api_insert_modif
 url_api_insert_request_data = params.url_api_insert_request_data
 total_numbers_param_id = params.total_numbers_param_id
 ptm_enrichment_context_source_api_key = params.ptm_enrichment_context_source_api_key
+ptm_enrichment_area_context_source_api_key = params.ptm_enrichment_area_context_source_api_key
 num_max_prots              = params.num_max_prots
 api_key_qc_params          = params.api_key_qc_params
 
@@ -398,6 +399,46 @@ process insertDIANNModificationsToQSample {
        fi
      else
        echo "[INFO] DIA-NN peptide fileinfo not inserted: peptideHits=${peptide_hits:-NA}, peptideModified=${peptide_modified:-NA}"
+     fi
+
+     total_area=$(awk -F '\t' '$1 == "total_area" { print $5 }' !{modification_metrics_tsv})
+     modified_area=$(awk -F '\t' '
+       BEGIN { total = 0 }
+       FNR == NR {
+         if (FNR > 1 && $1 == "modified_peptidoforms") {
+           key = $1 "|" $2 "|" $3
+           mapped[key] = 1
+         }
+         next
+       }
+       FNR > 1 && $1 == "modified_area" {
+         key = "modified_peptidoforms|" $2 "|" $3
+         if (key in mapped) {
+           total += $5
+         }
+       }
+       END {
+         if (total > 0) {
+           print total
+         }
+       }
+     ' !{atlas_ptm_list} !{modification_metrics_tsv})
+
+     if [[ -n "$total_area" && -n "$modified_area" ]]; then
+       ptm_enrichment_area=$(awk -v total="$total_area" -v modified="$modified_area" 'BEGIN {
+         if (total > 0) {
+           printf "%.2f", (modified / total) * 100
+         }
+       }')
+
+       if [[ -n "$ptm_enrichment_area" ]]; then
+         echo "[INFO] Insert DIA-NN PTM enrichment (area-based): ${ptm_enrichment_area}%"
+         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_request_data} -H "Content-Type: application/json" --data '{"file":{"checksum":"'$checksum'"},"data":[{"parameter":{"id":'!{total_numbers_param_id}'},"values":[{"contextSourceApiKey":"'!{ptm_enrichment_area_context_source_api_key}'","value":'$ptm_enrichment_area'}]}]}'
+       else
+         echo "[INFO] DIA-NN PTM enrichment (area-based) not inserted: invalid totalArea=${total_area:-NA}"
+       fi
+     else
+       echo "[INFO] DIA-NN area-based PTM enrichment not inserted: totalArea=${total_area:-NA}, modifiedArea=${modified_area:-NA}"
      fi
 
      while IFS=$'\t' read -r modification_name modification_value
