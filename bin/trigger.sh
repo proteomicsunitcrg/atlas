@@ -561,6 +561,26 @@ else
     echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
 fi
 
+# Guard against picking up a .raw file still being acquired/copied: legit Thermo
+# QC raw files are consistently >100MB, and a size that keeps changing means the
+# instrument/QCrawler hasn't finished writing it yet (see ThermoRawFileParser
+# "still being acquired" / "Error opening RawFileLoader" failures)
+if [ -n "$FILE_TO_PROCESS" ] && [ -f "$FILE_TO_PROCESS" ]; then
+    MIN_SIZE_BYTES=$((100*1024*1024))
+    FILE_SIZE_1=$(stat -c%s "$FILE_TO_PROCESS" 2>/dev/null || echo 0)
+    if [ "$FILE_SIZE_1" -lt "$MIN_SIZE_BYTES" ]; then
+        echo "[WARNING] $FILE_TO_PROCESS is ${FILE_SIZE_1} bytes (<100MB) - suspected still being acquired/copied. Skipping this cycle, will retry later."
+        FILE_TO_PROCESS=""
+    else
+        sleep 5
+        FILE_SIZE_2=$(stat -c%s "$FILE_TO_PROCESS" 2>/dev/null || echo 0)
+        if [ "$FILE_SIZE_1" != "$FILE_SIZE_2" ]; then
+            echo "[WARNING] $FILE_TO_PROCESS size changed (${FILE_SIZE_1} -> ${FILE_SIZE_2} bytes) - still being written. Skipping this cycle, will retry later."
+            FILE_TO_PROCESS=""
+        fi
+    fi
+fi
+
 if [ -n "$FILE_TO_PROCESS" ]; then
     
     FILE_BASENAME=$(basename "$FILE_TO_PROCESS")
