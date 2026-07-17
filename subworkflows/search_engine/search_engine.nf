@@ -307,8 +307,21 @@ process fragpipe_main {
     find ./output -name "global.modsummary.tsv" -exec cp {} . \\;
     find ./output -name "combined_ion.tsv" -exec cp {} . \\;
     find ./output -name "psm.tsv" -exec cp {} . \\;
-    # Only copy calibrated mzML files (not uncalibrated)
-    find ./output -name "*_calibrated.mzML" ! -name "*_uncalibrated.mzML" -exec cp {} . \\;
+    # FragPipe/Percolator write the search mzML directly into the task work dir
+    # (bind-mounted as /home/tmp), not into ./output. If a calibrated one is
+    # already there, nothing to do; otherwise fall back to the uncalibrated
+    # mzML (MSFragger skips calibration when a sample yields too few PSMs,
+    # e.g. low-injection/low-ID QC runs) so the process output glob is satisfied
+    if ls ./*_calibrated.mzML >/dev/null 2>&1; then
+        echo "[INFO] Calibrated mzML already present in work dir"
+    elif ls ./*_uncalibrated.mzML >/dev/null 2>&1; then
+        echo "[WARN] No calibrated mzML found - falling back to uncalibrated (insufficient PSMs for mass calibration)"
+        for f in ./*_uncalibrated.mzML; do
+            cp "$f" "$(basename "$f" _uncalibrated.mzML)_calibrated.mzML"
+        done
+    else
+        echo "[ERROR] Neither calibrated nor uncalibrated mzML found in work dir"
+    fi
     '''
 }
 
