@@ -561,6 +561,21 @@ else
     echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
 fi
 
+# Guard against leading/trailing whitespace in the filename (e.g. a trailing
+# space typed into the sample name at acquisition time): it silently breaks
+# the database-folder lookup and the exact path ThermoRawFileParser is given,
+# since downstream string handling doesn't preserve it consistently
+if [ -n "$FILE_TO_PROCESS" ]; then
+    FILE_DIR_TRIM=$(dirname "$FILE_TO_PROCESS")
+    FILE_BASENAME_RAW=$(basename "$FILE_TO_PROCESS")
+    FILE_BASENAME_TRIMMED=$(echo "$FILE_BASENAME_RAW" | sed -e 's/[[:space:]]*$//' -e 's/^[[:space:]]*//')
+    if [ "$FILE_BASENAME_RAW" != "$FILE_BASENAME_TRIMMED" ]; then
+        echo "[WARNING] Filename has leading/trailing whitespace: '$FILE_BASENAME_RAW' -> renaming to '$FILE_BASENAME_TRIMMED'"
+        mv "$FILE_DIR_TRIM/$FILE_BASENAME_RAW" "$FILE_DIR_TRIM/$FILE_BASENAME_TRIMMED"
+        FILE_TO_PROCESS="$FILE_DIR_TRIM/$FILE_BASENAME_TRIMMED"
+    fi
+fi
+
 # Guard against picking up a .raw file still being acquired/copied: legit Thermo
 # QC raw files are consistently >100MB, and a size that keeps changing means the
 # instrument/QCrawler hasn't finished writing it yet (see ThermoRawFileParser
