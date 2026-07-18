@@ -86,19 +86,28 @@ workflow {
 
 }
 
+// Capture workflow metadata and params now: resolving the implicit `workflow`/
+// `params` bindings from inside the onError closure can return null when
+// Nextflow's Task monitor thread invokes this handler after a session abort
+// ("Cannot get property 'runName'/'enable_notif_email' on null object")
+def wf = workflow
+def enableNotifEmail = params.enable_notif_email
+def notifEmail = params.notif_email
 workflow.onError {
 
     def msg = """\
         Pipeline execution summary
         --------------------------
-        Run name      : ${workflow.runName}
-        Working dir   : ${workflow.workDir}
-        Command line  : ${workflow.commandLine}
+        Run name      : ${wf.runName}
+        Working dir   : ${wf.workDir}
+        Command line  : ${wf.commandLine}
         """
         .stripIndent()
 
-    if(params.enable_notif_email){
-      sendMail(to: params.notif_email, subject: ':( atlas pipeline error', body: msg)
+    if(enableNotifEmail){
+      sendMail(to: notifEmail, subject: ':( atlas pipeline error', body: msg)
+    } else {
+      log.error msg
     }
 
 }

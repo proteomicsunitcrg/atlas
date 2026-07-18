@@ -253,18 +253,25 @@ workflow {
     // ----------------------------
     // ERROR HANDLER
     // ----------------------------
+    // Capture workflow metadata and params now: resolving the implicit `workflow`/
+    // `params` bindings from inside the onError closure can return null when
+    // Nextflow's Task monitor thread invokes this handler after a session abort
+    // ("Cannot get property 'runName'/'enable_notif_email' on null object")
+    def wf = workflow
+    def enableNotifEmail = params.enable_notif_email
+    def notifEmail = params.notif_email
     workflow.onError {
         def msg = """
         Pipeline FAILED!
-        Run name     : ${workflow.runName}
-        Work dir     : ${workflow.workDir}
-        Exit status  : ${workflow.exitStatus}
-        Command line : ${workflow.commandLine}
+        Run name     : ${wf.runName}
+        Work dir     : ${wf.workDir}
+        Exit status  : ${wf.exitStatus}
+        Command line : ${wf.commandLine}
         """.stripIndent()
 
-        if (params.enable_notif_email) {
+        if (enableNotifEmail) {
             sendMail(
-                to: params.notif_email,
+                to: notifEmail,
                 subject: ":( ATLAS DIA-NN pipeline error",
                 body: msg
             )
