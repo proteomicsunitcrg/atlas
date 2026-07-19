@@ -556,7 +556,12 @@ FILE_TO_PROCESS=""
 NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
 if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
     echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-    FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" -o -iname "*.d.zip" -o -type d -iname "*.d" -o -type d -iname "*.d.*" \) -mtime $MTIME_VAR -print | sort -r | head -n1)
+    # NOTE: sort by actual modification time (-printf '%T@ %p' | sort -rn), not
+    # by path string (plain `sort -r` on `-print` orders alphabetically, so a
+    # filename starting with an uppercase letter always outranks one starting
+    # with a digit regardless of age - this let a single stuck/corrupt file
+    # permanently starve every real, newer file behind it in the queue)
+    FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" -o -iname "*.d.zip" -o -type d -iname "*.d" -o -type d -iname "*.d.*" \) -mtime $MTIME_VAR -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)
 else
     echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
 fi
@@ -582,9 +587,27 @@ fi
 # "still being acquired" / "Error opening RawFileLoader" failures)
 if [ -n "$FILE_TO_PROCESS" ] && [ -f "$FILE_TO_PROCESS" ]; then
     MIN_SIZE_BYTES=$((100*1024*1024))
+    STUCK_AGE_SEC=$((60*60))
     FILE_SIZE_1=$(stat -c%s "$FILE_TO_PROCESS" 2>/dev/null || echo 0)
     if [ "$FILE_SIZE_1" -lt "$MIN_SIZE_BYTES" ]; then
-        echo "[WARNING] $FILE_TO_PROCESS is ${FILE_SIZE_1} bytes (<100MB) - suspected still being acquired/copied. Skipping this cycle, will retry later."
+        FILE_MTIME=$(stat -c%Y "$FILE_TO_PROCESS" 2>/dev/null || echo 0)
+        FILE_AGE_SEC=$(( $(date +%s) - FILE_MTIME ))
+        if [ "$FILE_AGE_SEC" -gt "$STUCK_AGE_SEC" ]; then
+            echo "[WARNING] $FILE_TO_PROCESS is ${FILE_SIZE_1} bytes (<100MB) and unchanged for over an hour - looks permanently stuck/corrupt rather than still being acquired. Quarantining so it stops blocking the queue."
+            if [ "$PROD_MODE" = "true" ]; then
+                STUCK_FOLDER="${ATLAS_RUNS_FOLDER}/unmatched"
+                mkdir -p "$STUCK_FOLDER"
+                STUCK_BASENAME=$(basename "$FILE_TO_PROCESS")
+                STUCK_DEST="${STUCK_FOLDER}/$(date '+%Y%m%d%H%M%S')_${STUCK_BASENAME}"
+                if mv "$FILE_TO_PROCESS" "$STUCK_DEST"; then
+                    echo "[INFO] Stuck file moved to $STUCK_DEST"
+                else
+                    echo "[ERROR] Could not move stuck file $FILE_TO_PROCESS to $STUCK_FOLDER"
+                fi
+            fi
+        else
+            echo "[WARNING] $FILE_TO_PROCESS is ${FILE_SIZE_1} bytes (<100MB) - suspected still being acquired/copied. Skipping this cycle, will retry later."
+        fi
         FILE_TO_PROCESS=""
     else
         sleep 5
