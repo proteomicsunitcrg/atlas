@@ -556,67 +556,81 @@ FILE_TO_PROCESS=""
 NUM_CONCURRENT_PROC=$(ps aux | grep nextflow | grep java | wc -l);
 if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
     echo "[INFO] Max. num. of concurrent jobs below the defined by user: $NUM_CONCURRENT_PROC. Triggering the pipeline..."
-    # NOTE: sort by actual modification time (-printf '%T@ %p' | sort -rn), not
-    # by path string (plain `sort -r` on `-print` orders alphabetically, so a
-    # filename starting with an uppercase letter always outranks one starting
-    # with a digit regardless of age - this let a single stuck/corrupt file
-    # permanently starve every real, newer file behind it in the queue)
-    FILE_TO_PROCESS=$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" -o -iname "*.d.zip" -o -type d -iname "*.d" -o -type d -iname "*.d.*" \) -mtime $MTIME_VAR -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)
+
+    MIN_SIZE_BYTES=$((5*1024*1024))
+    STUCK_AGE_SEC=$((60*60))
+
+    # Walk candidates newest-first (real mtime via -printf '%T@ %p' | sort -rn,
+    # NOT plain `sort -r` on `-print`, which orders by path string - a filename
+    # starting with an uppercase letter would always outrank one starting with
+    # a digit regardless of age) and pick the first one that passes the
+    # whitespace/size/stability guards below, instead of only ever looking at
+    # the single most-recent file. Otherwise one file that never passes (a
+    # legitimate but small QC method, or a genuinely stuck/corrupt file)
+    # permanently starves every other file behind it in the queue.
+    while IFS= read -r CANDIDATE; do
+        [ -z "$CANDIDATE" ] && continue
+
+        # Guard against leading/trailing whitespace in the filename (e.g. a
+        # trailing space typed into the sample name at acquisition time): it
+        # silently breaks the database-folder lookup and the exact path
+        # ThermoRawFileParser is given, since downstream string handling
+        # doesn't preserve it consistently
+        CANDIDATE_DIR=$(dirname "$CANDIDATE")
+        CANDIDATE_BASENAME_RAW=$(basename "$CANDIDATE")
+        CANDIDATE_BASENAME_TRIMMED=$(echo "$CANDIDATE_BASENAME_RAW" | sed -e 's/[[:space:]]*$//' -e 's/^[[:space:]]*//')
+        if [ "$CANDIDATE_BASENAME_RAW" != "$CANDIDATE_BASENAME_TRIMMED" ]; then
+            echo "[WARNING] Filename has leading/trailing whitespace: '$CANDIDATE_BASENAME_RAW' -> renaming to '$CANDIDATE_BASENAME_TRIMMED'"
+            mv "$CANDIDATE_DIR/$CANDIDATE_BASENAME_RAW" "$CANDIDATE_DIR/$CANDIDATE_BASENAME_TRIMMED"
+            CANDIDATE="$CANDIDATE_DIR/$CANDIDATE_BASENAME_TRIMMED"
+        fi
+
+        # Directories (Bruker .d folders) aren't subject to the size/stability
+        # guard below - accept as-is, same as before this refactor
+        if [ ! -f "$CANDIDATE" ]; then
+            FILE_TO_PROCESS="$CANDIDATE"
+            break
+        fi
+
+        # Guard against picking up a .raw file still being acquired/copied: a
+        # size that keeps changing means the instrument/QCrawler hasn't
+        # finished writing it yet (see ThermoRawFileParser "still being
+        # acquired" / "Error opening RawFileLoader" failures)
+        CANDIDATE_SIZE_1=$(stat -c%s "$CANDIDATE" 2>/dev/null || echo 0)
+        if [ "$CANDIDATE_SIZE_1" -lt "$MIN_SIZE_BYTES" ]; then
+            CANDIDATE_MTIME=$(stat -c%Y "$CANDIDATE" 2>/dev/null || echo 0)
+            CANDIDATE_AGE_SEC=$(( $(date +%s) - CANDIDATE_MTIME ))
+            if [ "$CANDIDATE_AGE_SEC" -gt "$STUCK_AGE_SEC" ]; then
+                echo "[WARNING] $CANDIDATE is ${CANDIDATE_SIZE_1} bytes (<5MB) and unchanged for over an hour - looks permanently stuck/corrupt rather than still being acquired. Quarantining so it stops blocking the queue."
+                if [ "$PROD_MODE" = "true" ]; then
+                    STUCK_FOLDER="${ATLAS_RUNS_FOLDER}/unmatched"
+                    mkdir -p "$STUCK_FOLDER"
+                    STUCK_BASENAME=$(basename "$CANDIDATE")
+                    STUCK_DEST="${STUCK_FOLDER}/$(date '+%Y%m%d%H%M%S')_${STUCK_BASENAME}"
+                    if mv "$CANDIDATE" "$STUCK_DEST"; then
+                        echo "[INFO] Stuck file moved to $STUCK_DEST"
+                    else
+                        echo "[ERROR] Could not move stuck file $CANDIDATE to $STUCK_FOLDER"
+                    fi
+                fi
+            else
+                echo "[WARNING] $CANDIDATE is ${CANDIDATE_SIZE_1} bytes (<5MB) - suspected still being acquired/copied. Trying next candidate."
+            fi
+            continue
+        fi
+
+        sleep 5
+        CANDIDATE_SIZE_2=$(stat -c%s "$CANDIDATE" 2>/dev/null || echo 0)
+        if [ "$CANDIDATE_SIZE_1" != "$CANDIDATE_SIZE_2" ]; then
+            echo "[WARNING] $CANDIDATE size changed (${CANDIDATE_SIZE_1} -> ${CANDIDATE_SIZE_2} bytes) - still being written. Trying next candidate."
+            continue
+        fi
+
+        FILE_TO_PROCESS="$CANDIDATE"
+        break
+    done <<< "$(find ${ORIGIN_FOLDER} \( -iname "*.raw.*" ! -iname "*.mzML.*" ! -iname "*.undefined" ! -iname "*.filepart" ! -iname "*log*" -o -iname "*mzml*" -o -iname "*.d.zip" -o -type d -iname "*.d" -o -type d -iname "*.d.*" \) -mtime $MTIME_VAR -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-)"
 else
     echo "[WARNING] Exceeded max. num. of concurrent jobs defined by user: $NUM_CONCURRENT_PROC. Skipping pipeline triggering until num. of jobs drops below $NUM_MAX_PROC."
-fi
-
-# Guard against leading/trailing whitespace in the filename (e.g. a trailing
-# space typed into the sample name at acquisition time): it silently breaks
-# the database-folder lookup and the exact path ThermoRawFileParser is given,
-# since downstream string handling doesn't preserve it consistently
-if [ -n "$FILE_TO_PROCESS" ]; then
-    FILE_DIR_TRIM=$(dirname "$FILE_TO_PROCESS")
-    FILE_BASENAME_RAW=$(basename "$FILE_TO_PROCESS")
-    FILE_BASENAME_TRIMMED=$(echo "$FILE_BASENAME_RAW" | sed -e 's/[[:space:]]*$//' -e 's/^[[:space:]]*//')
-    if [ "$FILE_BASENAME_RAW" != "$FILE_BASENAME_TRIMMED" ]; then
-        echo "[WARNING] Filename has leading/trailing whitespace: '$FILE_BASENAME_RAW' -> renaming to '$FILE_BASENAME_TRIMMED'"
-        mv "$FILE_DIR_TRIM/$FILE_BASENAME_RAW" "$FILE_DIR_TRIM/$FILE_BASENAME_TRIMMED"
-        FILE_TO_PROCESS="$FILE_DIR_TRIM/$FILE_BASENAME_TRIMMED"
-    fi
-fi
-
-# Guard against picking up a .raw file still being acquired/copied: legit Thermo
-# QC raw files are consistently >100MB, and a size that keeps changing means the
-# instrument/QCrawler hasn't finished writing it yet (see ThermoRawFileParser
-# "still being acquired" / "Error opening RawFileLoader" failures)
-if [ -n "$FILE_TO_PROCESS" ] && [ -f "$FILE_TO_PROCESS" ]; then
-    MIN_SIZE_BYTES=$((100*1024*1024))
-    STUCK_AGE_SEC=$((60*60))
-    FILE_SIZE_1=$(stat -c%s "$FILE_TO_PROCESS" 2>/dev/null || echo 0)
-    if [ "$FILE_SIZE_1" -lt "$MIN_SIZE_BYTES" ]; then
-        FILE_MTIME=$(stat -c%Y "$FILE_TO_PROCESS" 2>/dev/null || echo 0)
-        FILE_AGE_SEC=$(( $(date +%s) - FILE_MTIME ))
-        if [ "$FILE_AGE_SEC" -gt "$STUCK_AGE_SEC" ]; then
-            echo "[WARNING] $FILE_TO_PROCESS is ${FILE_SIZE_1} bytes (<100MB) and unchanged for over an hour - looks permanently stuck/corrupt rather than still being acquired. Quarantining so it stops blocking the queue."
-            if [ "$PROD_MODE" = "true" ]; then
-                STUCK_FOLDER="${ATLAS_RUNS_FOLDER}/unmatched"
-                mkdir -p "$STUCK_FOLDER"
-                STUCK_BASENAME=$(basename "$FILE_TO_PROCESS")
-                STUCK_DEST="${STUCK_FOLDER}/$(date '+%Y%m%d%H%M%S')_${STUCK_BASENAME}"
-                if mv "$FILE_TO_PROCESS" "$STUCK_DEST"; then
-                    echo "[INFO] Stuck file moved to $STUCK_DEST"
-                else
-                    echo "[ERROR] Could not move stuck file $FILE_TO_PROCESS to $STUCK_FOLDER"
-                fi
-            fi
-        else
-            echo "[WARNING] $FILE_TO_PROCESS is ${FILE_SIZE_1} bytes (<100MB) - suspected still being acquired/copied. Skipping this cycle, will retry later."
-        fi
-        FILE_TO_PROCESS=""
-    else
-        sleep 5
-        FILE_SIZE_2=$(stat -c%s "$FILE_TO_PROCESS" 2>/dev/null || echo 0)
-        if [ "$FILE_SIZE_1" != "$FILE_SIZE_2" ]; then
-            echo "[WARNING] $FILE_TO_PROCESS size changed (${FILE_SIZE_1} -> ${FILE_SIZE_2} bytes) - still being written. Skipping this cycle, will retry later."
-            FILE_TO_PROCESS=""
-        fi
-    fi
 fi
 
 if [ -n "$FILE_TO_PROCESS" ]; then
