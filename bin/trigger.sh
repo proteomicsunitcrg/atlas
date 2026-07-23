@@ -97,6 +97,58 @@ safe_quarantine_name() {
     echo "${timestamp}_${basename:0:max_basename}_${hash}"
 }
 
+# Sanitize a candidate's basename before it's ever used for parsing/paths:
+#  - transliterate accented/non-ASCII characters (e.g. e-acute -> e)
+#  - replace anything left that isn't alnum/underscore/hyphen with "_" -
+#    this also neutralizes stray dots in the middle of the sample name,
+#    which otherwise silently break "cut -d'.'"-based parsing further
+#    down (e.g. INSTRUMENT_FOLDER=$(... | cut -f 3 -d '.') in launch_nf_run)
+#  - cap the sample-name part's length so later concatenations (sbatch
+#    --output, .log files, quarantine names) never hit the filesystem's
+#    NAME_MAX (255 bytes) - see the v0.5.7 quarantine bug for what
+#    happens when a long name isn't guarded: the operation fails
+#    silently and the file loops forever
+# The vendor extension (.raw, .d, .d.zip, .mzML...) is left untouched -
+# only the sample-name part in front of it is sanitized.
+sanitize_candidate_name() {
+    local base="$1"
+    local core="$base"
+    local ext=""
+
+    if [[ "$base" == *.raw* ]]; then
+        core="${base%%.raw*}"
+        ext="${base#"$core"}"
+    elif [[ "$base" == *.d.* || "$base" == *.d ]]; then
+        core="${base%%.d*}"
+        ext="${base#"$core"}"
+    elif [[ "$base" == *.mzML* ]]; then
+        core="${base%%.mzML*}"
+        ext="${base#"$core"}"
+    fi
+
+    # "UTF-8" (not "utf8") for portability: GNU libiconv (e.g. the
+    # EasyBuild module on proteomics-qc) rejects the "utf8" alias that
+    # glibc's iconv accepts, silently falling through to the untouched
+    # accented name via the empty-output fallback below
+    local core_ascii
+    core_ascii=$(echo "$core" | iconv -f UTF-8 -t ascii//TRANSLIT 2>/dev/null)
+    [ -z "$core_ascii" ] && core_ascii="$core"
+    # Collapse repeated underscores: GNU libiconv's //TRANSLIT table
+    # sometimes renders a single accented character as two ASCII
+    # punctuation marks (e.g. a backtick either side), which would
+    # otherwise leave "__" where glibc produces a clean single letter
+    core_ascii=$(echo "$core_ascii" | sed 's/[^A-Za-z0-9_-]/_/g' | sed 's/_\+/_/g')
+
+    local max_core_len=200
+    if [ "${#core_ascii}" -gt "$max_core_len" ]; then
+        local hash
+        hash=$(echo -n "$core_ascii" | md5sum | cut -c1-8)
+        core_ascii="${core_ascii:0:$max_core_len}_${hash}"
+    fi
+
+    echo "${core_ascii}${ext}"
+}
+
 launch_nf_run() {
 
     # Capture all arguments as an array (key-value pairs)
@@ -605,6 +657,17 @@ if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
             echo "[WARNING] Filename has leading/trailing whitespace: '$CANDIDATE_BASENAME_RAW' -> renaming to '$CANDIDATE_BASENAME_TRIMMED'"
             mv "$CANDIDATE_DIR/$CANDIDATE_BASENAME_RAW" "$CANDIDATE_DIR/$CANDIDATE_BASENAME_TRIMMED"
             CANDIDATE="$CANDIDATE_DIR/$CANDIDATE_BASENAME_TRIMMED"
+        fi
+
+        # Guard against accented/non-ASCII characters, stray dots in the
+        # sample-name part, and over-long filenames - see
+        # sanitize_candidate_name() above for why each of these matters
+        CANDIDATE_BASENAME_CURRENT=$(basename "$CANDIDATE")
+        CANDIDATE_BASENAME_SANITIZED=$(sanitize_candidate_name "$CANDIDATE_BASENAME_CURRENT")
+        if [ "$CANDIDATE_BASENAME_CURRENT" != "$CANDIDATE_BASENAME_SANITIZED" ]; then
+            echo "[WARNING] Filename needed sanitizing: '$CANDIDATE_BASENAME_CURRENT' -> '$CANDIDATE_BASENAME_SANITIZED'"
+            mv "$CANDIDATE_DIR/$CANDIDATE_BASENAME_CURRENT" "$CANDIDATE_DIR/$CANDIDATE_BASENAME_SANITIZED"
+            CANDIDATE="$CANDIDATE_DIR/$CANDIDATE_BASENAME_SANITIZED"
         fi
 
         # Directories (Bruker .d folders) aren't subject to the size/stability
