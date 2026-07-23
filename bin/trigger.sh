@@ -75,6 +75,28 @@ notify_slack() {
     curl -X POST -H 'Content-type: application/json' -d "$payload" "$hook" > /dev/null 2>&1
 }
 
+# Build a "<timestamp>_<basename>" quarantine filename that never exceeds the
+# filesystem's NAME_MAX (255 bytes on ext4/most Linux filesystems): some real
+# sample names are long enough on their own (200+ chars) that prepending a
+# 15-char timestamp pushes past the limit and the `mv` silently fails with
+# "File name too long", leaving the file stuck in the queue forever. If the
+# combined name would be too long, truncate the basename and append a short
+# hash to keep it unique.
+safe_quarantine_name() {
+    local timestamp="$1"
+    local basename="$2"
+    local max_total=255
+    local candidate="${timestamp}_${basename}"
+    if [ "${#candidate}" -le "$max_total" ]; then
+        echo "$candidate"
+        return
+    fi
+    local hash
+    hash=$(echo -n "$basename" | md5sum | cut -c1-8)
+    local max_basename=$((max_total - ${#timestamp} - 1 - ${#hash} - 1))
+    echo "${timestamp}_${basename:0:max_basename}_${hash}"
+}
+
 launch_nf_run() {
 
     # Capture all arguments as an array (key-value pairs)
@@ -606,7 +628,7 @@ if [ "$NUM_CONCURRENT_PROC" -lt $NUM_MAX_PROC ]; then
                     STUCK_FOLDER="${ATLAS_RUNS_FOLDER}/unmatched"
                     mkdir -p "$STUCK_FOLDER"
                     STUCK_BASENAME=$(basename "$CANDIDATE")
-                    STUCK_DEST="${STUCK_FOLDER}/$(date '+%Y%m%d%H%M%S')_${STUCK_BASENAME}"
+                    STUCK_DEST="${STUCK_FOLDER}/$(safe_quarantine_name "$(date '+%Y%m%d%H%M%S')" "$STUCK_BASENAME")"
                     if mv "$CANDIDATE" "$STUCK_DEST"; then
                         echo "[INFO] Stuck file moved to $STUCK_DEST"
                     else
@@ -758,7 +780,7 @@ if [ -n "$FILE_TO_PROCESS" ]; then
         if [ "$PROD_MODE" = "true" ]; then
             UNMATCHED_FOLDER="${ATLAS_RUNS_FOLDER}/unmatched"
             mkdir -p "$UNMATCHED_FOLDER"
-            UNMATCHED_DEST="${UNMATCHED_FOLDER}/$(date '+%Y%m%d%H%M%S')_${FILE_BASENAME}"
+            UNMATCHED_DEST="${UNMATCHED_FOLDER}/$(safe_quarantine_name "$(date '+%Y%m%d%H%M%S')" "$FILE_BASENAME")"
             if mv "$FILE_TO_PROCESS" "$UNMATCHED_DEST"; then
                 echo "[INFO] Unmatched file moved to $UNMATCHED_DEST"
             else
