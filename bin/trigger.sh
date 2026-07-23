@@ -902,7 +902,16 @@ if [ -n "$FILE_TO_PROCESS" ]; then
 • Detected: looks like DIA (high MS2 fraction + sequential precursor isolation windows)
 
 Moved to \`$DIA_MISMATCH_FOLDER\` instead of launching - no pipeline was triggered, no cluster job submitted."
-                    notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+                    # This is an operational/data-quality warning (same class as
+                    # atlas_checker.sh's alerts), not a routine pipeline-run
+                    # notification - goes to proteomics_notifications, not
+                    # proteomics_pipelines_notifications ($SLACK_URL_HOOK).
+                    # Same hook file atlas_checker.sh reads, found relative to
+                    # WF_ROOT_FOLDER so this stays portable across hosts.
+                    GENERAL_HOOK_FILE="$(dirname "$(dirname "$WF_ROOT_FOLDER")")/.hook_url"
+                    GENERAL_SLACK_HOOK=$(cat "$GENERAL_HOOK_FILE" 2>/dev/null)
+                    [ -z "$GENERAL_SLACK_HOOK" ] && GENERAL_SLACK_HOOK="$SLACK_URL_HOOK"
+                    notify_slack "$MESSAGE" "$GENERAL_SLACK_HOOK"
                 fi
             # Check if RAWFILE_TO_PROCESS exists before executing
             elif [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
