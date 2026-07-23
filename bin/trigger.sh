@@ -149,6 +149,70 @@ sanitize_candidate_name() {
     echo "${core_ascii}${ext}"
 }
 
+# Detect whether a RAW file was actually acquired as DIA (wide, fixed,
+# sequentially-tiled precursor isolation windows) despite being routed to
+# a DDA search engine (comet/mascot/fragpipe, via main.nf/sampleqc.nf) -
+# a real recurring incident (2026LB007, Orbitrap Astral: ~99% of scans
+# are MS2, and precursor targets step monotonically through the mass
+# range in small increments instead of DDA's data-dependent Top-N
+# selection). Wasting a full search-engine Slurm run on a mislabeled DIA
+# file burns real cluster hours for nothing - see incident 2026-07-23.
+#
+# Echoes "dia", "dda", or "unknown". Never blocks on doubt: any
+# failure/timeout/ambiguous result is "unknown", and the caller treats
+# that the same as "dda" (let it run) - a missed detection costs one
+# wasted job, a false positive would block a real sample from ever
+# being processed at all.
+detect_dia_acquisition() {
+    local rawfile="$1"
+    local rawrr_img="$2"
+
+    [[ "$rawfile" != *.raw* ]] && { echo "unknown"; return; }
+    [ ! -f "$rawrr_img" ] && { echo "unknown"; return; }
+
+    local out
+    out=$(timeout 40s singularity exec "$rawrr_img" Rscript -e '
+        args <- commandArgs(trailingOnly = TRUE)
+        rawfile <- args[1]
+        h <- tryCatch(rawrr::readFileHeader(rawfile), error = function(e) NULL)
+        if (is.null(h)) { cat("result=unknown\n"); quit(status = 0) }
+        n_scans <- suppressWarnings(as.numeric(h[["Number of scans"]]))
+        n_ms2 <- suppressWarnings(as.numeric(h[["Number of ms2 scans"]]))
+        if (is.na(n_scans) || n_scans < 1 || is.na(n_ms2)) { cat("result=unknown\n"); quit(status = 0) }
+        ratio <- n_ms2 / n_scans
+        cat("ratio=", round(ratio, 4), "\n", sep = "")
+        if (ratio < 0.95) { cat("result=dda\n"); quit(status = 0) }
+
+        mid <- max(10, floor(n_scans * 0.25))
+        sp <- tryCatch(rawrr::readSpectrum(rawfile, scan = mid:(mid + 14)), error = function(e) NULL)
+        if (is.null(sp) || length(sp) < 10) {
+            cat("result=", if (ratio >= 0.98) "dia" else "unknown", "\n", sep = "")
+            quit(status = 0)
+        }
+
+        precs <- sapply(sp, function(s) {
+            m <- regmatches(s$scanType, regexpr("Full ms2 [0-9.]+", s$scanType))
+            if (length(m) == 0) return(NA)
+            as.numeric(sub("Full ms2 ", "", m))
+        })
+        precs <- precs[!is.na(precs)]
+        if (length(precs) < 8) {
+            cat("result=", if (ratio >= 0.98) "dia" else "unknown", "\n", sep = "")
+            quit(status = 0)
+        }
+
+        diffs <- diff(precs)
+        frac <- sum(diffs > 0 & diffs < 50) / length(diffs)
+        cat("frac_small_positive_steps=", round(frac, 2), "\n", sep = "")
+        cat("result=", if (frac >= 0.8) "dia" else "dda", "\n", sep = "")
+    ' "$rawfile" 2>/dev/null)
+
+    local result
+    result=$(echo "$out" | sed -n 's/^result=//p' | tail -n1)
+    [ -z "$result" ] && result="unknown"
+    echo "$result"
+}
+
 launch_nf_run() {
 
     # Capture all arguments as an array (key-value pairs)
@@ -808,9 +872,40 @@ if [ -n "$FILE_TO_PROCESS" ]; then
             
             # Add RAWFILE_TO_PROCESS to ARGS
             ARGS+=("rawfile" "$RAWFILE_TO_PROCESS")
-            
+
+            # Guard: don't burn a DDA search-engine Slurm job (comet/mascot/
+            # fragpipe, via main.nf/sampleqc.nf) on a file that was actually
+            # acquired as DIA - see detect_dia_acquisition() above
+            DIA_MISLABELED=false
+            if [ "$PROD_MODE" = "true" ] && [[ "${PARAMS[search_engine]}" =~ ^(comet|mascot|fragpipe)$ ]]; then
+                RAWRR_IMG_PATH="$(dirname "$WF_ROOT_FOLDER")/atlas-imgs/rawrr.img"
+                ACQ_TYPE=$(detect_dia_acquisition "$RAWFILE_TO_PROCESS" "$RAWRR_IMG_PATH")
+                echo "[INFO] Acquisition type check for $FILE_BASENAME (search_engine=${PARAMS[search_engine]}): $ACQ_TYPE"
+                [ "$ACQ_TYPE" = "dia" ] && DIA_MISLABELED=true
+            fi
+
+            if [ "$DIA_MISLABELED" = "true" ]; then
+                echo "[WARNING] $FILE_BASENAME looks like a DIA acquisition routed to a DDA search engine (${PARAMS[search_engine]}) - quarantining instead of launching, to avoid burning a Slurm job on a doomed search."
+                DIA_MISMATCH_FOLDER="${ATLAS_RUNS_FOLDER}/dia_mismatch"
+                mkdir -p "$DIA_MISMATCH_FOLDER"
+                DIA_MISMATCH_DEST="${DIA_MISMATCH_FOLDER}/$(safe_quarantine_name "$(date '+%Y%m%d%H%M%S')" "$FILE_BASENAME")"
+                if mv "$RAWFILE_TO_PROCESS" "$DIA_MISMATCH_DEST"; then
+                    echo "[INFO] Moved to $DIA_MISMATCH_DEST"
+                else
+                    echo "[ERROR] Could not move $RAWFILE_TO_PROCESS to $DIA_MISMATCH_FOLDER"
+                fi
+                if [ "$ENABLE_SLACK" = "true" ]; then
+                    MESSAGE=":warning: *Atlas — DIA acquisition routed to a DDA workflow*
+
+• File: \`$FILE_BASENAME\`
+• Matched pattern: \`$j\` (configured search engine: \`${PARAMS[search_engine]}\`)
+• Detected: looks like DIA (high MS2 fraction + sequential precursor isolation windows)
+
+Moved to \`$DIA_MISMATCH_FOLDER\` instead of launching - no pipeline was triggered, no cluster job submitted."
+                    notify_slack "$MESSAGE" "$SLACK_URL_HOOK"
+                fi
             # Check if RAWFILE_TO_PROCESS exists before executing
-            if [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
+            elif [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
                 launch_nf_run "${ARGS[@]}"
             else
                 echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
