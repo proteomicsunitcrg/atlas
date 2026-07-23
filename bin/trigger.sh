@@ -126,10 +126,18 @@ sanitize_candidate_name() {
         ext="${base#"$core"}"
     fi
 
+    # "UTF-8" (not "utf8") for portability: GNU libiconv (e.g. the
+    # EasyBuild module on proteomics-qc) rejects the "utf8" alias that
+    # glibc's iconv accepts, silently falling through to the untouched
+    # accented name via the empty-output fallback below
     local core_ascii
-    core_ascii=$(echo "$core" | iconv -f utf8 -t ascii//TRANSLIT 2>/dev/null)
+    core_ascii=$(echo "$core" | iconv -f UTF-8 -t ascii//TRANSLIT 2>/dev/null)
     [ -z "$core_ascii" ] && core_ascii="$core"
-    core_ascii=$(echo "$core_ascii" | sed 's/[^A-Za-z0-9_-]/_/g')
+    # Collapse repeated underscores: GNU libiconv's //TRANSLIT table
+    # sometimes renders a single accented character as two ASCII
+    # punctuation marks (e.g. a backtick either side), which would
+    # otherwise leave "__" where glibc produces a clean single letter
+    core_ascii=$(echo "$core_ascii" | sed 's/[^A-Za-z0-9_-]/_/g' | sed 's/_\+/_/g')
 
     local max_core_len=200
     if [ "${#core_ascii}" -gt "$max_core_len" ]; then
