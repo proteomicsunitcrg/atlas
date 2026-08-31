@@ -873,31 +873,19 @@ if [ -n "$FILE_TO_PROCESS" ]; then
             # Add RAWFILE_TO_PROCESS to ARGS
             ARGS+=("rawfile" "$RAWFILE_TO_PROCESS")
 
-            # Guard: don't burn a DDA search-engine Slurm job on a file that
-            # was actually acquired as DIA - see detect_dia_acquisition()
-            # above. Covers two cases: (1) main.nf/sampleqc.nf rows with an
-            # explicit comet/mascot/fragpipe search_engine in methods.csv,
-            # and (2) the qcloud workflow (QC01/QC02), whose methods.csv rows
-            # leave search_engine blank because qcloud.nf hardcodes its own
-            # FragPipe search step internally rather than reading it from the
-            # CSV - a real incident (2026-08-26, QC02) showed a DIA-acquired
-            # HeLa file routed through QC02 crashed the same way as the
-            # LB-pattern incidents this guard was originally built for, but
-            # went undetected because PARAMS[search_engine] was empty.
-            # qcloud_diann (QCD1/QCD2) is deliberately excluded: it's already
-            # the DIA route, so this particular mismatch direction can't happen.
+            # Guard: don't burn a DDA search-engine Slurm job (comet/mascot/
+            # fragpipe, via main.nf/sampleqc.nf) on a file that was actually
+            # acquired as DIA - see detect_dia_acquisition() above
             DIA_MISLABELED=false
-            DIA_CHECK_ENGINE="${PARAMS[search_engine]}"
-            [ -z "$DIA_CHECK_ENGINE" ] && [ "${PARAMS[workflow]}" = "qcloud" ] && DIA_CHECK_ENGINE="fragpipe (qcloud)"
-            if [ "$PROD_MODE" = "true" ] && { [[ "${PARAMS[search_engine]}" =~ ^(comet|mascot|fragpipe)$ ]] || [ "${PARAMS[workflow]}" = "qcloud" ]; }; then
+            if [ "$PROD_MODE" = "true" ] && [[ "${PARAMS[search_engine]}" =~ ^(comet|mascot|fragpipe)$ ]]; then
                 RAWRR_IMG_PATH="$(dirname "$WF_ROOT_FOLDER")/atlas-imgs/rawrr.img"
                 ACQ_TYPE=$(detect_dia_acquisition "$RAWFILE_TO_PROCESS" "$RAWRR_IMG_PATH")
-                echo "[INFO] Acquisition type check for $FILE_BASENAME (search_engine=${DIA_CHECK_ENGINE}): $ACQ_TYPE"
+                echo "[INFO] Acquisition type check for $FILE_BASENAME (search_engine=${PARAMS[search_engine]}): $ACQ_TYPE"
                 [ "$ACQ_TYPE" = "dia" ] && DIA_MISLABELED=true
             fi
 
             if [ "$DIA_MISLABELED" = "true" ]; then
-                echo "[WARNING] $FILE_BASENAME looks like a DIA acquisition routed to a DDA search engine (${DIA_CHECK_ENGINE}) - quarantining instead of launching, to avoid burning a Slurm job on a doomed search."
+                echo "[WARNING] $FILE_BASENAME looks like a DIA acquisition routed to a DDA search engine (${PARAMS[search_engine]}) - quarantining instead of launching, to avoid burning a Slurm job on a doomed search."
                 DIA_MISMATCH_FOLDER="${ATLAS_RUNS_FOLDER}/dia_mismatch"
                 mkdir -p "$DIA_MISMATCH_FOLDER"
                 DIA_MISMATCH_DEST="${DIA_MISMATCH_FOLDER}/$(safe_quarantine_name "$(date '+%Y%m%d%H%M%S')" "$FILE_BASENAME")"
@@ -910,7 +898,7 @@ if [ -n "$FILE_TO_PROCESS" ]; then
                     MESSAGE=":warning: *Atlas — DIA acquisition routed to a DDA workflow*
 
 • File: \`$FILE_BASENAME\`
-• Matched pattern: \`$j\` (configured search engine: \`${DIA_CHECK_ENGINE}\`)
+• Matched pattern: \`$j\` (configured search engine: \`${PARAMS[search_engine]}\`)
 • Detected: looks like DIA (high MS2 fraction + sequential precursor isolation windows)
 
 Moved to \`$DIA_MISMATCH_FOLDER\` instead of launching - no pipeline was triggered, no cluster job submitted."
