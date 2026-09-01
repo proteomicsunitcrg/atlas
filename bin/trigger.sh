@@ -136,8 +136,27 @@ sanitize_candidate_name() {
     # Collapse repeated underscores: GNU libiconv's //TRANSLIT table
     # sometimes renders a single accented character as two ASCII
     # punctuation marks (e.g. a backtick either side), which would
-    # otherwise leave "__" where glibc produces a clean single letter
-    core_ascii=$(echo "$core_ascii" | sed 's/[^A-Za-z0-9_-]/_/g' | sed 's/_\+/_/g')
+    # otherwise leave "__" where glibc produces a clean single letter.
+    # "___" (triple) is protected first: qcloud2_sftp_sync_atlas.sh uses it
+    # as the deliberate separator between the original sample name and the
+    # appended timestamp/uuid/qccode/checksum metadata, and submit_qcloud.nf
+    # relies on that exact "___" to strip the metadata back out before
+    # registering the filename with QCloud2 - collapsing it to "_" here
+    # silently broke that downstream cleanup (2026-07-23 to 2026-09-01: every
+    # production filename shown in the QCloud2 web UI had the acquisition
+    # timestamp leaking into it, since submit_qcloud.nf's `sed
+    # 's/___[0-9]\{14\}//'` never matched a single underscore).
+    # Edge case: if the original name has a stray char (e.g. a trailing
+    # space) directly touching the protected separator, the substitution
+    # above turns it into a stray "_" right next to the placeholder, which
+    # would survive as a 4th underscore once "___" is restored - strip any
+    # underscore(s) hugging the placeholder before restoring it.
+    core_ascii=$(echo "$core_ascii" \
+        | sed 's/___/XTRIPLEUSCOREX/g' \
+        | sed 's/[^A-Za-z0-9_-]/_/g' \
+        | sed 's/_\+/_/g' \
+        | sed 's/_*XTRIPLEUSCOREX_*/XTRIPLEUSCOREX/g' \
+        | sed 's/XTRIPLEUSCOREX/___/g')
 
     local max_core_len=200
     if [ "${#core_ascii}" -gt "$max_core_len" ]; then
