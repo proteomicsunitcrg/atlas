@@ -242,6 +242,19 @@ process insertDataToQCloud {
         exit 1
     fi
 
+    # Mark the pipeline_file tracking row as PROCESSED (best-effort: this is
+    # dashboard-visibility bookkeeping, never let it fail the actual pipeline
+    # run now that the real File insert above already succeeded).
+    echo "Marking pipeline_file as PROCESSED..."
+    pf_response=\$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \\
+        -H "Authorization: \$access_token" \\
+        "${url_api_qcloud_insert_file%/api/file}/api/pipelineFile/processed/\$checksum?filename=\$reversed_rest_of_filename" \\
+        || echo "HTTPSTATUS:000")
+    pf_http_code=\$(echo \$pf_response | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')
+    if [[ \$pf_http_code -ne 200 ]]; then
+        echo "WARNING: Failed to mark pipeline_file as PROCESSED (HTTP \$pf_http_code) - non-fatal, continuing."
+    fi
+
     # Insert peptide metrics with better error handling
     echo "Inserting peptide metrics to QCloud..."
     for param in QC_0000048 QC_1000927 QC_1000928 QC_1001844 QC_1000894 QC_1000014; do

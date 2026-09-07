@@ -75,6 +75,72 @@ notify_slack() {
     curl -X POST -H 'Content-type: application/json' -d "$payload" "$hook" > /dev/null 2>&1
 }
 
+# Best-effort registration of a raw file as RECEIVED/PROCESSING in QCloud2's
+# pipeline_file tracking table (proteomicsunitcrg/atlas#<pipeline-file-dashboard>).
+# Only called for files routed to a qcloud*/QCloud2 workflow - QSample-routed
+# files (main/sampleqc/diann*) are out of scope, see that GitHub issue.
+# Never lets a failure here block the actual pipeline launch: every failure
+# path just logs a warning and returns 0.
+register_pipeline_file_received() {
+    local rawfile="$1"
+
+    local conf_folder
+    conf_folder="$(dirname "$ASSETS_FOLDER")/conf"
+    local shared_config="${conf_folder}/shared.config"
+    local secrets_config="${conf_folder}/crg_secrets.config"
+
+    local signin_url insert_file_url qc_user qc_pass
+    signin_url=$(grep -oP 'url_api_qcloud_signin\s*=\s*"\K[^"]*' "$shared_config" 2>/dev/null)
+    insert_file_url=$(grep -oP 'url_api_qcloud_insert_file\s*=\s*"\K[^"]*' "$shared_config" 2>/dev/null)
+    qc_user=$(grep -oP 'url_api_qcloud_user\s*=\s*"\K[^"]*' "$secrets_config" 2>/dev/null)
+    qc_pass=$(grep -oP 'url_api_qcloud_pass\s*=\s*"\K[^"]*' "$secrets_config" 2>/dev/null)
+
+    if [[ -z "$signin_url" || -z "$insert_file_url" || -z "$qc_user" || -z "$qc_pass" ]]; then
+        echo "[WARNING] register_pipeline_file_received: missing QCloud config in $conf_folder, skipping."
+        return 0
+    fi
+
+    local checksum
+    checksum=$(md5sum "$rawfile" 2>/dev/null | awk '{print $1}')
+    if [[ -z "$checksum" ]]; then
+        echo "[WARNING] register_pipeline_file_received: could not checksum $rawfile, skipping."
+        return 0
+    fi
+
+    # Instrument UUID (== QCloud2 labSystemApiKey) is embedded in the filename -
+    # same convention/regex already used by report_qcloud.nf and atlas_checker.sh.
+    local basename_sh labsysid
+    basename_sh=$(basename "$rawfile")
+    labsysid=$(echo "$basename_sh" | grep -oE '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' | head -1)
+    if [[ -z "$labsysid" ]]; then
+        echo "[WARNING] register_pipeline_file_received: no instrument UUID found in $basename_sh, skipping."
+        return 0
+    fi
+
+    local access_token
+    access_token=$(source "${WF_ROOT_FOLDER}/bin/api.sh"; get_api_access_token_qcloud "$signin_url" "$qc_user" "$qc_pass")
+    if [[ -z "$access_token" ]]; then
+        echo "[WARNING] register_pipeline_file_received: could not authenticate against QCloud2, skipping."
+        return 0
+    fi
+
+    local api_base="${insert_file_url%/api/file}"
+    local endpoint="${api_base}/api/pipelineFile/received/QC:0000005/${labsysid}"
+    local payload
+    payload=$(printf '{"checksum":"%s","filename":"%s"}' "$checksum" "$basename_sh")
+
+    local http_code
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+        -X POST -H "Authorization: ${access_token}" -H "Content-Type: application/json" \
+        --data "$payload" "$endpoint")
+
+    if [[ "$http_code" == "200" ]]; then
+        echo "[INFO] register_pipeline_file_received: registered checksum=$checksum (labsysid=$labsysid) at $endpoint"
+    else
+        echo "[WARNING] register_pipeline_file_received: POST to $endpoint returned HTTP $http_code"
+    fi
+}
+
 # Build a "<timestamp>_<basename>" quarantine filename that never exceeds the
 # filesystem's NAME_MAX (255 bytes on ext4/most Linux filesystems): some real
 # sample names are long enough on their own (200+ chars) that prepending a
@@ -934,6 +1000,9 @@ Moved to \`$DIA_MISMATCH_FOLDER\` instead of launching - no pipeline was trigger
                 fi
             # Check if RAWFILE_TO_PROCESS exists before executing
             elif [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
+                if [ "$PROD_MODE" = "true" ] && [[ "${PARAMS[workflow]}" == qcloud* ]]; then
+                    register_pipeline_file_received "$RAWFILE_TO_PROCESS"
+                fi
                 launch_nf_run "${ARGS[@]}"
             else
                 echo "[ERROR] ${RAWFILE_TO_PROCESS} not found."
