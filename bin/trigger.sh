@@ -107,11 +107,21 @@ register_pipeline_file_received() {
         return 0
     fi
 
-    # Instrument UUID (== QCloud2 labSystemApiKey) is embedded in the filename -
-    # same convention/regex already used by report_qcloud.nf and atlas_checker.sh.
+    # Instrument UUID (== QCloud2 labSystemApiKey) is embedded in the filename,
+    # right before the QC code token - same position report_qcloud.nf reads via
+    # reversed-cut. Real filenames can carry a second, unrelated UUID earlier on
+    # (e.g. an instrument-software request ID), so a plain "first UUID found"
+    # scan would grab the wrong one; match report_qcloud.nf's exact field
+    # position first, and only fall back to the *last* UUID in the filename
+    # (closer to the instrument-UUID's real position than the first) if that
+    # position isn't UUID-shaped.
     local basename_sh labsysid
+    local uuid_regex='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
     basename_sh=$(basename "$rawfile")
-    labsysid=$(echo "$basename_sh" | grep -oE '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' | head -1)
+    labsysid=$(echo "${basename_sh%.*}" | rev | cut -d'_' -f3 | rev)
+    if [[ ! "$labsysid" =~ $uuid_regex ]]; then
+        labsysid=$(echo "$basename_sh" | grep -oE '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}' | tail -1)
+    fi
     if [[ -z "$labsysid" ]]; then
         echo "[WARNING] register_pipeline_file_received: no instrument UUID found in $basename_sh, skipping."
         return 0
