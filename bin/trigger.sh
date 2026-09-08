@@ -127,6 +127,29 @@ register_pipeline_file_received() {
         return 0
     fi
 
+    # QC code sits right after the UUID (reversed field 2) - maps to the
+    # QCloud2 sample type actually used for this file, instead of always
+    # assuming bsa/QC01.
+    local qc_code sample_type_qccv
+    qc_code=$(echo "${basename_sh%.*}" | rev | cut -d'_' -f2 | rev)
+    case "$qc_code" in
+        QC01) sample_type_qccv="QC:0000005" ;;
+        QC02) sample_type_qccv="QC:0000006" ;;
+        QCD1) sample_type_qccv="QC:1000005" ;;
+        QCD2) sample_type_qccv="QC:1000006" ;;
+        *) sample_type_qccv="QC:0000005" ;;
+    esac
+
+    # Acquisition timestamp sits right before the UUID (reversed field 4),
+    # 14-digit YYYYMMDDHHMMSS - captured here (received time) rather than
+    # only on error, so it survives through PROCESSING/PROCESSED too.
+    local acq_raw acquisition_date_json=""
+    acq_raw=$(echo "${basename_sh%.*}" | rev | cut -d'_' -f4 | rev)
+    if [[ "$acq_raw" =~ ^[0-9]{14}$ ]]; then
+        acquisition_date_json=$(printf ',"acquisitionDate":"%s-%s-%s %s:%s:%s"' \
+            "${acq_raw:0:4}" "${acq_raw:4:2}" "${acq_raw:6:2}" "${acq_raw:8:2}" "${acq_raw:10:2}" "${acq_raw:12:2}")
+    fi
+
     local access_token
     access_token=$(source "${WF_ROOT_FOLDER}/bin/api.sh"; get_api_access_token_qcloud "$signin_url" "$qc_user" "$qc_pass")
     if [[ -z "$access_token" ]]; then
@@ -135,9 +158,9 @@ register_pipeline_file_received() {
     fi
 
     local api_base="${insert_file_url%/api/file}"
-    local endpoint="${api_base}/api/pipelineFile/received/QC:0000005/${labsysid}"
+    local endpoint="${api_base}/api/pipelineFile/received/${sample_type_qccv}/${labsysid}"
     local payload
-    payload=$(printf '{"checksum":"%s","filename":"%s"}' "$checksum" "$basename_sh")
+    payload=$(printf '{"checksum":"%s","filename":"%s"%s}' "$checksum" "$basename_sh" "$acquisition_date_json")
 
     local http_code
     http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
@@ -1010,7 +1033,7 @@ Moved to \`$DIA_MISMATCH_FOLDER\` instead of launching - no pipeline was trigger
                 fi
             # Check if RAWFILE_TO_PROCESS exists before executing
             elif [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
-                if [ "$PROD_MODE" = "true" ] && [[ "${PARAMS[workflow]}" == qcloud* ]]; then
+                if { [ "$PROD_MODE" = "true" ] || [ "$TEST_MODE" = "true" ]; } && [[ "${PARAMS[workflow]}" == qcloud* ]]; then
                     register_pipeline_file_received "$RAWFILE_TO_PROCESS"
                 fi
                 launch_nf_run "${ARGS[@]}"

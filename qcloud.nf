@@ -5,7 +5,6 @@ nextflow.enable.dsl=2
 // Import utility functions
 include { extractQCType; selectTsvFile; extractQCTypeFromFilename; getQCloudSampleType; getDatabaseName } from './modules/functions/utils'
 include { ThermoRawFileParser as trfp_pr } from './subworkflows/conversion/conversion'
-include { insertDataToQCloud as insertDataToQCloud_pr } from './subworkflows/report/report_qcloud'
 include { create_decoy as cdecoy_pr; fragpipe_prep as fragpipe_prep_pr; fragpipe_main as fragpipe_main_pr; extract_apex_rt as extract_apex_rt_pr } from './subworkflows/search_engine/search_engine.nf'
 include { msnbasexic as msnbasexic_pr } from './subworkflows/quantification/quantification'
 include { PROCESS_PEPTIDES } from './modules/qcloud/process_peptides'
@@ -15,6 +14,7 @@ include { SUBMIT_TO_QCLOUD } from './modules/qcloud/submit_qcloud'
 include { MODIFY_FRAGPIPE_WORKFLOW } from './modules/qcloud/modify_workflow'
 include { EXTRACT_INSTRUMENT_INFO } from './modules/qcloud/extract_instrument'
 include { PROCESS_FRAGPIPE_PEPTIDES } from './modules/qcloud/process_fragpipe_peptides'
+include { MARK_PROCESSING_STARTED } from './modules/qcloud/mark_processing_started'
 
 workflow {
     // Extract filename from the full path for parsing
@@ -63,6 +63,11 @@ workflow {
         [file, base, path]
     }
     .set { rawfile_ch }
+
+    // Fires immediately, in parallel with the real conversion/search-engine
+    // work below - marks the dashboard's "processing started" timestamp as
+    // early as the pipeline is actually running for this file.
+    MARK_PROCESSING_STARTED(rawfile_ch)
 
     // Channels for msnbasexic_pr grouped params
     xic_params = params.msnbasexic_params

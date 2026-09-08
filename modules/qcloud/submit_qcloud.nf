@@ -157,7 +157,20 @@ process SUBMIT_TO_QCLOUD {
     fi
     
     echo "File metadata inserted successfully"
-    
+
+    # Mark the pipeline_file tracking row as PROCESSED (best-effort: this is
+    # dashboard-visibility bookkeeping, never let it fail the actual pipeline
+    # run now that the real File insert above already succeeded).
+    echo "Marking pipeline_file as PROCESSED..."
+    pf_response=\$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \\
+        -H "Authorization: \$access_token" \\
+        "\${INSERT_FILE_URL%/api/file}/api/pipelineFile/processed/\$checksum?filename=\$reversed_rest_of_filename" \\
+        || echo "HTTPSTATUS:000")
+    pf_http_code=\$(echo \$pf_response | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')
+    if [[ \$pf_http_code -ne 200 ]]; then
+        echo "WARNING: Failed to mark pipeline_file as PROCESSED (HTTP \$pf_http_code) - non-fatal, continuing."
+    fi
+
     # Now submit each QC data JSON file
     echo "Inserting QC data to QCloud..."
     for json_file in *_QC_*.json; do
