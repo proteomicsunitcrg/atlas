@@ -156,6 +156,24 @@ process SUBMIT_TO_QCLOUD {
     if [[ \$http_code -ne 200 && \$http_code -ne 201 ]]; then
         echo "ERROR: Failed to insert file metadata (HTTP \$http_code)"
         echo "Response: \$body"
+
+        # Best-effort, immediate: Nextflow's errorStrategy deliberately
+        # "ignores" this process's failure so the run can still finish for
+        # other files - which means neither workflow.onError nor
+        # atlas_checker.sh's cron (its own log grep explicitly skips
+        # "ignored" errors, by design) will ever see this failure. This is
+        # therefore the only place it's ever reported to the dashboard.
+        error_reason="This file could not be registered in QCloud (HTTP \$http_code)."
+        if echo "\$body" | grep -qi "not the last file"; then
+            error_reason="This file was not registered because a more recent file for the same instrument and sample type is already in the system. This is expected when reprocessing an older file, and in most cases can be safely ignored. If this specific file needs to be included in the QC history, contact the proteomics team with the filename so the newer entry can be reviewed."
+        elif echo "\$body" | grep -qiE "already exists|duplicate"; then
+            error_reason="This file had already been received and processed before - it looks like a duplicate upload. No action needed."
+        fi
+        error_payload=\$(printf '{"errorReason":"%s"}' "\$error_reason")
+        curl -sk --max-time 10 -X POST -H "Authorization: \$access_token" -H "Content-Type: application/json" \\
+            --data "\$error_payload" \\
+            "\${INSERT_FILE_URL%/api/file}/api/pipelineFile/error/\$checksum" -o /dev/null
+
         exit 1
     fi
     
