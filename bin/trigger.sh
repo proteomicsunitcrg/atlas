@@ -1038,10 +1038,11 @@ Moved to \`$DIA_MISMATCH_FOLDER\` instead of launching - no pipeline was trigger
                         # The login node has no network access to QCloud2 -
                         # only compute nodes do - so submit the call as a
                         # tiny Slurm job instead of running it inline here.
-                        # Placed under WF_ROOT_FOLDER (shared, exec-enabled
-                        # storage), never under /tmp (compute nodes here
-                        # mount it noexec).
-                        async_dir="${WF_ROOT_FOLDER}/.qcloud_received_async"
+                        # Placed under ATLAS_RUNS_FOLDER (shared, exec-enabled
+                        # storage, already used for per-run work dirs), never
+                        # under /tmp (compute nodes here mount it noexec) nor
+                        # WF_ROOT_FOLDER (that's the git checkout itself).
+                        async_dir="${ATLAS_RUNS_FOLDER}/.qcloud_received_async"
                         mkdir -p "$async_dir"
                         async_script=$(mktemp "${async_dir}/register_XXXXXX.sh")
                         {
