@@ -169,7 +169,14 @@ process SUBMIT_TO_QCLOUD {
         elif echo "\$body" | grep -qiE "already exists|duplicate"; then
             error_reason="This file had already been received and processed before - it looks like a duplicate upload. No action needed."
         fi
-        error_payload=\$(printf '{"errorReason":"%s"}' "\$error_reason")
+        # sample/qcCode/acquisitionDate/instrumentUuid are already parsed above
+        # for the file-registration call itself, so include them here too -
+        # this is the only place this specific failure ever gets reported (see
+        # comment below), and atlas_checker.sh's cron will never enrich it
+        # later. databaseName/sizeMb aren't available without re-parsing the
+        # raw file, so they stay unset rather than guessed.
+        error_payload=\$(printf '{"sample":"%s","qcCode":"%s","acquisitionDate":"%s","instrumentUuid":"%s","errorReason":"%s"}' \\
+            "\$reversed_rest_of_filename" "\$context_code" "\$creation_date" "\$uuid" "\$error_reason")
         curl -sk --max-time 10 -X POST -H "Authorization: \$access_token" -H "Content-Type: application/json" \\
             --data "\$error_payload" \\
             "\${INSERT_FILE_URL%/api/file}/api/pipelineFile/error/\$checksum" -o /dev/null
