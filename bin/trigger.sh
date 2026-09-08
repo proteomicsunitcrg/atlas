@@ -1034,7 +1034,29 @@ Moved to \`$DIA_MISMATCH_FOLDER\` instead of launching - no pipeline was trigger
             # Check if RAWFILE_TO_PROCESS exists before executing
             elif [ -f "$RAWFILE_TO_PROCESS" ] || [ -d "$RAWFILE_TO_PROCESS" ]; then
                 if { [ "$PROD_MODE" = "true" ] || [ "$TEST_MODE" = "true" ]; } && [[ "${PARAMS[workflow]}" == qcloud* ]]; then
-                    register_pipeline_file_received "$RAWFILE_TO_PROCESS"
+                    if command -v sbatch >/dev/null 2>&1; then
+                        # The login node has no network access to QCloud2 -
+                        # only compute nodes do - so submit the call as a
+                        # tiny Slurm job instead of running it inline here.
+                        # Placed under WF_ROOT_FOLDER (shared, exec-enabled
+                        # storage), never under /tmp (compute nodes here
+                        # mount it noexec).
+                        async_dir="${WF_ROOT_FOLDER}/.qcloud_received_async"
+                        mkdir -p "$async_dir"
+                        async_script=$(mktemp "${async_dir}/register_XXXXXX.sh")
+                        {
+                            echo "#!/bin/bash"
+                            echo "ASSETS_FOLDER='${ASSETS_FOLDER}'"
+                            echo "WF_ROOT_FOLDER='${WF_ROOT_FOLDER}'"
+                            declare -f register_pipeline_file_received
+                            echo "register_pipeline_file_received '${RAWFILE_TO_PROCESS}'"
+                        } > "$async_script"
+                        chmod +x "$async_script"
+                        sbatch --job-name=qcloud_received --time=00:02:00 \
+                            --output="${async_script}.log" "$async_script"
+                    else
+                        register_pipeline_file_received "$RAWFILE_TO_PROCESS"
+                    fi
                 fi
                 launch_nf_run "${ARGS[@]}"
             else
