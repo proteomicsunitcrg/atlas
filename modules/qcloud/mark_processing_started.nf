@@ -31,7 +31,10 @@ process MARK_PROCESSING_STARTED {
     fi
 
     insert_file_url="${params.url_api_qcloud_insert_file}"
-    http_code=\$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \\
+    # -k: this is CRG-internal Atlas -> QCloud2 traffic (never external
+    # clients); qcloudtest.crg.eu has no valid cert of its own (shares
+    # *.qcloud2.crg.eu's, wrong SAN).
+    http_code=\$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 \\
         -X POST -H "Authorization: \$access_token" \\
         "\${insert_file_url%/api/file}/api/pipelineFile/processingStarted/\$checksum" \\
         || echo "000")

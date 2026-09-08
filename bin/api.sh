@@ -5,7 +5,10 @@ get_api_access_token(){
 }
 
 get_api_access_token_qcloud(){
- curl -s -X POST $1 -H "Content-Type: application/json" --data '{"username":"'$2'","password":"'$3'"}' | grep -Po '"token" : *\K"[^"]*"' | sed 's/"//g'
+ # -k: QCloud2 here is always CRG-internal (proteomics-qc/hipnos8 -> qcv2),
+ # never reached by external clients through this call, and qcloudtest.crg.eu
+ # has no valid cert of its own (shares *.qcloud2.crg.eu's, wrong SAN).
+ curl -sk -X POST $1 -H "Content-Type: application/json" --data '{"username":"'$2'","password":"'$3'"}' | grep -Po '"token" : *\K"[^"]*"' | sed 's/"//g'
 }
 
 post_api_access_context_source(){

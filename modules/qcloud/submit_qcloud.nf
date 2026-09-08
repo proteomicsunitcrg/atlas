@@ -138,7 +138,10 @@ process SUBMIT_TO_QCLOUD {
     cat insert_file_string
     
     # Register the file first
-    response=\$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \\
+    # -k on every QCloud2 call below: CRG-internal Atlas -> QCloud2 traffic,
+    # never external clients; qcloudtest.crg.eu has no valid cert of its own
+    # (shares *.qcloud2.crg.eu's, wrong SAN).
+    response=\$(curl -sk -w "HTTPSTATUS:%{http_code}" -X POST \\
         -H "Authorization: \$access_token" \\
         -H "Content-Type: application/json" \\
         "\${INSERT_FILE_URL}/${qcloud_sample_type}/\$labsysid" \\
@@ -162,7 +165,7 @@ process SUBMIT_TO_QCLOUD {
     # dashboard-visibility bookkeeping, never let it fail the actual pipeline
     # run now that the real File insert above already succeeded).
     echo "Marking pipeline_file as PROCESSED..."
-    pf_response=\$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \\
+    pf_response=\$(curl -sk -w "HTTPSTATUS:%{http_code}" -X POST \\
         -H "Authorization: \$access_token" \\
         "\${INSERT_FILE_URL%/api/file}/api/pipelineFile/processed/\$checksum?filename=\$reversed_rest_of_filename" \\
         || echo "HTTPSTATUS:000")
@@ -182,7 +185,7 @@ process SUBMIT_TO_QCLOUD {
             head -5 "\$json_file"
             
             # API call with authentication
-            response=\$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \\
+            response=\$(curl -sk -w "HTTPSTATUS:%{http_code}" -X POST \\
                 -H "Authorization: \$access_token" \\
                 -H "Content-Type: application/json" \\
                 "\$INSERT_DATA_URL" \\

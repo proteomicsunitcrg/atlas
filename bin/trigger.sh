@@ -163,7 +163,7 @@ register_pipeline_file_received() {
     payload=$(printf '{"checksum":"%s","filename":"%s"%s}' "$checksum" "$basename_sh" "$acquisition_date_json")
 
     local http_code
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+    http_code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 \
         -X POST -H "Authorization: ${access_token}" -H "Content-Type: application/json" \
         --data "$payload" "$endpoint")
 
