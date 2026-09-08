@@ -14,7 +14,6 @@ include { SUBMIT_TO_QCLOUD } from './modules/qcloud/submit_qcloud'
 include { MODIFY_FRAGPIPE_WORKFLOW } from './modules/qcloud/modify_workflow'
 include { EXTRACT_INSTRUMENT_INFO } from './modules/qcloud/extract_instrument'
 include { PROCESS_FRAGPIPE_PEPTIDES } from './modules/qcloud/process_fragpipe_peptides'
-include { MARK_PROCESSING_STARTED } from './modules/qcloud/mark_processing_started'
 
 workflow {
     // Extract filename from the full path for parsing
@@ -43,6 +42,29 @@ workflow {
     log.info "Selected TSV file: ${selected_tsv_file}"
     log.info "QCloud sample type code: ${qcloud_sample_type}"
 
+    // Fires immediately as plain script code, in the same driver process
+    // that runs this whole workflow (a compute node in "wrapped" mode) -
+    // no longer a separate Nextflow process, which needed its own Slurm
+    // submission/queue wait just to record a timestamp. Fire-and-forget
+    // (not waited on) so it never delays the pipeline's actual start.
+    try {
+        def startScript = """
+            cd '${projectDir}/bin'
+            source api.sh
+            checksum=\$(md5sum '${rawfilePath}' 2>/dev/null | awk '{print \$1}')
+            [ -z "\$checksum" ] && exit 0
+            access_token=\$(get_api_access_token_qcloud '${params.url_api_qcloud_signin}' '${params.url_api_qcloud_user}' '${params.url_api_qcloud_pass}')
+            [ -z "\$access_token" ] && exit 0
+            api_base='${params.url_api_qcloud_insert_file}'
+            api_base=\${api_base%/api/file}
+            curl -sk --max-time 10 -X POST -H "Authorization: \$access_token" \\
+                "\${api_base}/api/pipelineFile/processingStarted/\$checksum" -o /dev/null
+        """
+        ['bash', '-c', startScript].execute()
+    } catch (Exception e) {
+        log.warn "Could not notify QCloud2 of processing start (non-fatal): ${e.message}"
+    }
+
     // Channel creation - handles both files and folders
     Channel
     .fromPath(params.rawfile, checkIfExists: true, type: is_bruker ? 'dir' : 'file')
@@ -63,11 +85,6 @@ workflow {
         [file, base, path]
     }
     .set { rawfile_ch }
-
-    // Fires immediately, in parallel with the real conversion/search-engine
-    // work below - marks the dashboard's "processing started" timestamp as
-    // early as the pipeline is actually running for this file.
-    MARK_PROCESSING_STARTED(rawfile_ch)
 
     // Channels for msnbasexic_pr grouped params
     xic_params = params.msnbasexic_params

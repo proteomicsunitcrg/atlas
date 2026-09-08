@@ -64,6 +64,31 @@ workflow {
     log.info "Checksum: ${checksum}"
     log.info "Config file: ${config_file_path}"
 
+    // Fires immediately as plain script code, in the same driver process
+    // that runs this whole workflow (a compute node in "wrapped" mode) -
+    // no separate Nextflow process/Slurm submission needed just to record a
+    // timestamp. Fire-and-forget (not waited on) so it never delays the
+    // pipeline's actual start. Reuses the filename-derived checksum above
+    // (not a fresh md5sum) so it matches whatever SUBMIT_TO_QCLOUD later
+    // registers for the same file.
+    if (checksum) {
+        try {
+            def startScript = """
+                cd '${projectDir}/bin'
+                source api.sh
+                access_token=\$(get_api_access_token_qcloud '${params.url_api_qcloud_signin}' '${params.url_api_qcloud_user}' '${params.url_api_qcloud_pass}')
+                [ -z "\$access_token" ] && exit 0
+                api_base='${params.url_api_qcloud_insert_file}'
+                api_base=\${api_base%/api/file}
+                curl -sk --max-time 10 -X POST -H "Authorization: \$access_token" \\
+                    "\${api_base}/api/pipelineFile/processingStarted/${checksum}" -o /dev/null
+            """
+            ['bash', '-c', startScript].execute()
+        } catch (Exception e) {
+            log.warn "Could not notify QCloud2 of processing start (non-fatal): ${e.message}"
+        }
+    }
+
     // ----------------------------
     // CHANNEL CREATION - HANDLES BOTH FILES AND FOLDERS
     // ----------------------------
