@@ -280,6 +280,12 @@ workflow {
     def wf = workflow
     def enableNotifEmail = params.enable_notif_email
     def notifEmail = params.notif_email
+    def errRawfile = params.rawfile
+    def errBinDir = "${projectDir}/bin"
+    def errSigninUrl = params.url_api_qcloud_signin
+    def errUser = params.url_api_qcloud_user
+    def errPass = params.url_api_qcloud_pass
+    def errInsertFileUrl = params.url_api_qcloud_insert_file
     workflow.onError {
         def msg = """
         Pipeline FAILED!
@@ -297,6 +303,35 @@ workflow {
             )
         } else {
             log.error msg
+        }
+
+        // Best-effort, fires the moment the whole run fails (any process, any
+        // reason) so the dashboard gets an accurate ERROR timestamp right
+        // away, instead of waiting for atlas_checker.sh's cron to notice
+        // later - that latency would otherwise inflate "Time to process" by
+        // however long it took the cron to run next. atlas_checker.sh still
+        // runs afterwards and enriches the reason/diagnostic fields (see
+        // PipeLineFileService.markError - it only stamps updatedDate on the
+        // *first* transition into ERROR, so this later enrichment doesn't
+        // corrupt the duration).
+        try {
+            def errScript = """
+                cd '${errBinDir}'
+                source api.sh
+                checksum=\$(md5sum '${errRawfile}' 2>/dev/null | awk '{print \$1}')
+                [ -z "\$checksum" ] && exit 0
+                access_token=\$(get_api_access_token_qcloud '${errSigninUrl}' '${errUser}' '${errPass}')
+                [ -z "\$access_token" ] && exit 0
+                api_base='${errInsertFileUrl}'
+                api_base=\${api_base%/api/file}
+                payload='{"errorReason":"Pipeline failed - detailed reason pending automatic classification."}'
+                curl -sk --max-time 10 -X POST -H "Authorization: \$access_token" -H "Content-Type: application/json" \\
+                    --data "\$payload" "\${api_base}/api/pipelineFile/error/\$checksum" -o /dev/null
+            """
+            def proc = ['bash', '-c', errScript].execute()
+            proc.waitForOrKill(15000)
+        } catch (Exception e) {
+            log.warn "onError: could not notify QCloud2 pipeline_file (non-fatal): ${e.message}"
         }
     }
 }
