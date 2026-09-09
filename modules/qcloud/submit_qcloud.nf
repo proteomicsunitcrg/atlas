@@ -173,26 +173,10 @@ process SUBMIT_TO_QCLOUD {
         # for the file-registration call itself, so include them here too -
         # this is the only place this specific failure ever gets reported (see
         # comment below), and atlas_checker.sh's cron will never enrich it
-        # later. databaseName isn't available without re-parsing the raw file,
-        # so it stays unset rather than guessed - but metadata.json's
-        # human-readable file_size (e.g. "216M", "1.2G") is already sitting
-        # right here, just needs converting to a plain MB number.
-        size_mb="null"
-        if [ -f "metadata.json" ]; then
-            file_size_raw=\$(jq -r '.file_size // empty' metadata.json 2>/dev/null)
-            if [ -n "\$file_size_raw" ]; then
-                size_mb=\$(echo "\$file_size_raw" | awk '{
-                    unit = toupper(substr(\$0, length(\$0), 1))
-                    num = substr(\$0, 1, length(\$0)-1) + 0
-                    if (unit == "G") printf "%.2f", num * 1024
-                    else if (unit == "M") printf "%.2f", num
-                    else if (unit == "K") printf "%.2f", num / 1024
-                    else printf "%.2f", (\$0 + 0) / 1024 / 1024
-                }')
-            fi
-        fi
-        error_payload=\$(printf '{"sample":"%s","qcCode":"%s","acquisitionDate":"%s","instrumentUuid":"%s","sizeMb":%s,"errorReason":"%s"}' \\
-            "\$reversed_rest_of_filename" "\$context_code" "\$creation_date" "\$uuid" "\$size_mb" "\$error_reason")
+        # later. databaseName/sizeMb aren't available without re-parsing the
+        # raw file, so they stay unset rather than guessed.
+        error_payload=\$(printf '{"sample":"%s","qcCode":"%s","acquisitionDate":"%s","instrumentUuid":"%s","errorReason":"%s"}' \\
+            "\$reversed_rest_of_filename" "\$context_code" "\$creation_date" "\$uuid" "\$error_reason")
         curl -sk --max-time 10 -X POST -H "Authorization: \$access_token" -H "Content-Type: application/json" \\
             --data "\$error_payload" \\
             "\${INSERT_FILE_URL%/api/file}/api/pipelineFile/error/\$checksum" -o /dev/null
