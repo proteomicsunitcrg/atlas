@@ -55,7 +55,13 @@ workflow {
     def selected_tsv_file   = selectTsvFile(qcType, params)
     def qcodeFilePath       = "${params.qcode_file}"
     def qcloud_sample_type  = getQCloudSampleType(qcType, qcodeFilePath)
-    def checksum            = extract_checksum_from_filename(filename)
+    // filename still carries the trailing .raw.<vendorPattern> suffix (e.g.
+    // ".raw.SP_Human") - since that suffix itself contains an underscore,
+    // extract_checksum_from_filename's naive "after the last underscore"
+    // parse grabs "Human"/"Bovine" instead of the real checksum unless we
+    // strip everything from the first "." onward first, same as every other
+    // caller of this function already does.
+    def checksum            = extract_checksum_from_filename(filename.split('\\.')[0])
     def config_file_path    = "${params.qcloud_config}"
 
     log.info "QC type: ${qcType}"
