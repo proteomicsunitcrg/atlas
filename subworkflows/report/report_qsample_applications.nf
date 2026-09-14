@@ -93,6 +93,11 @@ process insertDataToQSample {
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "22","value": "'$miscleavages_2'"}]}]}'
         curl -v -X POST -H "Authorization: Bearer $access_token" !{url_api_insert_data} -H "Content-Type: application/json" --data '{"file": {"checksum": "'$checksum'"},"data": [{"parameter": {"apiKey": "'$api_key_sh'","id": "1"},"values": [{"contextSource": "23","value": "'$miscleavages_3'"}]}]}'
 
+        # Mark this RequestFile PROCESSED for the Request plots processing icon (proteomicsunitcrg/qsample-server#192):
+        api_base_status='!{url_api_insert_data}'
+        api_base_status=${api_base_status%/api/data/pipelineRequest}
+        curl -s -X POST -H "Authorization: Bearer $access_token" "${api_base_status}/api/requestFileStatus/processed/$checksum" -o /dev/null
+
         '''
 }
 

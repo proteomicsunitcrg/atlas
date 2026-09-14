@@ -56,7 +56,29 @@ Channel
   .set { atlas_ptm_list_ch }
 
 workflow {
- 
+
+   // Fire-and-forget "received" notification for the Request plots processing
+   // icon (proteomicsunitcrg/qsample-server#192) - fires immediately as plain script code in
+   // the same driver process running this workflow, not a separate Nextflow
+   // process. Mirrors the same notifier in main.nf/qcloud.nf.
+   try {
+       def startScript = """
+           cd '${projectDir}/bin'
+           source api.sh
+           checksum=\$(md5sum '${params.rawfile}' 2>/dev/null | awk '{print \$1}')
+           [ -z "\$checksum" ] && exit 0
+           access_token=\$(get_api_access_token '${params.url_api_signin}' '${params.url_api_user}' '${params.url_api_pass}')
+           [ -z "\$access_token" ] && exit 0
+           api_base='${params.url_api_insert_file}'
+           api_base=\${api_base%/api/file/insertFromPipelineRequest}
+           curl -s --max-time 10 -X POST -H "Authorization: Bearer \$access_token" \\
+               "\${api_base}/api/requestFileStatus/received/\$checksum" -o /dev/null
+       """
+       ['bash', '-c', startScript].execute()
+   } catch (Exception e) {
+       log.warn "Could not notify QSample of processing start (non-fatal): ${e.message}"
+   }
+
    // ----------------------------
    // EXTRACT PATTERN FROM FILENAME
    // ----------------------------
@@ -124,6 +146,63 @@ workflow {
   output_folder_diann_pr(diann_pr.out.report_tsv, converted_files_ch, output_folder_ch)        
   
   //lab
-  insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out, converted_files_ch) 
+  insertDiannPolymerContToQSample_pr(insertDIANNFileToQSample_pr.out, converted_files_ch)
 
+}
+
+// Capture workflow metadata and params now: resolving the implicit `workflow`/
+// `params` bindings from inside the onError closure can return null when
+// Nextflow's Task monitor thread invokes this handler after a session abort.
+def wf = workflow
+def enableNotifEmail = params.enable_notif_email
+def notifEmail = params.notif_email
+def errRawfile = params.rawfile
+def errBinDir = "${projectDir}/bin"
+def errSigninUrl = params.url_api_signin
+def errUser = params.url_api_user
+def errPass = params.url_api_pass
+def errInsertFileUrl = params.url_api_insert_file
+workflow.onError {
+
+    def msg = """\
+        Pipeline execution summary
+        --------------------------
+        Run name      : ${wf.runName}
+        Working dir   : ${wf.workDir}
+        Command line  : ${wf.commandLine}
+        """
+        .stripIndent()
+
+    if (enableNotifEmail) {
+        sendMail(to: notifEmail, subject: ':( atlas pipeline error', body: msg)
+    } else {
+        log.error msg
+    }
+
+    // Best-effort, fires the moment the whole run fails (any process, any
+    // reason) so the Request plots icon gets an accurate ERROR timestamp
+    // right away, instead of waiting for atlas_checker.sh's cron to notice
+    // later. atlas_checker.sh still runs afterwards and enriches the
+    // reason/diagnostic fields (see RequestFileStatusService.markError - it
+    // only stamps updatedDate on the *first* transition into ERROR, so this
+    // later enrichment doesn't corrupt the duration shown in the UI).
+    try {
+        def errScript = """
+            cd '${errBinDir}'
+            source api.sh
+            checksum=\$(md5sum '${errRawfile}' 2>/dev/null | awk '{print \$1}')
+            [ -z "\$checksum" ] && exit 0
+            access_token=\$(get_api_access_token '${errSigninUrl}' '${errUser}' '${errPass}')
+            [ -z "\$access_token" ] && exit 0
+            api_base='${errInsertFileUrl}'
+            api_base=\${api_base%/api/file/insertFromPipelineRequest}
+            payload='{"errorReason":"Pipeline failed - detailed reason pending automatic classification."}'
+            curl -s --max-time 10 -X POST -H "Authorization: Bearer \$access_token" -H "Content-Type: application/json" \\
+                --data "\$payload" "\${api_base}/api/requestFileStatus/error/\$checksum" -o /dev/null
+        """
+        def proc = ['bash', '-c', errScript].execute()
+        proc.waitForOrKill(15000)
+    } catch (Exception e) {
+        log.warn "onError: could not notify QSample requestFileStatus (non-fatal): ${e.message}"
+    }
 }
