@@ -269,7 +269,7 @@ workflow {
             .collect()
 
         sample_info = input_ch.map { folder ->
-            folder.getName().replaceAll(/\.d$/, "")
+            folder.getName().replaceAll(/\.d\..*$/, "")
         }.first()
 
         // For Bruker, no metadata.json from mzML
