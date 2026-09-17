@@ -197,7 +197,10 @@ workflow.onError {
             [ -z "\$access_token" ] && exit 0
             api_base='${errInsertFileUrl}'
             api_base=\${api_base%/api/file/insertFromPipelineRequest}
-            payload='{"errorReason":"Pipeline failed - detailed reason pending automatic classification."}'
+            size_bytes=\$(stat -c '%s' '${errRawfile}' 2>/dev/null)
+            size_mb_json="null"
+            [[ "\$size_bytes" =~ ^[0-9]+\$ ]] && size_mb_json=\$(awk "BEGIN { printf \\"%.0f\\", \$size_bytes/1024/1024 }")
+            payload=\$(printf '{"errorReason":"Pipeline failed - detailed reason pending automatic classification.","sizeMb":%s}' "\$size_mb_json")
             curl -s --max-time 10 -X POST -H "Authorization: Bearer \$access_token" -H "Content-Type: application/json" \\
                 --data "\$payload" "\${api_base}/api/requestFileStatus/error/\$checksum" -o /dev/null
         """
