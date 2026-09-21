@@ -102,6 +102,17 @@ register_pipeline_file_received() {
 
     local checksum
     checksum=$(md5sum "$rawfile" 2>/dev/null | awk '{print $1}')
+
+    # md5sum fails on Bruker .d folders (they are directories) - fall back to
+    # the checksum embedded in the filename: the very same md5 QCrawler
+    # computed, already used by the pipeline itself (qcloud_diann.nf
+    # extract_checksum_from_filename: strip the vendor suffix at the first
+    # dot, then take the last "_"-delimited token). Only accepted if it is a
+    # well-formed 32-hex md5 (some instruments embed shorter tokens).
+    if [[ -z "$checksum" ]]; then
+        local name_cs=$(echo "$(basename "$rawfile")" | sed 's/\..*//' | rev | cut -d'_' -f1 | rev)
+        [[ "$name_cs" =~ ^[0-9a-f]{32}$ ]] && checksum="$name_cs"
+    fi
     if [[ -z "$checksum" ]]; then
         echo "[WARNING] register_pipeline_file_received: could not checksum $rawfile, skipping."
         return 0
