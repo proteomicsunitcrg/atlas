@@ -47,23 +47,31 @@ workflow {
    // the same driver process running this workflow, not a separate Nextflow
    // process (which would need its own Slurm submission just to record a
    // timestamp). Mirrors qcloud.nf's processingStarted notifier.
-   try {
-       def startScript = """
-           cd '${projectDir}/bin'
-           source api.sh
-           checksum=\$(md5sum '${params.rawfile}' 2>/dev/null | awk '{print \$1}')
-           [ -z "\$checksum" ] && exit 0
-           access_token=\$(get_api_access_token '${params.url_api_signin}' '${params.url_api_user}' '${params.url_api_pass}')
-           [ -z "\$access_token" ] && exit 0
-           api_base='${params.url_api_insert_file}'
-           api_base=\${api_base%/api/file/insertFromPipelineRequest}
-           curl -s --max-time 10 -X POST -H "Authorization: Bearer \$access_token" \\
-               "\${api_base}/api/requestFileStatus/received/\$checksum" -o /dev/null
-       """
-       ['bash', '-c', startScript].execute()
-   } catch (Exception e) {
-       log.warn "Could not notify QSample of processing start (non-fatal): ${e.message}"
-   }
+    try {
+        def startScript = """
+            cd '${projectDir}/bin'
+            source api.sh
+            checksum=\$(md5sum '${params.rawfile}' 2>/dev/null | awk '{print \$1}')
+            [ -z "\$checksum" ] && exit 0
+            access_token=\$(get_api_access_token '${params.url_api_signin}' '${params.url_api_user}' '${params.url_api_pass}')
+            [ -z "\$access_token" ] && exit 0
+            api_base='${params.url_api_insert_file}'
+            api_base=\${api_base%/api/file/insertFromPipelineRequest}
+            fname=\$(basename '${params.rawfile}')
+            request_code=\$(echo "\$fname" | awk -F'[_.]' '{print \$1}')
+            fbase=\${fname%.*}
+            [ "\$fbase" = "\$fname" ] && fbase=\$fname
+            curl -s --max-time 10 -X POST -H "Authorization: Bearer \$access_token" \\
+                "\${api_base}/api/file/insertFromPipelineRequest/\$request_code" \\
+                -H "Content-Type: application/json" \\
+                --data '{\"checksum\": \"'\$checksum'\", \"filename\": \"'\$fbase'\"}' -o /dev/null
+            curl -s --max-time 10 -X POST -H "Authorization: Bearer \$access_token" \\
+                "\${api_base}/api/requestFileStatus/received/\$checksum" -o /dev/null
+        """
+        ['bash', '-c', startScript].execute()
+    } catch (Exception e) {
+        log.warn "Could not notify QSample of processing start (non-fatal): ${e.message}"
+    }
 
    //Conversion:
    trfp_pr(rawfile_ch)
