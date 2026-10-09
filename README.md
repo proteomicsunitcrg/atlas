@@ -1,7 +1,6 @@
 # Atlas
-> **Development moved to the CRG internal GitLab (2026-10):** <https://gitlab.hpc.crg.es/proteomicsunitcrg/atlas>
-> This GitHub repository is **frozen** (no development commits) - use the GitLab instance for all development.
-> To download/install a version, see the [Releases](https://github.com/proteomicsunitcrg/atlas/releases) (clean snapshot per release).
+> **Notice (2026-10):** Development of Atlas has moved to an internal CRG repository (CRG staff only - not accessible from outside).
+> This GitHub repository is **frozen** and kept as a public archive: to download/install a version, see the [Releases](https://github.com/proteomicsunitcrg/atlas/releases) (clean snapshot per release).
 
 
 ## Introduction
