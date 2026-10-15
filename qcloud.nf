@@ -256,6 +256,7 @@ workflow {
         // CRITICAL: Must include metadata.json for SUBMIT_TO_QCLOUD to extract creation date
         all_json_files = EXTRACT_METADATA.out.metadata_json
             .mix(EXTRACT_METADATA.out.qc_jsons.map { basename, jsons -> jsons })
+            .mix(EXTRACT_METADATA.out.tic_trace)
             .mix(PROCESS_PEPTIDES.out.peptide_jsons.map { basename, jsons -> jsons })
             .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
             .flatten()
@@ -271,6 +272,7 @@ workflow {
         // CRITICAL: Must include metadata.json for SUBMIT_TO_QCLOUD to extract creation date
         all_json_files = EXTRACT_METADATA.out.metadata_json
             .mix(EXTRACT_METADATA.out.qc_jsons.map { basename, jsons -> jsons })
+            .mix(EXTRACT_METADATA.out.tic_trace)
             .mix(EXTRACT_FRAGPIPE_METRICS.out.fragpipe_jsons.map { sample_id, jsons -> jsons })
             .mix(PROCESS_FRAGPIPE_PEPTIDES.out.peptide_jsons.map { sample_id, jsons -> jsons })
             .flatten()
