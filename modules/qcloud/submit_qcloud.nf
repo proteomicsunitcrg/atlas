@@ -230,7 +230,42 @@ process SUBMIT_TO_QCLOUD {
             fi
         fi
     done
-    
+
+    # --- Store the full TIC series in the QCloud2 tic table ----------------
+    # One blob row per file: "gz1:" + base64(gzip(compact JSON [[rt_ms,
+    # msLevel, tic], ...])). Consumed by the "Total Ion Current view". The
+    # file row must already exist (registered above). Best-effort, like the
+    # data POSTs: a failure here only loses the curve view, never the QC data.
+    tic_file=\$(ls *_TIC.json 2>/dev/null | head -1)
+    if [[ -n "\$tic_file" ]]; then
+        if [[ "\$(cat "\$tic_file")" == "[]" ]]; then
+            echo "WARNING: TIC series empty (sum cross-check failed upstream) - skipping PUT, Sum TIC only"
+        else
+            gzip -9 -c "\$tic_file" | base64 -w0 > "tic_payload.b64"
+            b64_size=\$(stat -c %s "tic_payload.b64")
+            echo "Storing TIC series: \$(basename "\$tic_file") (compressed payload: \$b64_size bytes)"
+            if [[ "\$b64_size" -gt 2097152 ]]; then
+                echo "WARNING: compressed TIC series too large (\$b64_size bytes) - skipping PUT, Sum TIC only"
+            else
+                jq -n --rawfile b "tic_payload.b64" '{tic: ("gz1:" + \$b)}' > "tic_payload.json"
+                tic_response=\$(curl -sk -w "HTTPSTATUS:%{http_code}" -X PUT \\
+                    -H "Authorization: \$access_token" \\
+                    -H "Content-Type: application/json" \\
+                    "\${INSERT_FILE_URL%/api/file}/api/file/tic/\$checksum" \\
+                    --data @tic_payload.json)
+                tic_http_code=\$(echo \$tic_response | tr -d '\\n' | sed -e 's/.*HTTPSTATUS://')
+                tic_body=\$(echo \$tic_response | sed -e 's/HTTPSTATUS:.*//')
+                echo "TIC series PUT - HTTP Status: \$tic_http_code"
+                echo "TIC series PUT - Response: \$tic_body"
+                if [[ \$tic_http_code -ne 200 && \$tic_http_code -ne 201 ]]; then
+                    echo "WARNING: Failed to store TIC series (HTTP \$tic_http_code) - Sum TIC still reported"
+                else
+                    echo "TIC series stored successfully"
+                fi
+            fi
+        fi
+    fi
+
     echo "QCloud submission completed for ${sample_id}" > qcloud_submission_${sample_id}.log
     """
 }

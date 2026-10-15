@@ -259,6 +259,7 @@ workflow {
         // <--- Collect all files including metadata.json (may be empty)
         all_files_with_metadata = all_json_files
             .mix(metadata_ch.metadata_json)
+            .mix(metadata_ch.tic_trace)
             .collect()
             
     } else if (is_bruker) {
