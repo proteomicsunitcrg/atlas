@@ -8,11 +8,13 @@ process EXTRACT_METADATA {
     output:
     path "metadata.json", emit: metadata_json
     tuple val(basename_mzml), path("*_QC_*.json"), emit: qc_jsons, optional: true
+    path "*_TIC.json", emit: tic_trace
     
     script:
     """
     # Copy bash scripts to working directory
     cp ${projectDir}/bin/parsing_qcloud.sh .
+    cp ${projectDir}/bin/extract_tic_series.awk .
     
     # Make scripts executable
     chmod +x parsing_qcloud.sh
@@ -75,6 +77,33 @@ process EXTRACT_METADATA {
           sed 's/value="//g; s/"//g' | \\
           awk '{sum+=\$1} END{printf "%.2f", sum/10000000000}')
     echo "TIC: \$tic"
+
+    # --- TIC series (full curve, one point per spectrum) -------------------
+    # Stored for the QCloud2 "Total Ion Current view" (one blob row per file
+    # in the tic table). The series sum is cross-checked against the legacy
+    # Sum TIC above: on mismatch the series is discarded (empty JSON) so a
+    # format surprise can never ship a corrupt curve - Sum TIC is unaffected.
+    echo "Extracting TIC series (all points)..."
+    tic_series_file="\${uuid}_\${context_code}_\${checksum_extracted}_TIC.json"
+    tic_series_sum="\$tic_series_file.sum"
+    tic_series_nort="\$tic_series_file.nort"
+    awk -f extract_tic_series.awk -v sumfile="\$tic_series_sum" -v no_rts_file="\$tic_series_nort" "\$original_filename" > "\$tic_series_file"
+    series_sum=\$(cat "\$tic_series_sum")
+    series_no_rts=\$(cat "\$tic_series_nort")
+    series_points=\$(jq "length" "\$tic_series_file")
+    series_bytes=\$(stat -c %s "\$tic_series_file")
+    echo "TIC series: \$series_points points, \$series_bytes bytes, points_without_RT: \$series_no_rts"
+    if [ "\$series_no_rts" != "0" ]; then
+        echo "WARNING: \$series_no_rts TIC points have no retention time (rt stored as 0)"
+    fi
+    series_ok=\$(awk -v a="\$series_sum" -v b="\$tic" 'BEGIN{ d=a/10000000000-b; if (d<0) d=-d; lim=0.001*b; if (lim<0) lim=-lim; if (b==0) ok=(a==0); else ok=(d<=lim); print (ok?1:0) }')
+    if [ "\$series_ok" != "1" ]; then
+        echo "WARNING: TIC series sum (\$series_sum) does not match legacy Sum TIC (\$tic) - storing empty series"
+        echo "[]" > "\$tic_series_file"
+        series_points=0
+        series_bytes=2
+    fi
+    rm -f "\$tic_series_sum" "\$tic_series_nort"
     
     # Detect instrument vendor for MIT interpretation
     echo ""
@@ -324,7 +353,9 @@ EOF
   "tic": "\$tic",
   "mit_ms1": "\$mit_ms1",
   "mit_ms2": "\$mit_ms2",
-  "ms2_scan_count": "\$ms2_scan_count"
+  "ms2_scan_count": "\$ms2_scan_count",
+  "tic_points": "\$series_points",
+  "tic_series_bytes": "\$series_bytes"
 }
 EOF
 
