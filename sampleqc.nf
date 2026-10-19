@@ -94,20 +94,25 @@ def wf = workflow
 def enableNotifEmail = params.enable_notif_email
 def notifEmail = params.notif_email
 workflow.onError {
+    // Log/email notice - kept in its own try/catch so a failure here
+    // (e.g. sendMail unreachable) can never abort the handler
+    // (see atlas#349).
+    try {
+        def msg = """\
+            Pipeline execution summary
+            --------------------------
+            Run name      : ${wf.runName}
+            Working dir   : ${wf.workDir}
+            Command line  : ${wf.commandLine}
+            """
+            .stripIndent()
 
-    def msg = """\
-        Pipeline execution summary
-        --------------------------
-        Run name      : ${wf.runName}
-        Working dir   : ${wf.workDir}
-        Command line  : ${wf.commandLine}
-        """
-        .stripIndent()
-
-    if(enableNotifEmail){
-      sendMail(to: notifEmail, subject: ':( atlas pipeline error', body: msg)
-    } else {
-      log.error msg
+        if(enableNotifEmail){
+          sendMail(to: notifEmail, subject: ':( atlas pipeline error', body: msg)
+        } else {
+          log.error msg
+        }
+    } catch (Exception e) {
+        log.warn "onError: could not send/log failure notice (non-fatal): ${e.message}"
     }
-
 }
