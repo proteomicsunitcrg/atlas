@@ -171,22 +171,13 @@ def errUser = params.url_api_user
 def errPass = params.url_api_pass
 def errInsertFileUrl = params.url_api_insert_file
 workflow.onError {
-
-    def msg = """\
-        Pipeline execution summary
-        --------------------------
-        Run name      : ${wf.runName}
-        Working dir   : ${wf.workDir}
-        Command line  : ${wf.commandLine}
-        """
-        .stripIndent()
-
-    if (enableNotifEmail) {
-        sendMail(to: notifEmail, subject: ':( atlas pipeline error', body: msg)
-    } else {
-        log.error msg
-    }
-
+    // Report to QSample FIRST and on its own, independent try/catch - this
+    // must run no matter what happens below. It used to sit after the
+    // email/log notice, and when that notice itself threw (e.g.
+    // `sendMail` failing), Nextflow aborted the whole onError closure
+    // before ever reaching this block, silently leaving the file's
+    // request_file_status row stuck in PROCESSING forever (see atlas#349).
+    //
     // Best-effort, fires the moment the whole run fails (any process, any
     // reason) so the Request plots icon gets an accurate ERROR timestamp
     // right away, instead of waiting for atlas_checker.sh's cron to notice
@@ -215,5 +206,27 @@ workflow.onError {
         proc.waitForOrKill(15000)
     } catch (Exception e) {
         log.warn "onError: could not notify QSample requestFileStatus (non-fatal): ${e.message}"
+    }
+
+    // Log/email notice - kept independent (own try/catch) so a failure
+    // here (e.g. sendMail unreachable) can never take down the block
+    // above again.
+    try {
+        def msg = """\
+            Pipeline execution summary
+            --------------------------
+            Run name      : ${wf.runName}
+            Working dir   : ${wf.workDir}
+            Command line  : ${wf.commandLine}
+            """
+            .stripIndent()
+
+        if (enableNotifEmail) {
+            sendMail(to: notifEmail, subject: ':( atlas pipeline error', body: msg)
+        } else {
+            log.error msg
+        }
+    } catch (Exception e) {
+        log.warn "onError: could not send/log failure notice (non-fatal): ${e.message}"
     }
 }
