@@ -7,6 +7,7 @@ import DiannConfigLoader
 include { ThermoRawFileParserDiann as trfp_diann_pr } from './subworkflows/conversion/conversion'
 include { diann as diann_pr } from './subworkflows/dia/dia'
 include { insertDIANNFileToQSample as insertDIANNFileToQSample_pr; insertDIANNDataToQSample as insertDIANNDataToQSample_pr; insertDIANNQuantToQSample as insertDIANNQuantToQSample_pr; insertDiannPolymerContToQSample as insertDiannPolymerContToQSample_pr; insertDIANNModificationsToQSample as insertDIANNModificationsToQSample_pr } from './subworkflows/report/report_qsample_diann'
+include { insertTicToQSample as insertTicToQSample_pr } from './subworkflows/report/report_qsample_tic'
 include { output_folder_diann as output_folder_diann_pr} from './subworkflows/report/report_output_folder'
 
 Channel
@@ -147,6 +148,7 @@ workflow {
 
   //Report to QSample database:
   insertDIANNFileToQSample_pr(rawfile_ch, converted_files_ch)                   
+  insertTicToQSample_pr(insertDIANNFileToQSample_pr.out, converted_files_ch)
   insertDIANNDataToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out.report_tsv, converted_files_ch)  
   insertDIANNQuantToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out.report_tsv)
   insertDIANNModificationsToQSample_pr(insertDIANNFileToQSample_pr.out, diann_pr.out.modification_metrics_tsv, atlas_ptm_list_ch)
