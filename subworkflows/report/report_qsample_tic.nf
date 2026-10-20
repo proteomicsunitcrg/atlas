@@ -31,7 +31,7 @@ process insertTicToQSample {
     file(checksum_file)
     file(mzml_file)
 
-    script:
+    shell:
     '''
     cp !{binfolder}/extract_tic_series.awk .
     chmod +x extract_tic_series.awk
