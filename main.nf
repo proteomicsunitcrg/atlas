@@ -93,7 +93,7 @@ workflow {
       fragpipe_prep_pr(rawfile_ch,cdecoy_pr.out)
       fragpipe_main_pr(rawfile_ch, fragpipe_prep_pr.out[0], fragpipe_prep_pr.out[1], fragpipe_prep_pr.out[2])
       insertFragpipeFileToQSample_pr(rawfile_ch,trfp_pr.out)
-      insertTicToQSample_pr(insertFragpipeFileToQSample_pr.out, trfp_pr.out[3])
+      insertTicToQSample_pr(insertFragpipeFileToQSample_pr.out, trfp_pr.out.map { it[3] })
       insertFragpipeDataToQSample_pr(
           insertFragpipeFileToQSample_pr.out,
           trfp_pr.out,
@@ -147,7 +147,7 @@ workflow {
 
       //Report to QSample database:
       insertFileToQSample_pr(rawfile_ch,trfp_pr.out)
-      insertTicToQSample_pr(insertFileToQSample_pr.out, trfp_pr.out[3])
+      insertTicToQSample_pr(insertFileToQSample_pr.out, trfp_pr.out.map { it[3] })
       insertDataToQSample_pr(insertFileToQSample_pr.out,fileinfo_pr.out,protinf_pr.out,idfilter_score_pr.out,trfp_pr.out)
       insertQuantToQSample_pr(insertFileToQSample_pr.out,protquant_pr.out)
       //Report additional applications to QSample:
