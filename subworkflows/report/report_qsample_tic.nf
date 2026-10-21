@@ -4,6 +4,10 @@ url_api_user               = params.url_api_user
 url_api_pass               = params.url_api_pass
 url_api_insert_file        = params.url_api_insert_file
 
+//Max TIC points stored per file: bounds the blob size so very long runs stay
+//under the 2 MB cap and the browser chart stays light (tunable via params).
+tic_max_points             = params.tic_max_points ?: 20000
+
 //Bash scripts folder:
 binfolder                      = "$baseDir/bin"
 
@@ -69,6 +73,30 @@ process insertTicToQSample {
     if [ "$series_ok" != "1" ]; then
         echo "WARNING: TIC series sum ($series_sum) does not match legacy Sum TIC ($legacy_tic) - skipping TIC PUT (Sum TIC unaffected)"
         exit 0
+    fi
+
+    # Downsample the stored curve to a bounded point count so very long runs
+    # (hundreds of thousands of spectra) stay well under the 2 MB blob cap and
+    # the browser chart stays light. The cross-check above used the FULL
+    # (unstrided) series sum, so the reported Sum TIC number is unaffected.
+    # One point per spectrum and spectra are evenly time-spaced, so striding
+    # keeps the downsampled points evenly spaced in retention time.
+    if [ "$series_points" -gt !{tic_max_points} ]; then
+        jq --argjson max !{tic_max_points} '
+            (length) as $n
+            | if $n <= $max then .
+              else
+                (($n + $max - 1) / $max | floor) as $step
+                | [ range(0; $n; $step) as $i | .[$i] ]
+              end' tic_series.json > tic_series.ds.json \
+            || { echo "WARNING: TIC downsample failed - skipping TIC PUT"; exit 0; }
+        ds_points=$(jq length tic_series.ds.json)
+        if [ "$ds_points" = "0" ] || [ "$ds_points" -gt !{tic_max_points} ]; then
+            echo "WARNING: TIC downsample produced unexpected result ($ds_points points) - skipping TIC PUT"
+            exit 0
+        fi
+        mv tic_series.ds.json tic_series.json
+        echo "Downsampled TIC series to $ds_points points (max !{tic_max_points})"
     fi
 
     gzip -9 -c tic_series.json | base64 -w0 > tic_payload.b64
