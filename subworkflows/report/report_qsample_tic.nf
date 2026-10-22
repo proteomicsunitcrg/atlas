@@ -12,20 +12,22 @@ tic_max_points             = params.tic_max_points ?: 20000
 binfolder                      = "$baseDir/bin"
 
 /**
- * Extracts the full TIC series (one point per spectrum) from the mzML and
+ * Extracts the TIC series (one point per MS1 survey scan) from the mzML and
  * stores it in the QSample tic table, for the "Total Ion Current view" on the
  * request view. One blob per file: "gz1:" + base64(gzip(compact JSON
- * [[rt_ms, msLevel, tic], ...])) - the same blob format as the QCloud2 tic
- * table.
+ * [[rt_ms, 1, tic], ...])) - the same blob format as the QCloud2 tic table.
  *
- * The series sum is cross-checked against the legacy Sum TIC (MS:1000285, the
- * same value reported by insertDataToQSample under context source 19): on
- * mismatch (0.1% tolerance) or an empty series the PUT is skipped, so a
- * format surprise can never ship a corrupt curve. The file row must already
- * exist (the "received" notifier at workflow start, or the insert*FileToQSample
- * process, registers it), so this is wired right after the file insertion.
- * Best-effort, like the data POSTs: a failure here only loses the curve view,
- * never the QC data.
+ * Only MS1 (survey) spectra are kept: the TIC / total-ion-current
+ * chromatogram is defined from the survey scans, and MS2 (product) spectra
+ * both pollute the intensity and inflate the point count (a DDA run is ~95%
+ * MS2). The awk still sums ALL spectra into a sidecar, and that full sum is
+ * cross-checked against the legacy Sum TIC (MS:1000285, the value reported by
+ * insertDataToQSample under context source 19): on mismatch (0.1% tolerance)
+ * or an empty MS1 series the PUT is skipped, so a format surprise can never
+ * ship a corrupt curve. The file row must already exist (the "received"
+ * notifier at workflow start, or the insert*FileToQSample process, registers
+ * it), so this is wired right after the file insertion. Best-effort, like the
+ * data POSTs: a failure here only loses the curve view, never the QC data.
  */
 process insertTicToQSample {
     tag { "${mzml_file}" }
@@ -55,32 +57,34 @@ process insertTicToQSample {
     # negatives on small runs.
     legacy_tic=$(grep 'MS:1000285' "!{mzml_file}" | grep -o 'value="[^"]*"' | sed 's/value="//g; s/"//g' | awk '{sum+=$1} END{printf "%.10g", sum/10000000000}')
 
-    echo "Extracting TIC series (all points)..."
-    awk -f extract_tic_series.awk -v sumfile=tic_series.sum -v no_rts_file=tic_series.nort "!{mzml_file}" > tic_series.json
-    series_sum=$(cat tic_series.sum)
+    echo "Extracting TIC series (MS1 survey scans only)..."
+    awk -f extract_tic_series.awk -v sumfile=tic_series.sum -v ms1sumfile=tic_series.ms1sum -v no_rts_file=tic_series.nort "!{mzml_file}" > tic_series.json
+    full_sum=$(cat tic_series.sum)
+    series_sum=$(cat tic_series.ms1sum)
     series_no_rts=$(cat tic_series.nort)
     series_points=$(jq "length" tic_series.json)
-    echo "TIC series: $series_points points, points_without_RT: $series_no_rts"
+    echo "TIC series (MS1-only): $series_points points, MS1 sum=$series_sum (full sum=$full_sum), points_without_RT: $series_no_rts"
     if [ "$series_no_rts" != "0" ]; then
         echo "WARNING: $series_no_rts TIC points have no retention time (rt stored as 0)"
     fi
 
     if [ "$series_points" = "0" ]; then
-        echo "WARNING: empty TIC series - skipping TIC PUT (Sum TIC unaffected)"
+        echo "WARNING: no MS1 spectra found - skipping TIC PUT (Sum TIC unaffected)"
         exit 0
     fi
-    series_ok=$(awk -v a="$series_sum" -v b="$legacy_tic" 'BEGIN{ d=a/10000000000-b; if (d<0) d=-d; lim=0.001*b; if (lim<0) lim=-lim; if (b==0) ok=(a==0); else ok=(d<=lim); print (ok?1:0) }')
+    series_ok=$(awk -v a="$full_sum" -v b="$legacy_tic" 'BEGIN{ d=a/10000000000-b; if (d<0) d=-d; lim=0.001*b; if (lim<0) lim=-lim; if (b==0) ok=(a==0); else ok=(d<=lim); print (ok?1:0) }')
     if [ "$series_ok" != "1" ]; then
-        echo "WARNING: TIC series sum ($series_sum) does not match legacy Sum TIC ($legacy_tic) - skipping TIC PUT (Sum TIC unaffected)"
+        echo "WARNING: TIC full sum ($full_sum) does not match legacy Sum TIC ($legacy_tic) - skipping TIC PUT (Sum TIC unaffected)"
         exit 0
     fi
 
-    # Downsample the stored curve to a bounded point count so very long runs
-    # (hundreds of thousands of spectra) stay well under the 2 MB blob cap and
-    # the browser chart stays light. The cross-check above used the FULL
-    # (unstrided) series sum, so the reported Sum TIC number is unaffected.
-    # One point per spectrum and spectra are evenly time-spaced, so striding
-    # keeps the downsampled points evenly spaced in retention time.
+    # Backstop: thin the stored curve only if it still exceeds the point cap.
+    # With the MS1-only filter above, the point count is the number of survey
+    # scans (a few thousand for a typical run), so this rarely fires; it guards
+    # extreme (very long) runs against the 2 MB blob cap. The cross-check above
+    # used the FULL (unstrided) all-spectrum sum, so the reported Sum TIC
+    # number is unaffected. Points are evenly time-spaced, so striding keeps
+    # the downsampled points evenly spaced in retention time.
     if [ "$series_points" -gt !{tic_max_points} ]; then
         jq --argjson max !{tic_max_points} '
             (length) as $n
