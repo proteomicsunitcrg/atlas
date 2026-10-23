@@ -58,7 +58,7 @@ process insertTicToQSample {
     legacy_tic=$(grep 'MS:1000285' "!{mzml_file}" | grep -o 'value="[^"]*"' | sed 's/value="//g; s/"//g' | awk '{sum+=$1} END{printf "%.10g", sum/10000000000}')
 
     echo "Extracting TIC series (MS1 survey scans only)..."
-    awk -f extract_tic_series.awk -v sumfile=tic_series.sum -v ms1sumfile=tic_series.ms1sum -v no_rts_file=tic_series.nort "!{mzml_file}" > tic_series.json
+    awk -f extract_tic_series.awk -v ms1_only=1 -v sumfile=tic_series.sum -v ms1sumfile=tic_series.ms1sum -v no_rts_file=tic_series.nort "!{mzml_file}" > tic_series.json
     full_sum=$(cat tic_series.sum)
     series_sum=$(cat tic_series.ms1sum)
     series_no_rts=$(cat tic_series.nort)
