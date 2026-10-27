@@ -40,10 +40,16 @@ process output_folder {
 
         basename_sh=$(basename !{protinf_file} | cut -f 1 -d '.')
         output_tsv=!{output_folder}/$request_code.tsv
-        echo "$basename_sh\t$num_prots\t$num_peptd\t$miscleavages_0\t$miscleavages_1\t$miscleavages_2\t$miscleavages_3\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic" >> $output_tsv
-        if ! head -n 1 "$output_tsv" | grep -q "num_prots"; then
-           (printf "filename\tnum_prots\tnum_peptd\tmiscleavages_0\tmiscleavages_1\tmiscleavages_2\tmiscleavages_3\tcharge_2\tcharge_3\tcharge_4\ttotal_base_peak_intenisty\ttotal_tic\n"; cat $output_tsv) | tee $output_tsv > /dev/null
-        fi
+        mkdir -p !{output_folder}
+        (
+          flock -w 30 9 || exit 1
+          if [ ! -f "$output_tsv" ]; then
+            printf "filename\tnum_prots\tnum_peptd\tmiscleavages_0\tmiscleavages_1\tmiscleavages_2\tmiscleavages_3\tcharge_2\tcharge_3\tcharge_4\ttotal_base_peak_intenisty\ttotal_tic\n" > "$output_tsv"
+          fi
+          row="$basename_sh\t$num_prots\t$num_peptd\t$miscleavages_0\t$miscleavages_1\t$miscleavages_2\t$miscleavages_3\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic"
+          awk -v f="$basename_sh" '$1 != f' "$output_tsv" > "$output_tsv.tmp" && mv "$output_tsv.tmp" "$output_tsv"
+          echo "$row" >> "$output_tsv"
+        ) 9>"$output_tsv.lock"
 
         '''
 }
@@ -80,10 +86,16 @@ process output_folder_diann {
 
         basename_sh=$(basename !{tsv_file} | cut -f 1 -d '.')
         output_tsv=!{output_folder}/$request_code.tsv
-        echo "$basename_sh\t$num_prots\t$num_peptd\t$miscleavages_0\t$miscleavages_1\t$miscleavages_2\t$miscleavages_3\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic" >> $output_tsv
-        if ! head -n 1 "$output_tsv" | grep -q "num_prots"; then
-           (printf "filename\tnum_prots\tnum_peptd\tmiscleavages_0\tmiscleavages_1\tmiscleavages_2\tmiscleavages_3\tcharge_2\tcharge_3\tcharge_4\ttotal_base_peak_intenisty\ttotal_tic\n"; cat $output_tsv) | tee $output_tsv > /dev/null
-        fi
+        mkdir -p !{output_folder}
+        (
+          flock -w 30 9 || exit 1
+          if [ ! -f "$output_tsv" ]; then
+            printf "filename\tnum_prots\tnum_peptd\tmiscleavages_0\tmiscleavages_1\tmiscleavages_2\tmiscleavages_3\tcharge_2\tcharge_3\tcharge_4\ttotal_base_peak_intenisty\ttotal_tic\n" > "$output_tsv"
+          fi
+          row="$basename_sh\t$num_prots\t$num_peptd\t$miscleavages_0\t$miscleavages_1\t$miscleavages_2\t$miscleavages_3\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic"
+          awk -v f="$basename_sh" '$1 != f' "$output_tsv" > "$output_tsv.tmp" && mv "$output_tsv.tmp" "$output_tsv"
+          echo "$row" >> "$output_tsv"
+        ) 9>"$output_tsv.lock"
  
         '''
 }
@@ -127,10 +139,16 @@ process output_folder_fragpipe {
 
         basename_sh=$(basename !{checksum} | cut -f 1 -d '.')
         output_tsv=!{output_folder}/$request_code.tsv
-        echo "$basename_sh\t$num_prots\t$num_peptd\t$miscleavages_0\t$miscleavages_1\t$miscleavages_2\t$miscleavages_3\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic" >> $output_tsv
-        if ! head -n 1 "$output_tsv" | grep -q "num_prots"; then
-           (printf "filename\tnum_prots\tnum_peptd\tmiscleavages_0\tmiscleavages_1\tmiscleavages_2\tmiscleavages_3\tcharge_2\tcharge_3\tcharge_4\ttotal_base_peak_intenisty\ttotal_tic\n"; cat $output_tsv) | tee $output_tsv > /dev/null
-        fi
+        mkdir -p !{output_folder}
+        (
+          flock -w 30 9 || exit 1
+          if [ ! -f "$output_tsv" ]; then
+            printf "filename\tnum_prots\tnum_peptd\tmiscleavages_0\tmiscleavages_1\tmiscleavages_2\tmiscleavages_3\tcharge_2\tcharge_3\tcharge_4\ttotal_base_peak_intenisty\ttotal_tic\n" > "$output_tsv"
+          fi
+          row="$basename_sh\t$num_prots\t$num_peptd\t$miscleavages_0\t$miscleavages_1\t$miscleavages_2\t$miscleavages_3\t$charge_2\t$charge_3\t$charge_4\t$total_base_peak_intenisty\t$total_tic"
+          awk -v f="$basename_sh" '$1 != f' "$output_tsv" > "$output_tsv.tmp" && mv "$output_tsv.tmp" "$output_tsv"
+          echo "$row" >> "$output_tsv"
+        ) 9>"$output_tsv.lock"
 
         '''
 }
